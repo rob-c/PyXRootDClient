@@ -44,12 +44,37 @@ production. `evolve` returns a new one.
 | `pool_size` | `8` | `XRD_POOLSIZE` |
 | `pool_idle_ttl` | `120.0` | |
 
-!!! warning "Reserved"
-    These two are read from the environment and carried on the `Config`, but
-    nothing consumes them yet - a cross-instance session pool is future work.
-    Today one `FileSystem` (or one `fsspec` instance) owns one multiplexed
-    connection and reuses it for every call, which is where the win already
-    is; two `FileSystem` objects pointed at the same host log in twice.
+One `FileSystem` (or one `fsspec` instance) owns one multiplexed connection
+and reuses it for every call. When it closes, the connection is not dropped:
+it goes into a process-wide pool, and the next `FileSystem` opened on the same
+server *as the same person* picks it up instead of repeating the handshake,
+the TLS negotiation and the login. A script that opens a `FileSystem` per file
+pays for one bring-up rather than a hundred.
+
+```python
+from xrd.session import SESSIONS
+
+len(SESSIONS)      # connections being held open right now
+SESSIONS.clear()   # end them all, politely
+```
+
+Reuse is deliberately narrow, because sharing an authenticated connection with
+the wrong caller is an authentication bug:
+
+- The endpoint must match, TLS included.
+- Every credential-bearing setting must match - `username`, `token`,
+  `token_file`, `keytab`, `proxy`, `ca_path`, `ca_file`, `auth_order`,
+  `verify_tls`, `require_tls`, plus any user in the URL. They are compared as
+  a SHA-256 digest so that no key of the pool's ever holds a token.
+- A connection that failed under a live handle is discarded, never pooled.
+- Only idle connections are shared. Two `FileSystem` objects open at once are
+  two connections; pooling reuses what is finished with, and does not
+  multiplex what is not.
+
+`pool_size` is how many idle connections are kept per server, `pool_idle_ttl`
+how long one may sit unused before it is closed rather than handed on -
+protection against a server that has forgotten a connection the client still
+believes in. `pool_size = 0` turns pooling off entirely.
 
 ## Security
 

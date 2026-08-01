@@ -226,7 +226,7 @@ def test_an_unsupported_query_is_refused():
 
     with FakeServer() as srv, xrd.FileSystem(srv.url) as fs:
         with pytest.raises(OSError):
-            fs._router.execute(r.Query(c.kXR_Qspace, "/"))
+            fs._router.execute(r.Query(c.kXR_Qopaquf, "/"))
 
 
 def test_a_corrupt_pgwrite_is_rejected():

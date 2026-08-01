@@ -125,8 +125,10 @@ class File:
         )
         result = self._router.execute(request, path=self.url.path)
         # The open may have been redirected; every later operation on this
-        # handle must stay on the server that issued it.
-        self._router = self._router.pin()
+        # handle must stay on the server that issued it. A connection this
+        # handle made itself is handed over rather than shared, so that there
+        # is exactly one router responsible for putting it back.
+        self._router = self._router.pin(transfer=self._owns_router)
         self._handle, self._stat = rp.parse_open(result.data, self.url.path)
         if self._stat is not None:
             self._size_hint = self._stat.st_size
@@ -169,7 +171,9 @@ class File:
         """
         stale, self._handle, self._stat = self._router, None, None
         if self._owns_router:
-            stale.close()
+            # Discarded, not pooled: this connection has just failed under a
+            # live handle, and the next caller deserves better than that.
+            stale.discard()
         self._router = Router(self.url, self.config)
         self._owns_router = True
         self.recoveries += 1

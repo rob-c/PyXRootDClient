@@ -129,6 +129,17 @@ class FakeServer:
         self.modes: dict[str, int] = {}
         #: Values ``kXR_query`` config lookups answer with.
         self.config_values: dict[str, str] = {"version": "v5.6.0", "role": "server"}
+        #: The ``oss.*`` space token ``kXR_Qspace`` answers with.
+        self.space = (
+            "oss.cgroup=public&oss.space=2000000&oss.free=1500000"
+            "&oss.maxf=1400000&oss.used=500000&oss.quota=-1"
+        )
+        #: Directives ``kXR_set`` carried, in order.
+        self.properties: list[str] = []
+        #: Checksums a client asked the server to stop computing.
+        self.cancelled_checksums: list[str] = []
+        #: Staging requests withdrawn by handle.
+        self.cancelled_prepares: list[str] = []
         #: Opcodes seen, in order - what a test asserts round trips on.
         self.seen: list[int] = []
         #: Raw path argument of every ``kXR_open``, CGI included. The opaque
@@ -529,6 +540,7 @@ def _h_truncate(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iter
 
 
 def _h_set(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    conn.s.properties.append(body.split(b"\x00", 1)[0].decode("utf-8", "replace").strip())
     yield _frame(sid, c.kXR_ok)
 
 
@@ -766,6 +778,13 @@ def _h_query(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
         names = args.split("\n")
         values = [conn.s.config_values.get(n, "") for n in names]
         yield _frame(sid, c.kXR_ok, "\n".join(values).encode() + b"\x00")
+    elif infotype == c.kXR_Qckscan:
+        conn.s.cancelled_checksums.append(_clean(args))
+        yield _frame(sid, c.kXR_ok)
+    elif infotype == c.kXR_QStats:
+        yield _frame(sid, c.kXR_ok, f'<statistics sel="{args}"/>'.encode() + b"\x00")
+    elif infotype == c.kXR_Qspace:
+        yield _frame(sid, c.kXR_ok, conn.s.space.encode() + b"\x00")
     elif infotype == c.kXR_Qvisa:
         yield _frame(sid, c.kXR_ok, b"visa\x00")
     else:
@@ -781,6 +800,10 @@ def _h_locate(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterat
 
 
 def _h_prepare(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    if params[0] & c.kXR_cancel:
+        conn.s.cancelled_prepares.append(body.split(b"\x00", 1)[0].decode().strip())
+        yield _frame(sid, c.kXR_ok)
+        return
     yield _frame(sid, c.kXR_ok, b"prep-0001\x00")
 
 

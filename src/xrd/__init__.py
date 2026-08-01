@@ -59,6 +59,7 @@ from .types import (
     PageResult,
     ProtocolInfo,
     ReadRange,
+    SpaceInfo,
     StatInfo,
     VFSInfo,
     WriteChunk,
@@ -118,6 +119,7 @@ __all__ = [
     "ProtocolInfo",
     "ReadRange",
     "StatInfo",
+    "SpaceInfo",
     "VFSInfo",
     "WriteChunk",
     # flags

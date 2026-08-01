@@ -32,9 +32,13 @@ Schemes: `http`, `https`, `dav`, `davs`, `webdav`. Nothing here needs a wheel
 | `write_bytes`, `open("wb")` | `PUT` |
 | `third_party` | `COPY` with `Source:`/`Destination:` |
 
-Operations with no HTTP equivalent - `locate`, `prepare`, `query_config`,
-`statvfs` - raise `UnsupportedError` naming the operation rather than
-returning something invented.
+Operations with no HTTP equivalent - `locate`, `prepare`, `cancel_prepare`,
+`query_config`, `query_stats`, `query_space`, `checksum_cancel`,
+`set_property`, `appid`, `statvfs` - raise `UnsupportedError` naming the
+operation rather than returning something invented. They are the XRootD
+protocol talking to an XRootD server about itself; WebDAV has no vocabulary
+for any of it, and a plausible-looking answer built out of `PROPFIND` would be
+a worse outcome than a refusal.
 
 ## Ranged reads
 

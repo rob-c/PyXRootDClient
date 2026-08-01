@@ -69,6 +69,24 @@ def _no_dotfile(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("XRD_CONFIG", str(empty))
 
 
+@pytest.fixture(autouse=True)
+def _no_pooled_connections():
+    """Never let one test's connection be handed to the next.
+
+    Every :class:`~xrd.testing.FakeServer` gets an ephemeral port, and the
+    kernel hands those out again: a connection left in the pool by a test
+    whose server has since stopped would match a later test's server by
+    address and be reused, dead. Production has the same hazard on a server
+    restart and answers it with ``pool_idle_ttl``; a test suite can simply not
+    share.
+    """
+    from xrd.session import SESSIONS
+
+    SESSIONS.clear()
+    yield
+    SESSIONS.clear()
+
+
 @pytest.fixture
 def config() -> Config:
     """A config that never reaches the network or the local filesystem."""

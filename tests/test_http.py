@@ -374,6 +374,12 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.symlink("/d/a.root", "/d/latest"),
         lambda: fs.link("/d/a.root", "/d/second"),
         lambda: fs.readlink("/d/latest"),
+        lambda: fs.cancel_prepare("prep-0001"),
+        lambda: fs.checksum_cancel("/d/a.root"),
+        lambda: fs.query_stats(),
+        lambda: fs.query_space("/d"),
+        lambda: fs.set_property("appid t"),
+        lambda: fs.appid("t"),
     ):
         with pytest.raises(UnsupportedError):
             call()
@@ -386,6 +392,8 @@ def test_the_unsupported_overrides_keep_the_signature_they_replace(fs):
         lambda: fs.prepare(["/d/a.root"], flags=PrepareFlags.STAGE, priority=1),
         lambda: fs.query(QueryCode.CONFIG, "version"),
         lambda: fs.statvfs(),
+        lambda: fs.query_stats("io"),
+        lambda: fs.query_space(),
     ):
         with pytest.raises(UnsupportedError):
             call()

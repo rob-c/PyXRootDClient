@@ -17,6 +17,7 @@ from ..types import (
     DirEntry,
     LocationInfo,
     ProtocolInfo,
+    SpaceInfo,
     StatInfo,
     VFSInfo,
 )
@@ -28,7 +29,7 @@ __all__ = [
     "LoginInfo", "ReadVSegment", "FattrItem", "FattrResult",
     "parse_protocol", "parse_login", "parse_stat", "parse_statvfs", "parse_statx",
     "parse_dirlist", "parse_locate", "parse_open", "parse_checksum",
-    "parse_checkpoint", "parse_readlink",
+    "parse_checkpoint", "parse_readlink", "parse_space",
     "parse_error", "parse_redirect", "parse_wait", "parse_waitresp", "parse_attn",
     "parse_status", "parse_readv", "parse_fattr",
 ]
@@ -338,6 +339,41 @@ def parse_checksum(data: bytes) -> ChecksumInfo:
     if not value:
         raise ProtocolError(f"malformed checksum response: {text!r}")
     return ChecksumInfo(algorithm=name.lower(), value=value.strip().lower())
+
+
+def parse_space(data: bytes) -> SpaceInfo:
+    """``kXR_query`` with ``kXR_Qspace`` - ``oss.*`` CGI, in bytes.
+
+    The reply is a query string rather than a structure, and a server is free
+    to answer with a subset of the keys: a pool with no quota omits
+    ``oss.quota`` rather than sending a zero. Missing keys therefore keep the
+    dataclass default, which for the quota is ``-1`` - "no limit" - because a
+    zero would read as a pool nobody may write a byte to.
+    """
+    text = data.split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
+    fields: dict[str, str] = {}
+    for pair in text.replace("\n", "&").split("&"):
+        key, sep, value = pair.partition("=")
+        if sep:
+            fields[key.strip()] = value.strip()
+
+    def number(key: str, default: int) -> int:
+        raw = fields.get(key)
+        if raw is None or raw == "":
+            return default
+        try:
+            return int(raw)
+        except ValueError as exc:
+            raise ProtocolError(f"kXR_Qspace {key}={raw!r} is not a number") from exc
+
+    return SpaceInfo(
+        name=fields.get("oss.cgroup", ""),
+        total=number("oss.space", 0),
+        free=number("oss.free", 0),
+        largest_free=number("oss.maxf", 0),
+        used=number("oss.used", 0),
+        quota=number("oss.quota", -1),
+    )
 
 
 def parse_checkpoint(data: bytes) -> CheckpointInfo:

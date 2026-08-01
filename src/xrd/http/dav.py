@@ -34,7 +34,15 @@ from ..errors import (
     kXR_Unsupported,
 )
 from ..flags import DirListFlags, LocateFlags, PrepareFlags, QueryCode, StatInfoFlags
-from ..types import ChecksumInfo, DirEntry, LocationInfo, ProtocolInfo, StatInfo, VFSInfo
+from ..types import (
+    ChecksumInfo,
+    DirEntry,
+    LocationInfo,
+    ProtocolInfo,
+    SpaceInfo,
+    StatInfo,
+    VFSInfo,
+)
 from ..url import XRootDURL, parse
 from .client import HTTPClient
 from .file import open_http
@@ -584,6 +592,24 @@ class HTTPFileSystem(FileSystem):
 
     def evict(self, paths: Sequence[str]) -> str:
         raise self._unsupported("evict")
+
+    def cancel_prepare(self, handle: str) -> None:
+        raise self._unsupported("prepare")
+
+    def checksum_cancel(self, path: str) -> None:
+        raise self._unsupported("cancelling a checksum")
+
+    def query_stats(self, selectors: str = "a") -> str:
+        raise self._unsupported("server statistics")
+
+    def query_space(self, path: str = "/") -> SpaceInfo:
+        raise self._unsupported("space query")
+
+    def set_property(self, directive: str) -> None:
+        raise self._unsupported("setting a server property")
+
+    def appid(self, name: str) -> None:
+        raise self._unsupported("setting a server property")
 
     def getxattr(self, path: str, name: str) -> bytes:
         raise self._unsupported("extended attributes")

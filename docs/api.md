@@ -63,6 +63,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.ReadRange
 
+::: xrd.SpaceInfo
+
 ::: xrd.VFSInfo
 
 ::: xrd.WriteChunk

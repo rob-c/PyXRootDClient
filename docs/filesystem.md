@@ -112,7 +112,53 @@ fs.deep_locate("/store/f.root")         # follow managers to the data servers
 fs.prepare(["/store/a.root", "/store/b.root"])   # stage from tape
 fs.evict(["/store/a.root"])
 fs.statvfs("/store")
+fs.query_space("/store")      # SpaceInfo: one space token, in bytes
+fs.query_stats("a")           # the server's XML statistics summary
 ```
+
+`statvfs()` and `query_space()` answer different questions. `statvfs()`
+describes the whole storage element the way `df` would, in megabytes and
+percentages; `query_space()` describes the one space token - the pool an
+`oss.cgroup` write lands in - in bytes, and reports its quota:
+
+```python
+space = fs.query_space("/store")
+space.free, space.total, space.largest_free      # bytes
+space.unlimited                                  # quota is -1, not zero
+```
+
+`prepare()` hands back a request handle, and a request that has not run yet
+can be withdrawn by it:
+
+```python
+handle = fs.prepare(["/store/a.root"])
+fs.cancel_prepare(handle)
+```
+
+Cancelling names the request, not the files, which is why it is a separate
+method rather than a flag: passing paths here would ask the server to cancel
+whatever requests have handles that look like filenames.
+
+A checksum the server is still computing can be called off the same way, this
+one by path:
+
+```python
+fs.checksum_cancel("/store/big.root")
+```
+
+## Labelling a connection
+
+Site monitoring records who is doing what, and "python" is not an answer
+anybody can act on:
+
+```python
+fs.appid("higgs-skim")               # shows up in the server's monitoring
+fs.set_property("monitor off")       # kXR_set, for anything else
+```
+
+`appid()` is `set_property("appid ...")` with the string built for you. The
+directive goes to the server verbatim, so `set_property()` is also how a new
+one reaches you without waiting for a release.
 
 `checksum()` asks for `config.preferred_checksum` (`adler32` by default) and
 returns whatever the server actually computed, which is not always what you

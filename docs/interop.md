@@ -58,7 +58,16 @@ know which client its users are running.
 | X.509 delegation | same |
 | `kXR_bind` split data sockets | one multiplexed stream is enough, and simpler |
 
-Each raises an exception that names the feature.
+Each raises an exception that names the feature. A server insisting on one of
+them says so at the handshake, not three operations later.
+
+Two more are absent because the protocol retired them, not because this client
+declined: `kXR_verifyw` and `kXR_decrypt` were dropped from XProtocol, and
+their request codes have since been reissued - 3026 is `kXR_pgwrite` today. A
+client still sending the old opcodes would be writing pages while believing it
+was verifying them. Their replacements, `pgread` and `pgwrite`, carry a CRC32C
+per 4 KiB page and are implemented in full; older clients that still name
+`verifyw` are describing a protocol no current server speaks.
 
 ## Beyond the specification
 
@@ -69,8 +78,7 @@ three clients agree with each other and a server taught one of them
 understands all three. A stock daemon answers `kXR_Unsupported`, which is the
 honest answer for a namespace with no links, and this client turns it into
 `UnsupportedError` rather than pretending. The HTTP and WebDAV backends raise
-the same exception without a round trip, because there is no verb to try. A server insisting on one of
-them says so at the handshake, not three operations later.
+the same exception without a round trip, because there is no verb to try.
 
 ## Version coverage
 

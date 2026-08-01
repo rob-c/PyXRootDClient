@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
+from .pool import SESSIONS, SessionPool
 from .router import Router
 from .sync import RedirectRequired, Result, Session
 
-__all__ = ["Session", "Result", "RedirectRequired", "Router"]
+__all__ = ["Session", "Result", "RedirectRequired", "Router", "SessionPool", "SESSIONS"]

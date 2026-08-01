@@ -381,6 +381,55 @@ def test_evict_is_a_prepare(fs, server):
     assert c.kXR_prepare in server.seen
 
 
+def test_cancel_prepare_withdraws_by_handle(fs, server):
+    handle = fs.prepare(["/data/a.root"])
+    fs.cancel_prepare(handle)
+    assert server.cancelled_prepares == [handle]
+
+
+def test_cancelling_a_checksum_names_the_file(fs, server):
+    fs.checksum_cancel("/data/a.root")
+    assert server.cancelled_checksums == ["/data/a.root"]
+
+
+def test_query_stats_returns_what_the_server_said(fs):
+    assert fs.query_stats() == '<statistics sel="a"/>'
+    assert fs.query_stats("io") == '<statistics sel="io"/>'
+
+
+def test_query_space_reads_the_oss_token(fs):
+    space = fs.query_space("/data")
+    assert (space.name, space.free, space.total) == ("public", 1500000, 2000000)
+    assert space.largest_free == 1400000
+    assert space.used == 500000
+    assert space.unlimited
+
+
+def test_a_pool_with_no_quota_is_unlimited_not_full(fs, server):
+    """A missing ``oss.quota`` is "no limit", and zero would say the opposite."""
+    server.space = "oss.cgroup=atlas&oss.space=10&oss.free=4"
+    space = fs.query_space("/data")
+    assert space.quota == -1
+    assert space.unlimited
+    assert str(space) == "atlas: 4 of 10 bytes free"
+
+
+def test_a_space_field_that_is_not_a_number_is_refused(fs, server):
+    server.space = "oss.cgroup=atlas&oss.free=lots"
+    with pytest.raises(ProtocolError, match=r"oss\.free"):
+        fs.query_space("/data")
+
+
+def test_appid_labels_the_connection(fs, server):
+    fs.appid("analysis-7")
+    assert server.properties == ["appid analysis-7"]
+
+
+def test_set_property_sends_the_directive_verbatim(fs, server):
+    fs.set_property("monitor off")
+    assert server.properties == ["monitor off"]
+
+
 # ---------------------------------------------------------------------------
 # FileSystem: extended attributes
 # ---------------------------------------------------------------------------

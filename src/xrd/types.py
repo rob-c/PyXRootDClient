@@ -15,6 +15,7 @@ __all__ = [
     "StatInfo",
     "DirEntry",
     "VFSInfo",
+    "SpaceInfo",
     "LocationInfo",
     "ProtocolInfo",
     "ChecksumInfo",
@@ -114,6 +115,34 @@ class VFSInfo:
     @property
     def f_bavail(self) -> int:
         return self.free_rw
+
+
+@dataclass(frozen=True, slots=True)
+class SpaceInfo:
+    """Result of ``kXR_query`` with ``kXR_Qspace``.
+
+    Where :class:`VFSInfo` describes a whole storage element in megabytes and
+    percentages, this describes one space token - the named pool a write with
+    ``oss.cgroup`` lands in - and does so in bytes.
+
+    ``quota`` is ``-1`` when the pool has none, which is how the server says
+    "unlimited" and not a number to compare against ``used``.
+    """
+
+    name: str = ""
+    total: int = 0
+    free: int = 0
+    largest_free: int = 0
+    used: int = 0
+    quota: int = -1
+
+    @property
+    def unlimited(self) -> bool:
+        """``True`` when no quota applies to this pool."""
+        return self.quota < 0
+
+    def __str__(self) -> str:
+        return f"{self.name or 'default'}: {self.free} of {self.total} bytes free"
 
 
 @dataclass(frozen=True, slots=True)

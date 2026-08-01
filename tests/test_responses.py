@@ -386,6 +386,34 @@ def test_a_file_nobody_may_read_has_no_read_bits():
     assert StatInfo(flags=StatInfoFlags.IS_WRITABLE).st_mode & 0o222 == 0o222
 
 
+def test_a_space_reply_is_read_key_by_key():
+    from xrd.types import SpaceInfo
+
+    assert rp.parse_space(b"\x00") == SpaceInfo()
+    info = rp.parse_space(
+        b"oss.cgroup=atlas&oss.space=2000\noss.free=1500&oss.maxf=1400"
+        b"&oss.used=500&oss.quota=1800\x00"
+    )
+    assert (info.name, info.total, info.free) == ("atlas", 2000, 1500)
+    assert (info.largest_free, info.used, info.quota) == (1400, 500, 1800)
+    assert info.unlimited is False
+    assert str(info) == "atlas: 1500 of 2000 bytes free"
+
+
+def test_a_space_reply_ignores_what_is_not_a_pair():
+    """Servers pad these with bare words; a token with no ``=`` is not a key.
+
+    Skipping it rather than failing is the difference between reading a real
+    reply and refusing one that is merely wordier than the specification.
+    """
+    from xrd.types import SpaceInfo
+
+    info = rp.parse_space(b"oss.cgroup=public&statistics&oss.free=7&oss.quota=\x00")
+    assert (info.name, info.free) == ("public", 7)
+    assert (info.quota, info.unlimited) == (-1, True)
+    assert str(SpaceInfo()) == "default: 0 of 0 bytes free"
+
+
 def test_a_checkpoint_query_is_capacity_then_use():
     info = rp.parse_checkpoint(struct.pack(">II", 1 << 20, 4096))
     assert (info.capacity, info.used, info.free) == (1 << 20, 4096, (1 << 20) - 4096)

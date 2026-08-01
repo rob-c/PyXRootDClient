@@ -23,6 +23,7 @@ from ..errors import RedirectLimitError, TransientError, WaitLimitError
 from ..errors import TimeoutError as XrdTimeoutError
 from ..proto.frames import Request
 from ..url import XRootDURL, parse
+from .pool import SESSIONS
 from .sync import RedirectRequired, Result, Session
 
 __all__ = ["Router"]
@@ -59,6 +60,10 @@ class Router:
         #: further on and much harder to act on.
         self.reconnect = reconnect
         self._session: Session | None = None
+        #: Whether this router may hand its connection back to the pool. False
+        #: on a pinned router that borrowed the connection it shares: the
+        #: router it came from is still using it.
+        self._owns = True
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------------
@@ -78,7 +83,10 @@ class Router:
                     # A session whose peer went away is closed as far as the
                     # protocol goes, but its socket is still a descriptor.
                     self._session.close()
-                self._session = Session.connect(self.url, config=self.config)
+                self._owns = True
+                self._session = SESSIONS.acquire(self.url, self.config) or Session.connect(
+                    self.url, config=self.config
+                )
             return self._session
 
     @property
@@ -143,19 +151,32 @@ class Router:
     def _follow(self, redirect: RedirectRequired) -> None:
         target = redirect.target
         scheme = "roots" if target.port < 0 else self.url.scheme
+        # The connection being left behind is not broken - it is simply not
+        # the server holding the file - so it goes back to the pool, keyed by
+        # the endpoint it is still connected to. The next open asks the same
+        # manager the same question, and finds it already answered once.
+        self.close()
         self.url = self.url.evolve(
             scheme=scheme, host=target.host, port=abs(target.port) or self.url.port
         )
         _log.debug("redirected to %s", self.endpoint)
-        self._drop()
 
     def _drop(self) -> None:
         with self._lock:
             if self._session is not None:
                 self._session.close()
                 self._session = None
+            self._owns = True
 
-    def pin(self) -> Router:
+    def discard(self) -> None:
+        """Close this connection for good, keeping it out of the pool.
+
+        For one that has just misbehaved: pooling a connection whose server
+        has gone away only moves the failure to whoever picks it up next.
+        """
+        self._drop()
+
+    def pin(self, *, transfer: bool = False) -> Router:
         """A router bound to the current endpoint, sharing this connection.
 
         Used after an open: further operations on the handle must not be
@@ -164,13 +185,31 @@ class Router:
         reports a lost connection as a :class:`~xrd.errors.TransientError` and
         leaves the recovery to :class:`~xrd.client.file.File`, which is the
         only layer that knows how to get the handle back.
+
+        ``transfer`` hands the connection over rather than sharing it: the
+        caller is done with this router and the pinned one becomes the single
+        owner, free to return the connection to the pool when it closes.
+        Without it the pinned router is a borrower, and closing one of those
+        lets go of the connection without touching it - the router it came
+        from still has work for it.
         """
         pinned = Router(self.url, self.config, reconnect=False)
-        pinned._session = self._session
+        with self._lock:
+            pinned._session = self._session
+            if transfer:
+                self._session = None
+            pinned._owns = transfer or pinned._session is None
         return pinned
 
     def close(self) -> None:
-        self._drop()
+        """Finish with this connection, offering it to the pool if it is ours."""
+        with self._lock:
+            session, self._session = self._session, None
+            owns, self._owns = self._owns, True
+        if session is None or not owns:
+            return
+        if not SESSIONS.release(session, self.url, self.config):
+            session.close()
 
     def __enter__(self) -> Router:
         return self

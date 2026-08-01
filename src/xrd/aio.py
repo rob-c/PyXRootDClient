@@ -61,6 +61,7 @@ from .types import (
     PageResult,
     ProtocolInfo,
     ReadRange,
+    SpaceInfo,
     StatInfo,
     VFSInfo,
     WriteChunk,
@@ -441,6 +442,21 @@ class AsyncFileSystem:
     async def query_config(self, *names: str) -> dict[str, str]:
         return await _run(self._sync.query_config, *names)
 
+    async def query_stats(self, selectors: str = "a") -> str:
+        return await _run(self._sync.query_stats, selectors)
+
+    async def query_space(self, path: str = "/") -> SpaceInfo:
+        return await _run(self._sync.query_space, path)
+
+    async def checksum_cancel(self, path: str) -> None:
+        await _run(self._sync.checksum_cancel, path)
+
+    async def set_property(self, directive: str) -> None:
+        await _run(self._sync.set_property, directive)
+
+    async def appid(self, name: str) -> None:
+        await _run(self._sync.appid, name)
+
     async def locate(
         self, path: str, *, flags: LocateFlags = LocateFlags.NONE
     ) -> list[LocationInfo]:
@@ -458,6 +474,9 @@ class AsyncFileSystem:
 
     async def evict(self, paths: Sequence[str]) -> str:
         return await _run(self._sync.evict, paths)
+
+    async def cancel_prepare(self, handle: str) -> None:
+        await _run(self._sync.cancel_prepare, handle)
 
     # -- listing -------------------------------------------------------
 

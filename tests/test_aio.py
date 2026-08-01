@@ -225,6 +225,26 @@ def test_the_namespace_surface(server):
     run(main())
 
 
+def test_the_server_side_bookkeeping_is_mirrored(server):
+    """The calls that ask a server to stop doing something, or to label who is
+    asking, are as much part of the surface as the ones that move bytes."""
+
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            handle = await fs.prepare(["/data/a.root"])
+            await fs.cancel_prepare(handle)
+            await fs.checksum_cancel("/data/a.root")
+            assert (await fs.query_stats("io")) == '<statistics sel="io"/>'
+            assert (await fs.query_space("/data")).name == "public"
+            await fs.set_property("monitor off")
+            await fs.appid("async-analysis")
+
+    run(main())
+    assert server.cancelled_prepares == ["prep-0001"]
+    assert server.cancelled_checksums == ["/data/a.root"]
+    assert server.properties == ["monitor off", "appid async-analysis"]
+
+
 def test_listing_is_lazy_and_asynchronous(server):
     server.add_file("/data/sub/deep.bin", b"x")
 

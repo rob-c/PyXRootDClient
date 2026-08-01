@@ -97,7 +97,10 @@ def _fs_removexattr(fs):
 
 
 FILESYSTEM = {
+    "appid": lambda fs: fs.appid("surface-test"),
+    "cancel_prepare": lambda fs: fs.cancel_prepare(fs.prepare(["f.root"])),
     "checksum": lambda fs: fs.checksum("f.root"),
+    "checksum_cancel": lambda fs: fs.checksum_cancel("f.root"),
     "chmod": lambda fs: fs.chmod("f.root", 0o640),
     "close": lambda fs: fs.close(),
     "deep_locate": lambda fs: fs.deep_locate("f.root"),
@@ -124,6 +127,8 @@ FILESYSTEM = {
     "protocol": lambda fs: fs.protocol(),
     "query": lambda fs: fs.query(QueryCode.CONFIG, "version"),
     "query_config": lambda fs: fs.query_config("version"),
+    "query_space": lambda fs: fs.query_space("."),
+    "query_stats": lambda fs: fs.query_stats(),
     "read_bytes": lambda fs: fs.read_bytes("f.root"),
     "readlink": _fs_readlink,
     "read_text": lambda fs: fs.read_text("f.root"),
@@ -134,6 +139,7 @@ FILESYSTEM = {
     "rmtree": lambda fs: fs.rmtree("sub"),
     "scandir": lambda fs: fs.scandir("."),
     "setxattr": lambda fs: fs.setxattr("f.root", "user.k", b"v"),
+    "set_property": lambda fs: fs.set_property("appid surface-test"),
     "symlink": lambda fs: fs.symlink("f.root", "soft.root"),
     "stat": lambda fs: fs.stat("f.root"),
     "statvfs": lambda fs: fs.statvfs("."),
@@ -378,6 +384,7 @@ NAMES = {
     "ProtocolInfo": lambda srv, tmp: xrd.ProtocolInfo(version=0x310).version,
     "QueryCode": lambda srv, tmp: int(QueryCode.CHECKSUM),
     "ReadRange": lambda srv, tmp: xrd.ReadRange(0, 4).length,
+    "SpaceInfo": lambda srv, tmp: xrd.SpaceInfo(free=1).unlimited,
     "StatInfo": lambda srv, tmp: xrd.StatInfo(st_size=1).st_size,
     "SyncMode": lambda srv, tmp: xrd.copy_tree.__doc__ and "size" in str(xrd.SyncMode),
     "StatInfoFlags": lambda srv, tmp: StatInfoFlags.IS_READABLE | StatInfoFlags.NONE,

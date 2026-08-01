@@ -41,6 +41,7 @@ link extensions, and ping, plus the login and authentication handshake.
 | `srv.auth_rounds = 2` | demand two rounds of `kXR_authmore` |
 | `srv.sec = "&P=gsi,v:10400&P=unix"` | what the login advertises |
 | `srv.disconnect()` | drop live connections, keep listening |
+| `srv.space = "oss.cgroup=..."` | what `kXR_Qspace` answers |
 
 And for assertions:
 
@@ -50,6 +51,9 @@ And for assertions:
 | `srv.opened` | the raw path of each `kXR_open`, CGI included |
 | `srv.arguments` | `(opcode, argument)` for every request that named a path |
 | `srv.files`, `srv.dirs`, `srv.xattrs` | the namespace, mutated live |
+| `srv.properties` | the directives `kXR_set` carried, in order |
+| `srv.cancelled_checksums` | paths a client asked it to stop digesting |
+| `srv.cancelled_prepares` | staging handles withdrawn |
 | `srv.links`, `srv.modes` | what `kXR_symlink` and `kXR_chmod` did |
 | `srv.config_values` | what `kXR_query` config answers |
 

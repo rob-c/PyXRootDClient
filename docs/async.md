@@ -95,3 +95,21 @@ async def fetch(name):
 
 blobs = await asyncio.gather(*(fetch(n) for n in names))
 ```
+
+One filesystem per worker is not one login per worker: a connection a worker
+has finished with goes back to the pool for the next one, so the cost of the
+idiom above is the connections actually in flight rather than the number of
+names. See [Pooling](config.md#pooling).
+
+## Asking the server about itself
+
+The sync surface is mirrored whole, including the corners:
+
+```python
+space = await fs.query_space("/store")      # SpaceInfo, in bytes
+stats = await fs.query_stats("a")           # the XML summary
+await fs.appid("higgs-skim")                # label this connection
+await fs.set_property("monitor off")
+await fs.cancel_prepare(handle)             # withdraw a staging request
+await fs.checksum_cancel("/store/big.root")
+```

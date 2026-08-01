@@ -128,8 +128,10 @@ def third_party(
                 r.Open(f"{du.path}?{opaque}", int(flags) | c.kXR_retstat, _MODE),
                 path=du.path,
             )
-            # The handle exists only on the server that answered the open.
-            dst_router = dst_router.pin()
+            # The handle exists only on the server that answered the open, and
+            # the pinned router takes the connection over: the name it is
+            # bound to here is the only one left holding it.
+            dst_router = dst_router.pin(transfer=True)
             handle, _ = rp.parse_open(result.data, du.path)
 
             # 2. Arm the rendezvous, then register the key at the source. The

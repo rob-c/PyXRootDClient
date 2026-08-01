@@ -42,7 +42,15 @@ from ..proto import constants as c
 from ..proto import requests as r
 from ..proto import responses as rp
 from ..session.router import Router
-from ..types import ChecksumInfo, DirEntry, LocationInfo, ProtocolInfo, StatInfo, VFSInfo
+from ..types import (
+    ChecksumInfo,
+    DirEntry,
+    LocationInfo,
+    ProtocolInfo,
+    SpaceInfo,
+    StatInfo,
+    VFSInfo,
+)
 from ..url import XRootDURL, parse
 
 __all__ = ["FileSystem"]
@@ -480,6 +488,58 @@ class FileSystem:
         values = body.split("\n")
         return {name: value for name, value in zip(wanted, values, strict=False) if value}
 
+    def checksum_cancel(self, path: str) -> None:
+        """Abandon a checksum the server is still computing (``kXR_Qckscan``).
+
+        Checksumming a multi-terabyte file costs the server a full read of it.
+        A caller that has given up - a timeout, a cancelled job - says so,
+        rather than leaving the server to finish work nobody is waiting for.
+        """
+        target = self._abs(path)
+        self._router.execute(r.Query(c.kXR_Qckscan, target), path=target)
+
+    def query_stats(self, selectors: str = "a") -> str:
+        """Server statistics as the XML summary ``kXR_QStats`` answers with.
+
+        ``selectors`` is the letter set the protocol defines - ``"a"`` for all
+        of them, or a subset such as ``"io"``. The XML is returned verbatim:
+        the schema is the server's monitoring format, it varies by version and
+        by which plugins are loaded, and parsing it here would be inventing a
+        structure the protocol does not promise.
+        """
+        res = self._router.execute(r.Query(c.kXR_QStats, selectors))
+        return res.data.split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
+
+    def query_space(self, path: str = "/") -> SpaceInfo:
+        """Space available where ``path`` lives (``kXR_Qspace``).
+
+        This is the space *token* - the named pool ``oss.cgroup`` selects -
+        reported in bytes, where :meth:`statvfs` describes the whole storage
+        element in megabytes. A site that has separate pools for different
+        experiments answers differently for two paths on the same server.
+        """
+        target = self._abs(path)
+        res = self._router.execute(r.Query(c.kXR_Qspace, target), path=target)
+        return rp.parse_space(res.data)
+
+    def set_property(self, directive: str) -> None:
+        """Set a per-connection property on the server (``kXR_set``).
+
+        The directive is the protocol's own text, ``"<what> <value>"``. Only
+        ``appid`` is defined for clients, and :meth:`appid` is the way to send
+        it; this is here for a server that understands more.
+        """
+        self._router.execute(r.Set(directive))
+
+    def appid(self, name: str) -> None:
+        """Label this connection in the server's monitoring stream.
+
+        An operator looking at the server sees which application the traffic
+        belongs to instead of another anonymous connection. The name is
+        advisory and a server that does not monitor ignores it.
+        """
+        self.set_property(f"appid {name}")
+
     def locate(
         self, path: str, *, flags: LocateFlags = LocateFlags.NONE
     ) -> list[LocationInfo]:
@@ -528,6 +588,16 @@ class FileSystem:
     def evict(self, paths: Sequence[str]) -> str:
         """Ask the server to drop its cached copies."""
         return self.prepare(paths, flags=PrepareFlags.EVICT)
+
+    def cancel_prepare(self, handle: str) -> None:
+        """Withdraw a staging request :meth:`prepare` made.
+
+        The handle takes the place of the path list, which is what makes this
+        a separate method rather than a flag on :meth:`prepare`: cancelling
+        names the request, not the files, and passing paths here would ask the
+        server to cancel requests whose handles happen to look like filenames.
+        """
+        self._router.execute(r.Prepare([handle], int(PrepareFlags.CANCEL), 0))
 
     # ------------------------------------------------------------------
     # Extended attributes

@@ -183,8 +183,14 @@ Third-party copy works in both dialects from one call: `xrd.third_party` sends
 the `XrdOucTPC` rendezvous to a `root://` pair and the WLCG `COPY` dialect to
 an `http(s)`/`dav(s)` one, so the bytes move server to server either way.
 
+Connections are pooled across instances: a `FileSystem` that closes hands its
+authenticated connection to the next one opened on the same server by the same
+person, so a script that constructs one per file logs in once rather than a
+thousand times. Reuse is keyed on the credentials as well as the endpoint, and
+a connection that failed is discarded rather than passed on.
+
 Not yet: GSI's signed-DH path and X.509 delegation (both refused by name
-rather than mis-answered), a cross-instance connection pool, resumable copies,
+rather than mis-answered), `kXR_bind` parallel data streams, resumable copies,
 and HTTP/2.
 
 Full documentation is in [`docs/`](docs/) (`mkdocs serve` to read it), with

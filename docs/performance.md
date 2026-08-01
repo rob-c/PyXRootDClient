@@ -57,7 +57,12 @@ stream ID, so they do not wait for each other's responses, and a `FileSystem`
 holds its connection open for its whole life. A thousand-file dataset read
 through one `FileSystem` - or one `fsspec` instance, which is cached by its
 constructor arguments - costs one login. Constructing a fresh `FileSystem` per
-file does not; hoist it out of the loop.
+file costs one login *in total* as well, because a closed connection goes into
+the pool and the next `FileSystem` for the same server and the same credential
+takes it back out ([Pooling](config.md#pooling)). Hoisting it out of the loop
+is still the clearer code, and it is the version that also avoids re-resolving
+the URL; the pool is there for the code you did not write, like a helper that
+takes a URL and returns bytes.
 
 **Reads are batched when you let them.** `readv` is one round trip for many
 ranges; `pgread` gets per-page CRC32C from the server for free.
