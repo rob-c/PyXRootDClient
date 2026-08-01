@@ -25,6 +25,8 @@ __all__ = [
     "Endpoints",
     "dumps",
     "fail",
+    "confirm",
+    "interactive",
     "size_arg",
     "common_flags",
     "stdout_bytes",
@@ -68,6 +70,26 @@ def fail(program: str, exc: BaseException) -> int:
     """Report ``exc`` the way a Unix tool does, and give back the exit code."""
     print(f"{program}: {exc}", file=sys.stderr)
     return ERROR
+
+
+def interactive() -> bool:
+    """Is there a person at both ends of this, rather than a pipe?"""
+    return bool(getattr(sys.stdin, "isatty", bool)() and getattr(sys.stderr, "isatty", bool)())
+
+
+def confirm(question: str) -> bool:
+    """Ask before doing something that cannot be undone.
+
+    Only ever called when somebody is there to answer: a script in a batch job
+    is never stopped by a question it cannot see. Anything but ``y`` is no,
+    and so is a closed stdin.
+    """
+    print(f"{question} [y/N] ", end="", file=sys.stderr, flush=True)
+    try:
+        answer = input()
+    except EOFError:
+        answer = ""
+    return answer.strip().lower() in {"y", "yes"}
 
 
 # ---------------------------------------------------------------------------

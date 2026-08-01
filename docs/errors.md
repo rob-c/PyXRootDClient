@@ -32,6 +32,7 @@ Exception
     │       └── TokenExpiredError
     ├── RedirectLimitError
     ├── ChecksumMismatchError
+    ├── TooLargeError                 a whole-file read that would not fit
     └── ServerError                   a kXR_error response
         ├── NotFoundError             + FileNotFoundError   ENOENT
         ├── ExistsError               + FileExistsError     EEXIST
@@ -139,3 +140,15 @@ except xrd.ChecksumMismatchError as exc:
 
 Raised by a verified copy. It is a data-integrity signal, not an
 authentication one - see [Security](security.md).
+
+## Too much at once
+
+```python
+except xrd.TooLargeError as exc:
+    exc.size, exc.limit, exc.path
+```
+
+Raised *before* the allocation, by a read that never said how much it wanted
+of a file larger than `config.max_read_size`. The message says how to stream
+it instead. `read(n)` is a caller who knows, and never raises this; nor does
+anything at all once `max_read_size` is `0`. See [Safety](safety.md).

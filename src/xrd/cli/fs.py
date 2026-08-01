@@ -14,13 +14,26 @@ from __future__ import annotations
 
 import argparse
 import stat as _stat
+import sys
 import time
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
 from ..errors import XRootDError
 from ..types import DirEntry, StatInfo
-from . import OK, Endpoints, common_flags, config_from, dumps, fail, size_arg, stdout_bytes
+from . import (
+    ERROR,
+    OK,
+    Endpoints,
+    common_flags,
+    config_from,
+    confirm,
+    dumps,
+    fail,
+    interactive,
+    size_arg,
+    stdout_bytes,
+)
 
 __all__ = ["main"]
 
@@ -327,12 +340,44 @@ def _mkdir(args: argparse.Namespace, endpoints: Endpoints) -> int:
     return OK
 
 
+def _too_shallow(path: str) -> bool:
+    """Is this a whole namespace, or the top of somebody's, rather than a tree?
+
+    ``/``, ``/store`` and ``/eos`` are the paths a slip of the shell produces;
+    nothing under two components deep is ever what ``rm -r`` meant to say.
+    """
+    return len([part for part in path.split("/") if part]) < 2
+
+
+def _agreed(args: argparse.Namespace, filesystem: Any, url: str, path: str) -> bool:
+    """Ask before deleting a tree, when there is somebody there to ask.
+
+    The count comes from one listing of the top of it, which is what makes the
+    question worth asking: "remove this and the 400 entries under it" is the
+    sentence that stops the wrong ``rm -r``.
+    """
+    if args.yes or not interactive():
+        return True
+    entries = len(filesystem.listdir(path))
+    return confirm(f"{PROGRAM}: remove {url} and the {entries} entries under it?")
+
+
 def _rm(args: argparse.Namespace, endpoints: Endpoints) -> int:
     code = OK
     for url in args.url:
         filesystem, path = endpoints.at(url)
         try:
             if args.recursive:
+                if _too_shallow(path) and not args.yes:
+                    print(
+                        f"{PROGRAM}: {url} is the top of a namespace rather than a tree to "
+                        f"delete; say --yes if that really is what you mean",
+                        file=sys.stderr,
+                    )
+                    code = ERROR
+                    continue
+                if not _agreed(args, filesystem, url, path):
+                    continue
                 filesystem.rmtree(path)
             else:
                 filesystem.remove(path)
@@ -549,6 +594,11 @@ def _parser() -> argparse.ArgumentParser:
     rm.add_argument("url", nargs="+")
     rm.add_argument("-r", "--recursive", action="store_true", help="remove a directory tree")
     rm.add_argument("-f", "--force", action="store_true", help="ignore what is not there")
+    rm.add_argument(
+        "--yes",
+        action="store_true",
+        help="with -r, do not ask and do not refuse a shallow path: the answer is yes",
+    )
 
     rmdir = command("rmdir", _rmdir, "remove an empty directory")
     rmdir.add_argument("url", nargs="+")

@@ -54,6 +54,7 @@ can only honestly be tested against a live KDC.
 - **[Coming from pyxrootd](migrating.md)** - a translation table.
 - **[Performance](performance.md)** - measured against `xrdcp` and the
   official bindings, with the numbers and the harness.
+- **[Safety](safety.md)** - the guard rails the stock clients do not have.
 - **[Security](security.md)** - the threat model and what is enforced.
 
 ## Status
@@ -61,7 +62,7 @@ can only honestly be tested against a live KDC.
 The wire protocol, the session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI and the fsspec bindings are implemented and
-tested - 2413 tests, the great majority of which need no network, no KDC and no
+tested - 2433 tests, the great majority of which need no network, no KDC and no
 `openssl`, plus [interoperability and parity suites](interop.md) that run
 against a real `xrootd` daemon and the official bindings side by side.
 Coverage is 100% of statements and branches across the package, and `proto/`,

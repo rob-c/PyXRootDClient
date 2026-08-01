@@ -145,6 +145,15 @@ notebook.
 Credentials are redacted from logs, reprs and tracebacks — that is enforced by
 a test, not a convention.
 
+**Guard rails.** Safer than the stock tools where a beginner meets them:
+`read()` on a file bigger than `config.max_read_size` raises with the sentence
+that streams it instead of filling memory; `xrd-cp` refuses to overwrite
+without `-f`; `xrd-fs rm -r` asks at a terminal, with a count of what is about
+to go, and refuses a path less than two components deep until `--yes`; and
+`root://host/store/f` means the same file as `root://host//store/f` rather
+than a confusing miss. Each has one flag that says "yes, I mean it".
+See [Safety](https://rob-c.github.io/PyXRootDClient/safety/).
+
 ## Command line
 
 ```console
@@ -195,7 +204,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI and the fsspec bindings are implemented and
 tested —
-2413 tests, of which the great majority need no network, no KDC and no
+2433 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

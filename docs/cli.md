@@ -30,7 +30,7 @@ $ xrd-fs stat --json davs://dav.example.org/store/f.root
 $ xrd-fs cat root://host//store/notes.txt
 $ xrd-fs checksum -a adler32 root://host//store/f.root
 $ xrd-fs mkdir -p root://host//store/a/b/c
-$ xrd-fs rm -r -f root://host//store/scratch
+$ xrd-fs rm -r root://host//store/user/me/scratch   # asks first at a terminal
 $ xrd-fs mv root://host//store/a.root root://host//store/b.root
 $ xrd-fs touch root://host//store/marker
 $ xrd-fs df root://host//store
@@ -68,6 +68,13 @@ the server lists without sizes. `ln`, `ln -s`, `readlink`, `chown` and
 at all on a server that does not implement it. Plain `touch` is not: it creates a file and
 leaves an existing one alone, which every server understands.
 
+`rm -r` is the one subcommand that asks before it acts: at a terminal it says
+what it is about to remove and how many entries are under it, and it refuses a
+path less than two components deep - `/store` rather than `/store/user/me` -
+until `--yes` says that really was the instruction. `-f` still means only
+"ignore what is not there". Nothing prompts when neither stream is a terminal,
+so a batch job runs as it always did. See [Safety](safety.md).
+
 ## `xrd-cp`
 
 ```console
@@ -75,7 +82,7 @@ $ xrd-cp /tmp/f.root root://host//store/f.root
 $ xrd-cp root://host//store/f.root /scratch/
 $ xrd-cp -r /tmp/results davs://dav.example.org/store/results
 $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
-$ xrd-cp -n /tmp/f.root root://host//store/f.root      # never overwrite
+$ xrd-cp -f /tmp/f.root root://host//store/f.root      # overwrite what is there
 $ xrd-cp --verify -a crc32c /tmp/f.root root://host//store/f.root
 $ xrd-cp --chunk-size 8M --progress root://host//store/big.root /scratch/
 $ xrd-cp --in-flight 4 root://host//store/big.root /scratch/   # deeper read-ahead
@@ -97,6 +104,10 @@ from the end of it; the JSON record carries `resumed_at` so a script can see
 how much was skipped. It works on a tree too, and refuses to combine with
 `--tpc` or `-n`, which each forbid the partial destination it needs. See
 [Resuming](copying.md#resuming) for what it does to verification.
+
+An existing destination is an error unless `-f`, `--force` says to replace it,
+which is what `cp -i` would ask and what `xrdcp` needs `-f` for too; `-c`
+implies it. See [Safety](safety.md).
 
 For a tree:
 
@@ -143,8 +154,9 @@ An XRootD URL needs a **doubled** slash before an absolute path:
 
 ```console
 $ xrd-fs ls root://host//store/user/me     # /store/user/me
-$ xrd-fs ls root://host/store/user/me      # relative to the server's export
+$ xrd-fs ls root://host/store/user/me      # the same file, here
 ```
 
-This is not this client's invention - stock `xrdcp` refuses the single-slash
-form outright - but it catches everyone once.
+Stock `xrdcp` refuses the single-slash form, which is the single most common
+first hour of XRootD; this client normalises both to `/store/user/me` before
+anything goes on the wire. See [Safety](safety.md).

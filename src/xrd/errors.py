@@ -24,6 +24,7 @@ __all__ = [
     "RedirectLimitError",
     "WaitLimitError",
     "ChecksumMismatchError",
+    "TooLargeError",
     "raise_for_status",
 ]
 
@@ -118,6 +119,31 @@ class ChecksumMismatchError(XRootDError):
 
     def __reduce__(self) -> tuple:  # type: ignore[type-arg]
         return _rebuild, (type(self), (self.algorithm, self.expected, self.actual), {})
+
+
+class TooLargeError(XRootDError):
+    """A whole-file read that would not fit in memory, refused before it starts.
+
+    Only a read that never said how much it wanted raises this - ``read()``
+    with no argument, :meth:`~xrd.FileSystem.read_bytes`,
+    :meth:`~xrd.XRootDPath.read_text`. ``read(n)`` is a caller who knows what
+    they are asking for and is always honoured, and so is a larger
+    :attr:`~xrd.Config.max_read_size`.
+    """
+
+    def __init__(self, size: int, limit: int, *, path: str | None = None) -> None:
+        self.size = size
+        self.limit = limit
+        self.path = path
+        what = f"{path} is" if path else "that is"
+        super().__init__(
+            f"{what} {size} bytes, over the {limit} byte ceiling on reading a whole file "
+            f"into memory: read it in pieces (for block in file: ...), copy it to disk "
+            f"with xrd.copy(), or raise config.max_read_size"
+        )
+
+    def __reduce__(self) -> tuple:  # type: ignore[type-arg]
+        return _rebuild, (type(self), (self.size, self.limit), {"path": self.path})
 
 
 class ServerError(XRootDError):

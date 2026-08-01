@@ -43,6 +43,7 @@ from .errors import (
     ServerTimeoutError,
     TimeoutError,
     TokenExpiredError,
+    TooLargeError,
     TransientError,
     UnsupportedError,
     WaitLimitError,
@@ -168,4 +169,5 @@ __all__ = [
     "BusyError",
     "InvalidArgumentError",
     "ServerTimeoutError",
+    "TooLargeError",
 ]

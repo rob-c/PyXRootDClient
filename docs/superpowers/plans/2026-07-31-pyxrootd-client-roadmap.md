@@ -26,10 +26,10 @@ schedulable and several can run in parallel.
 ## Status — as built
 
 Phases 0–10 are **implemented**: 18 kLOC under `src/xrd/` against 18 kLOC of
-tests, **2413 tests green in ~50 s** with no third-party import anywhere —
+tests, **2433 tests green in ~50 s** with no third-party import anywhere —
 `root://` and `davs://` are peers, any endpoint copies to any other, both are
 awaitable, both are a URL scheme in pandas and a command in a shell, and the
-whole authentication ladder bar Kerberos is pure Python. Of the 2413, 47 are
+whole authentication ladder bar Kerberos is pure Python. Of the 2433, 47 are
 the interoperability and parity suites (a real `xrootd` daemon, and the
 official bindings alongside), 17 need the `[fsspec]` extra and one runs `mypy`
 over the public surface and checks the revealed types; the rest run
@@ -42,7 +42,10 @@ WLCG tape API and `kXR_QPrep` staging, `archive_info`, `kXR_clone` server-side
 range copies, read-ahead in the copy engine, credential prompting, and
 **S3** — `s3://bucket/key` as one more scheme, with SigV4 out of `hmac`,
 multipart uploads, and `xrd.testing.FakeS3Server` to test against
-([S3 object storage](../../s3.md)).
+([S3 object storage](../../s3.md)) - and the guard rails a beginner meets
+before they meet the protocol: a ceiling on reads that named no size, an
+`xrd-cp` that will not overwrite without `-f`, and an `xrd-fs rm -r` that asks
+([Safety](../../safety.md)).
 
 | Phase | State | Shipped as |
 |---|---|---|

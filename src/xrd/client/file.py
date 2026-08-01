@@ -293,10 +293,13 @@ class File:
         """Read ``size`` bytes at ``offset``; ``-1`` means to end of file.
 
         Large reads are split into ``config.chunk_size`` requests so that one
-        stalled request cannot hold an unbounded buffer.
+        stalled request cannot hold an unbounded buffer, and a read to the end
+        of a file bigger than ``config.max_read_size`` is refused with a
+        :class:`~xrd.errors.TooLargeError` rather than allocated.
         """
         if size < 0:
             size = max(self.size - offset, 0)
+            self.config.check_whole_read(size, self.url.path)
         if size == 0:
             return b""
         limit = self.config.chunk_size

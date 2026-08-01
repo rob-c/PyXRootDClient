@@ -38,11 +38,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("dest", help="where to put it")
     parser.add_argument("-r", "--recursive", action="store_true", help="copy directories")
     parser.add_argument(
-        "-n",
-        "--no-clobber",
+        "-f",
+        "--force",
         action="store_true",
-        help="fail rather than overwrite an existing destination",
+        help="overwrite DEST if it is already there; without this, an existing DEST is an error",
     )
+    # What the default used to be spelled as, kept so that a script that says
+    # it out loud still runs; it asks for what it now gets anyway.
+    parser.add_argument("-n", "--no-clobber", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "-c",
         "--continue",
@@ -221,6 +224,8 @@ def _misuse(args: argparse.Namespace) -> str | None:
         return "--tpc hands the transfer to the servers; --dry-run and --remove-source cannot"
     if args.resume and (args.tpc or args.no_clobber):
         return "--continue needs a partial DEST to carry on from; --tpc and -n forbid one"
+    if args.force and args.no_clobber:
+        return "-f overwrites DEST and -n refuses to; they cannot both be what you meant"
     return None
 
 
@@ -265,7 +270,7 @@ def _run(
     show: bool,
 ) -> list[CopyResult]:
     """Do the transfers the parsed command line asks for."""
-    options: _CopyOptions = {"overwrite": not args.no_clobber}
+    options: _CopyOptions = {"overwrite": args.force or args.resume}
     if args.verify is not None:
         options["verify"] = args.verify
     if args.algorithm:
@@ -286,7 +291,7 @@ def _run(
         try:
             if args.tpc:
                 results.append(
-                    third_party(source, target, config=config, overwrite=not args.no_clobber)
+                    third_party(source, target, config=config, overwrite=args.force)
                 )
             elif args.recursive:
                 results.extend(

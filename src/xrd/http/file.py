@@ -148,8 +148,14 @@ class HTTPRawIO(io.RawIOBase):
         return count
 
     def readall(self) -> bytes:
+        # Counted as it arrives rather than asked for up front: a HEAD here
+        # would cost a request per whole-file read, and a chunked response
+        # does not say how long it is until it ends.
         chunks = []
+        total = 0
         while data := self.read(self.config.chunk_size):
+            total += len(data)
+            self.config.check_whole_read(total, self.url.path)
             chunks.append(data)
         return b"".join(chunks)
 

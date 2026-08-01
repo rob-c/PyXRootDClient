@@ -806,7 +806,7 @@ def test_sync_skips_what_is_already_there(local_tree, url, capsys):
 def test_delete_prunes_the_target(local_tree, url, server, capsys):
     assert cp_cli.main(["-r", "-q", str(local_tree), url + "del/"]) == 0
     (local_tree / "skip.log").unlink()
-    assert cp_cli.main(["-r", "-q", "--delete", str(local_tree), url + "del/"]) == 0
+    assert cp_cli.main(["-r", "-q", "-f", "--delete", str(local_tree), url + "del/"]) == 0
     assert "/del/tree/skip.log" not in server.files
     assert "/del/tree/keep.root" in server.files
 

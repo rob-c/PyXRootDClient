@@ -29,6 +29,8 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field, fields, replace
 from typing import TYPE_CHECKING
 
+from .errors import TooLargeError
+
 if TYPE_CHECKING:
     from .auth.prompt import Prompter
 
@@ -177,6 +179,10 @@ class Config:
     parallel_chunks: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELCHUNKS", 4))
     parallel_files: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELFILES", 1))
     in_flight: int = field(default_factory=lambda: _env_int("XRD_CPINFLIGHT", 2))
+    #: Ceiling on a read that did not say how much it wanted, so that
+    #: ``read()`` on a dataset nobody looked at first fails with an
+    #: explanation instead of filling the machine's memory. ``0`` lifts it.
+    max_read_size: int = field(default_factory=lambda: _env_int("XRD_MAXREADSIZE", 1 << 30))
 
     # -- pooling -------------------------------------------------------
     pool_size: int = field(default_factory=lambda: _env_int("XRD_POOLSIZE", 8))
@@ -209,6 +215,16 @@ class Config:
     recover_handles: bool = True
     verify_checksums: bool = True
     preferred_checksum: str = "adler32"
+
+    def check_whole_read(self, size: int, path: str | None = None) -> None:
+        """Refuse a read of ``size`` bytes that nobody put a number on.
+
+        The guard the stock clients do not have: a beginner who writes
+        ``fh.read()`` against a hundred gigabytes of ROOT gets a sentence
+        telling them how to stream it, rather than a machine that swaps.
+        """
+        if self.max_read_size and size > self.max_read_size:
+            raise TooLargeError(size, self.max_read_size, path=path)
 
     def evolve(self, **changes: object) -> Config:
         """A copy with ``changes`` applied."""
