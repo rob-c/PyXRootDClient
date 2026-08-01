@@ -31,14 +31,45 @@ Schemes: `http`, `https`, `dav`, `davs`, `webdav`. Nothing here needs a wheel
 | `read_bytes`, `open` | `GET`, with `Range` for seeks |
 | `write_bytes`, `open("wb")` | `PUT` |
 | `third_party` | `COPY` with `Source:`/`Destination:` |
+| `prepare`, `query_prepare`, `cancel_prepare` | the WLCG tape API, `/api/v1/stage` |
+| `archive_info` | `POST /api/v1/archiveinfo` |
 
-Operations with no HTTP equivalent - `locate`, `prepare`, `cancel_prepare`,
+Operations with no HTTP equivalent - `locate`, `evict`,
 `query_config`, `query_stats`, `query_space`, `checksum_cancel`,
 `set_property`, `appid`, `statvfs` - raise `UnsupportedError` naming the
 operation rather than returning something invented. They are the XRootD
 protocol talking to an XRootD server about itself; WebDAV has no vocabulary
 for any of it, and a plausible-looking answer built out of `PROPFIND` would be
 a worse outcome than a refusal.
+
+## Staging from tape
+
+A tape-backed site answers the same three questions over HTTP that `root://`
+answers with `kXR_prepare` and `kXR_QPrep`, through the WLCG Tape REST API
+rooted at `/api/v1` - the one FTS and Rucio drive. The method names are the
+same on both schemes, so a caller that knows one knows the other:
+
+```python
+fs = xrd.FileSystem("davs://tape.example.org")
+handle = fs.prepare(["/store/a.root"])       # POST /api/v1/stage
+while not all(fs.query_prepare(handle, ["/store/a.root"])):
+    time.sleep(60)                           # GET /api/v1/stage/{id}
+```
+
+`prepare()` here only stages: the API has no equivalent of the other
+`PrepareFlags`, and each of them is refused by name. `cancel_prepare(handle)`
+is the `DELETE`. `evict()` has no counterpart at all - the API releases a
+request rather than a path - so it raises `UnsupportedError`.
+
+`archive_info(paths)` asks where files are without asking for any of them to
+move, and it exists on both schemes too: over HTTP it is
+`POST /api/v1/archiveinfo`, and over `root://` it is one `statx`, whose
+offline flag answers the same question. Either way you get a
+`PrepareStatus` per path with `online`, `on_tape` and a `state` word from the
+tape API's vocabulary - `ONLINE`, `NEARLINE`, `DISK`, `TAPE`.
+
+An endpoint with no tape behind it has no `/api/v1` either, and answers `404`,
+which arrives as a `NotFoundError` naming the API path.
 
 ## Ranged reads
 

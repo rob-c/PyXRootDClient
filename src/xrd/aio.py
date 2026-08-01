@@ -497,6 +497,9 @@ class AsyncFileSystem:
     async def cancel_prepare(self, handle: str) -> None:
         await _run(self._sync.cancel_prepare, handle)
 
+    async def archive_info(self, paths: Sequence[str]) -> list[PrepareStatus]:
+        return await _run(self._sync.archive_info, paths)
+
     # -- listing -------------------------------------------------------
 
     async def scandir(

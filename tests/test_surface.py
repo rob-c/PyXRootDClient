@@ -127,6 +127,7 @@ FILESYSTEM = {
     "protocol": lambda fs: fs.protocol(),
     "query": lambda fs: fs.query(QueryCode.CONFIG, "version"),
     "query_config": lambda fs: fs.query_config("version"),
+    "archive_info": lambda fs: fs.archive_info(["f.root"]),
     "query_prepare": lambda fs: fs.query_prepare(fs.prepare(["f.root"]), ["f.root"]),
     "query_space": lambda fs: fs.query_space("."),
     "query_stats": lambda fs: fs.query_stats(),

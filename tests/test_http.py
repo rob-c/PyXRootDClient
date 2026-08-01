@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 
 import pytest
@@ -14,6 +15,7 @@ from xrd.errors import (
     ConnectionError as XRDConnectionError,
 )
 from xrd.errors import (
+    NotFoundError,
     ProtocolError,
     RedirectLimitError,
     UnsupportedError,
@@ -22,7 +24,7 @@ from xrd.errors import (
     TimeoutError as XRDTimeoutError,
 )
 from xrd.flags import LocateFlags, PrepareFlags, QueryCode
-from xrd.http import HTTPClient, HTTPFileSystem, bearer_token, digest, macaroon, open_http
+from xrd.http import HTTPClient, HTTPFileSystem, bearer_token, digest, macaroon, open_http, tape
 from xrd.http.client import request_target
 from xrd.http.dav import _parse, _pick_digest
 from xrd.http.tpc import _follow, _remote_url
@@ -360,7 +362,6 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.chmod("/d/a.root", 0o644),
         lambda: fs.truncate("/d/a.root", 0),
         lambda: fs.locate("/d/a.root"),
-        lambda: fs.prepare(["/d/a.root"]),
         lambda: fs.query(0),
         lambda: fs.query_config("version"),
         lambda: fs.protocol(),
@@ -374,7 +375,6 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.symlink("/d/a.root", "/d/latest"),
         lambda: fs.link("/d/a.root", "/d/second"),
         lambda: fs.readlink("/d/latest"),
-        lambda: fs.cancel_prepare("prep-0001"),
         lambda: fs.checksum_cancel("/d/a.root"),
         lambda: fs.query_stats(),
         lambda: fs.query_space("/d"),
@@ -389,7 +389,7 @@ def test_the_unsupported_overrides_keep_the_signature_they_replace(fs):
     """Passing the real arguments must say 'no WebDAV equivalent', not TypeError."""
     for call in (
         lambda: fs.locate("/d/a.root", flags=LocateFlags.REFRESH),
-        lambda: fs.prepare(["/d/a.root"], flags=PrepareFlags.STAGE, priority=1),
+        lambda: fs.prepare(["/d/a.root"], flags=PrepareFlags.EVICT, priority=1),
         lambda: fs.query(QueryCode.CONFIG, "version"),
         lambda: fs.statvfs(),
         lambda: fs.query_stats("io"),
@@ -819,3 +819,149 @@ def test_writes_after_the_stream_has_started_go_down_the_wire(dav):
 def test_binary_mode_and_an_encoding_are_contradictory(dav):
     with pytest.raises(ValueError, match="binary mode doesn't take an encoding"):
         open_http(dav.url / "d/a.root", "rb", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Staging: the WLCG tape REST API
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_stages_over_the_tape_api_and_returns_the_request_id(fs, dav):
+    dav.nearline.add("/d/a.root")
+    handle = fs.prepare(["/d/a.root"])
+    assert dav.staged[handle] == ["/d/a.root"]
+    assert ("POST", "/api/v1/stage") in dav.seen
+
+
+def test_a_staged_file_reads_as_on_tape_until_it_arrives(fs, dav):
+    dav.nearline.add("/d/a.root")
+    handle = fs.prepare(["/d/a.root"])
+    waiting = fs.query_prepare(handle, ["/d/a.root"])[0]
+    assert (waiting.on_tape, waiting.online, waiting.state) == (True, False, "SUBMITTED")
+    assert not waiting
+    dav.nearline.discard("/d/a.root")
+    arrived = fs.query_prepare(handle, ["/d/a.root"])[0]
+    assert (arrived.on_tape, arrived.online, arrived.state) == (False, True, "COMPLETED")
+    assert arrived and arrived.requested_at == "1"
+
+
+def test_a_file_the_site_has_not_got_fails_its_staging_request(fs, dav):
+    handle = fs.prepare(["/d/gone.root"])
+    report = fs.query_prepare(handle, ["/d/gone.root"])[0]
+    assert (report.online, report.on_tape, report.state) == (False, False, "FAILED")
+    assert report.error == "no such file"
+
+
+def test_a_lifetime_asks_the_site_to_keep_the_file_that_long(fs, dav):
+    tape.stage(fs.client, fs.url, ["/d/a.root"], lifetime="P1D")
+    assert b'"diskLifetime": "P1D"' in dav.bodies[-1]
+
+
+def test_asking_about_no_paths_reports_on_the_whole_request(fs, dav):
+    handle = fs.prepare(["/d/a.root"])
+    assert [report.path for report in fs.query_prepare(handle, [])] == ["/d/a.root"]
+
+
+def test_a_path_the_request_never_named_is_said_to_be_missing_not_dropped(fs):
+    handle = fs.prepare(["/d/a.root"])
+    stranger = fs.query_prepare(handle, ["/d/other.root"])[0]
+    assert (stranger.path, stranger.error) == ("/d/other.root", "not part of this request")
+
+
+def test_a_staging_request_can_be_withdrawn(fs, dav):
+    handle = fs.prepare(["/d/a.root"])
+    fs.cancel_prepare(handle)
+    assert handle not in dav.staged
+    with pytest.raises(NotFoundError):
+        fs.query_prepare(handle, ["/d/a.root"])
+
+
+def test_polling_a_request_nobody_made_is_a_not_found(fs):
+    with pytest.raises(NotFoundError):
+        fs.query_prepare("stage-9999", ["/d/a.root"])
+    with pytest.raises(NotFoundError):
+        fs.cancel_prepare("stage-9999")
+
+
+def test_archive_info_says_where_each_file_is_without_moving_any(fs, dav):
+    dav.nearline.add("/d/a.root")
+    dav.add_file("/d/b.root", BODY)
+    on_tape, on_disk, gone = fs.archive_info(["/d/a.root", "/d/b.root", "/d/none.root"])
+    assert (on_tape.on_tape, on_tape.online, on_tape.state) == (True, False, "TAPE")
+    assert (on_disk.online, on_disk.state) == (True, "DISK")
+    assert (gone.exists, gone.error) == (False, "no such file")
+    assert dav.staged == {} and str(on_disk) == "/d/b.root: online"
+
+
+def test_a_site_with_no_tape_answers_the_api_with_a_not_found(fs, dav):
+    dav.no_tape = True
+    for call in (
+        lambda: fs.prepare(["/d/a.root"]),
+        lambda: fs.query_prepare("stage-0001", ["/d/a.root"]),
+        lambda: fs.archive_info(["/d/a.root"]),
+        lambda: fs.cancel_prepare("stage-0001"),
+    ):
+        with pytest.raises(NotFoundError, match="api/v1"):
+            call()
+
+
+def test_staging_nothing_is_refused_by_the_server(fs):
+    with pytest.raises(xrd.errors.XRootDError):
+        fs.prepare([])
+
+
+def test_a_non_staging_prepare_flag_says_webdav_has_no_such_thing(fs):
+    with pytest.raises(UnsupportedError, match="FRESH"):
+        fs.prepare(["/d/a.root"], flags=PrepareFlags.STAGE | PrepareFlags.FRESH)
+    with pytest.raises(UnsupportedError, match="tape API releases a request"):
+        fs.evict(["/d/a.root"])
+
+
+@pytest.mark.parametrize("verb", ["POST", "GET", "DELETE"])
+def test_an_endpoint_of_the_api_that_does_not_exist_is_a_not_found(fs, verb):
+    with pytest.raises(NotFoundError):
+        fs.client.request(verb, fs.url.with_path("/api/v1/nonsense"), body=b"{}", expect=(200,))
+
+
+def test_a_body_that_is_not_json_is_refused_at_both_ends(fs, dav):
+    dav.handlers["POST"] = lambda *_: (200, b"<html>not json</html>", {})
+    with pytest.raises(ProtocolError, match="did not answer with JSON"):
+        fs.archive_info(["/d/a.root"])
+    del dav.handlers["POST"]
+    with pytest.raises(xrd.errors.XRootDError):
+        fs.client.request(
+            "POST", fs.url.with_path("/api/v1/stage"), body=b"{oops", expect=(200, 201)
+        )
+
+
+def test_the_request_id_can_arrive_only_in_the_location_header(fs, dav):
+    """Some implementations answer 201 with an empty body and a Location."""
+    dav.handlers["POST"] = lambda *_: (201, b"{}", {"Location": "/api/v1/stage/from-header/"})
+    assert fs.prepare(["/d/a.root"]) == "from-header"
+
+
+@pytest.mark.parametrize("spelling", ["true", "1", 1, True])
+def test_a_disk_flag_counts_however_the_server_spelt_it(fs, dav, spelling):
+    body = json.dumps({"files": [{"path": "/d/a.root", "onDisk": spelling}]}).encode()
+    dav.handlers["GET"] = lambda *_: (200, body, {})
+    assert fs.query_prepare("stage-0001", ["/d/a.root"])[0].online
+
+
+@pytest.mark.parametrize("shape", ['{"responses": %s}', "%s"])
+def test_a_reply_that_names_its_file_list_differently_is_still_read(fs, dav, shape):
+    entries = json.dumps([{"path": "/d/a.root", "locality": "DISK_AND_TAPE"}])
+    dav.handlers["POST"] = lambda *_: (200, (shape % entries).encode(), {})
+    both = fs.archive_info(["/d/a.root"])[0]
+    assert (both.online, both.on_tape) == (True, True)
+
+
+def test_a_locality_that_is_neither_disk_nor_tape_is_a_file_you_cannot_have(fs, dav):
+    dav.handlers["POST"] = lambda *_: (200, b'{"files": [{"path": "/d/a.root", '
+                                            b'"locality": "LOST"}]}', {})
+    lost = fs.archive_info(["/d/a.root"])[0]
+    assert (lost.exists, lost.error, lost.state) == (False, "lost", "LOST")
+
+
+def test_an_empty_reply_body_leaves_every_path_unaccounted_for(fs, dav):
+    dav.handlers["POST"] = lambda *_: (200, b"", {})
+    assert fs.archive_info(["/d/a.root"])[0].error == "not part of this request"

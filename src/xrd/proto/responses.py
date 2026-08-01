@@ -391,6 +391,7 @@ def parse_prepare_status(data: bytes) -> list[PrepareStatus]:
                 has_request_id=_truth(entry.get("has_reqid")),
                 requested_at=str(entry.get("req_time", "")),
                 error=str(entry.get("error_text", "")),
+                state=str(entry.get("state", "")),
             )
             for entry in entries or ()
         ]

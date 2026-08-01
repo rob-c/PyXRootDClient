@@ -37,7 +37,15 @@ from ..errors import (
     kXR_NotAuthorized,
     kXR_NotFound,
 )
-from ..flags import Access, DirListFlags, LocateFlags, OpenFlags, PrepareFlags, QueryCode
+from ..flags import (
+    Access,
+    DirListFlags,
+    LocateFlags,
+    OpenFlags,
+    PrepareFlags,
+    QueryCode,
+    StatInfoFlags,
+)
 from ..proto import constants as c
 from ..proto import requests as r
 from ..proto import responses as rp
@@ -589,6 +597,33 @@ class FileSystem:
     def evict(self, paths: Sequence[str]) -> str:
         """Ask the server to drop its cached copies."""
         return self.prepare(paths, flags=PrepareFlags.EVICT)
+
+    def archive_info(self, paths: Sequence[str]) -> list[PrepareStatus]:
+        """Where each of these files lives, without asking for any of it to move.
+
+        One round trip for the lot, because it is a :meth:`statx`: the flags a
+        server answers with say whether a file is offline, which is the same
+        question the HTTP tape API's ``archiveinfo`` asks. A server that keeps
+        a copy on disk *and* on tape reports the file as online, since the
+        protocol has one flag and it means "not readable now".
+        """
+        reports = []
+        for info in self.statx(paths):
+            here = not info.flags & StatInfoFlags.OTHER
+            offline = info.is_offline()
+            reports.append(
+                PrepareStatus(
+                    path=info.path,
+                    exists=here,
+                    on_tape=here and offline,
+                    online=here and not offline,
+                    error="" if here else "no such file",
+                    # The tape API's vocabulary, so that the two schemes answer
+                    # this question in the same words as well as the same shape.
+                    state=("NEARLINE" if offline else "ONLINE") if here else "",
+                )
+            )
+        return reports
 
     def query_prepare(self, handle: str, paths: Sequence[str]) -> list[PrepareStatus]:
         """How the staging :meth:`prepare` asked for is going (``kXR_QPrep``).

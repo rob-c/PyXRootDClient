@@ -225,16 +225,22 @@ def _truncate(args: argparse.Namespace, endpoints: Endpoints) -> int:
     return OK
 
 
-def _prepare(args: argparse.Namespace, endpoints: Endpoints) -> int:
-    """Stage files onto disk, or let the server forget them again."""
+def _grouped(urls: list[str], endpoints: Endpoints) -> list[tuple[Any, list[str]]]:
+    """The paths of these URLs, gathered per endpoint so each is one request."""
     by_endpoint: dict[int, tuple[Any, list[str]]] = {}
-    for url in args.url:
+    for url in urls:
         filesystem, path = endpoints.at(url)
         by_endpoint.setdefault(id(filesystem), (filesystem, []))[1].append(path)
+    return list(by_endpoint.values())
+
+
+def _prepare(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """Stage files onto disk, or let the server forget them again."""
+    work = _grouped(args.url, endpoints)
     if args.status:
-        return _prepare_status(args, by_endpoint.values())
+        return _prepare_status(args, work)
     handles = []
-    for filesystem, paths in by_endpoint.values():
+    for filesystem, paths in work:
         if args.evict:
             filesystem.evict(paths)
         else:
@@ -258,6 +264,21 @@ def _prepare_status(args: argparse.Namespace, work: Iterable[tuple[Any, list[str
     elif not args.quiet:
         for status in reports:
             print(status)
+    return OK
+
+
+def _locality(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """Say where each file is now, without asking for any of it to move."""
+    reports = [
+        report
+        for filesystem, paths in _grouped(args.url, endpoints)
+        for report in filesystem.archive_info(paths)
+    ]
+    if args.json:
+        print(dumps(reports))
+    elif not args.quiet:
+        for report in reports:
+            print(report)
     return OK
 
 
@@ -472,6 +493,9 @@ def _parser() -> argparse.ArgumentParser:
         metavar="HANDLE",
         help="report on the request this handle names instead of making one",
     )
+
+    locality = command("locality", _locality, "say whether files are on disk or on tape")
+    locality.add_argument("url", nargs="+")
 
     ln = command("ln", _ln, "link one path to another (vendor extension)")
     ln.add_argument("target")

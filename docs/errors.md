@@ -124,7 +124,7 @@ for the missing proxy or token before it comes to this; see
 
 ## Unsupported operations
 
-WebDAV has no `locate`, no `prepare`, no `statvfs`. Those raise
+WebDAV has no `locate`, no `evict`, no `statvfs`. Those raise
 `UnsupportedError` naming the operation instead of returning something
 invented, so the failure happens at the call rather than three functions later
 when the invented answer turns out to be wrong.

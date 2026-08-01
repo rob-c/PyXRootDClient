@@ -62,6 +62,7 @@ And for assertions:
 | `srv.cancelled_checksums` | paths a client asked it to stop digesting |
 | `srv.cancelled_prepares` | staging handles withdrawn |
 | `srv.prepared` | staging handle → the paths it named |
+| `srv.nearline` | files that stat as offline, so a stage has something to wait for |
 | `srv.links`, `srv.modes` | what `kXR_symlink` and `kXR_chmod` did |
 | `srv.config_values` | what `kXR_query` config answers |
 
@@ -120,6 +121,23 @@ with FakeDAVServer(files={"/store/f.root": b"payload"}) as dav:
 | `dav.copies` | the headers of every `COPY` served |
 | `dav.handlers["PROPFIND"] = fn` | answer one method yourself |
 | `dav.bodies`, `dav.targets` | every request body, and every raw request target |
+| `dav.nearline` | files the tape API reports on tape until the test discards them |
+| `dav.staged` | request id → the paths that staging request named |
+| `dav.no_tape = True` | no `/api/v1`, like a site with no tape behind it |
+
+It also speaks the WLCG Tape REST API - `POST /api/v1/stage`, `GET` and
+`DELETE` on the request it returns, and `POST /api/v1/archiveinfo` - so a
+staging test never needs a tape:
+
+```python
+with FakeDAVServer(files={"/store/f.root": b"payload"}) as dav:
+    dav.nearline.add("/store/f.root")
+    fs = xrd.FileSystem(str(dav.url))
+    handle = fs.prepare(["/store/f.root"])
+    assert not fs.query_prepare(handle, ["/store/f.root"])[0]
+    dav.nearline.clear()                       # the tape robot got there
+    assert fs.query_prepare(handle, ["/store/f.root"])[0].online
+```
 
 `handlers` is the HTTP twin of `FakeServer.handlers`: the function is handed
 `(method, path, headers)` and returns `(status, body, headers)` to answer the

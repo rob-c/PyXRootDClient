@@ -38,12 +38,14 @@ from ..types import (
     ChecksumInfo,
     DirEntry,
     LocationInfo,
+    PrepareStatus,
     ProtocolInfo,
     SpaceInfo,
     StatInfo,
     VFSInfo,
 )
 from ..url import XRootDURL, parse
+from . import tape
 from .client import HTTPClient
 from .file import open_http
 
@@ -576,7 +578,24 @@ class HTTPFileSystem(FileSystem):
         flags: PrepareFlags = PrepareFlags.STAGE,
         priority: int = 0,
     ) -> str:
-        raise self._unsupported("prepare")
+        """Stage these files, over the WLCG tape API. Returns the request id.
+
+        Only staging: the API has no equivalent of the other ``kXR_prepare``
+        flags, and ``priority`` is the site's business rather than the
+        caller's. An endpoint with no tape behind it answers ``404``, which
+        arrives as a :class:`~xrd.errors.NotFoundError` naming the API path.
+        """
+        if flags & ~PrepareFlags.STAGE:
+            raise self._unsupported(f"{PrepareFlags(flags & ~PrepareFlags.STAGE)!r}")
+        return tape.stage(self.client, self.url, [self._abs(p) for p in paths])
+
+    def query_prepare(self, handle: str, paths: Sequence[str]) -> list[PrepareStatus]:
+        """How the staging request ``handle`` is going, one entry per path."""
+        return tape.status(self.client, self.url, handle, [self._abs(p) for p in paths])
+
+    def archive_info(self, paths: Sequence[str]) -> list[PrepareStatus]:
+        """Where each of these files lives, without asking for any of it to move."""
+        return tape.archive_info(self.client, self.url, [self._abs(p) for p in paths])
 
     def query(self, code: QueryCode | int, args: str = "") -> bytes:
         raise self._unsupported("query")
@@ -591,10 +610,11 @@ class HTTPFileSystem(FileSystem):
         raise self._unsupported("locate")
 
     def evict(self, paths: Sequence[str]) -> str:
-        raise self._unsupported("evict")
+        raise self._unsupported("evicting by path - the tape API releases a request")
 
     def cancel_prepare(self, handle: str) -> None:
-        raise self._unsupported("prepare")
+        """Withdraw a staging request, files and all."""
+        tape.cancel(self.client, self.url, handle)
 
     def checksum_cancel(self, path: str) -> None:
         raise self._unsupported("cancelling a checksum")

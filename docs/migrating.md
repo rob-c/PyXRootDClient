@@ -47,6 +47,7 @@ already know - see [Errors](errors.md).
 | `locate(path, OpenFlags.REFRESH)` | `fs.locate(path)`, `fs.deep_locate(path)` |
 | `prepare([...])` | `fs.prepare([...])` |
 | `query(QueryCode.PREPARE, ...)` | `fs.query_prepare(handle, paths)` → `list[PrepareStatus]` |
+| `statx(...)`, read for the offline bit | `fs.archive_info(paths)` → `list[PrepareStatus]` |
 | `ping()` | `fs.ping()` |
 | `protocol()` | `fs.protocol()` |
 | (no equivalent) | `fs.walk`, `fs.glob`, `fs.exists`, `fs.isdir`, `fs.isfile`, `fs.getsize`, `fs.touch`, `fs.rmtree`, `fs.read_bytes`, `fs.write_bytes`, `fs.read_text`, `fs.write_text` |

@@ -46,11 +46,15 @@ $ xrd-fs truncate -s 0 root://host//store/scratch.bin
 $ xrd-fs prepare root://host//store/f.root             # stage it onto disk
 $ xrd-fs prepare --evict root://host//store/f.root     # drop the cached copy
 $ xrd-fs prepare --status prep-0001 root://host//store/f.root   # is it there yet?
+$ xrd-fs locality root://host//store/f.root            # on disk, or still on tape?
 $ xrd-fs ln -s root://host//store/f.root root://host//store/latest
 $ xrd-fs readlink root://host//store/latest
 ```
 
-`tail -f` polls the size every `--interval` seconds and prints what appeared;
+`locality` asks where files are without asking for any of them to move, and
+answers `path: online`, `path: on tape` or `path: nowhere (no such file)`; over
+`davs://` it is the WLCG tape API's `archiveinfo`, and `--json` carries the
+`state` word the site used. `tail -f` polls the size every `--interval` seconds and prints what appeared;
 a file that shrinks is a different file, and it stops. `du` counts from the
 listing, one request per directory, and falls back to one stat per entry when
 the server lists without sizes. `ln`, `ln -s` and `readlink` are a **vendor

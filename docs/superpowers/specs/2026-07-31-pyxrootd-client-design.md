@@ -734,6 +734,17 @@ are inherited unchanged — they are written in terms of `scandir`, `open` and
   WebDAV, so `rmdir` makes the emptiness check POSIX promises itself. A server
   with no WebDAV at all still answers `stat` — the `PROPFIND` falls back to a
   `HEAD`.
+- **Staging** is the WLCG Tape REST API at `/api/v1` — the one FTS and Rucio
+  drive — behind the same method names the binary protocol uses: `prepare` is
+  `POST /stage`, `query_prepare` its `GET`, `cancel_prepare` its `DELETE`, and
+  `archive_info` is `POST /archiveinfo`. Only staging: the API has no
+  equivalent of the other `PrepareFlags`, each of which is refused by name,
+  and `evict` releases a request rather than a path, so it has none at all.
+  Replies are read leniently (the file list has been spelt `files`, `responses`
+  and a bare array; `onDisk` has been `true`, `1` and `"1"`) and a path the
+  reply says nothing about is reported as unaccounted for rather than dropped.
+  `archive_info` exists on `root://` too, where it is one `statx`: the offline
+  flag is the whole answer, so both schemes answer in the tape API's words.
 - **XML** is `xml.etree`, which never fetches an external entity, and a
   response carrying a DTD at all is refused before parsing rather than trusted
   to be harmless.

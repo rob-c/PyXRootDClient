@@ -122,5 +122,6 @@ await fs.appid("higgs-skim")                # label this connection
 await fs.set_property("monitor off")
 await fs.query_prepare(handle, paths)       # how the staging is going
 await fs.cancel_prepare(handle)             # withdraw a staging request
+await fs.archive_info(paths)                # on disk, or still on tape
 await fs.checksum_cancel("/store/big.root")
 ```

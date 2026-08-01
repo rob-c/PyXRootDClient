@@ -649,6 +649,23 @@ def test_prepare_groups_paths_by_endpoint(url, capsys):
     assert (code, len(json.loads(out))) == (0, 2)
 
 
+def test_locality_says_where_a_file_is_without_staging_it(url, server, capsys):
+    server.nearline.add("/data/a.root")
+    code, out, _ = run(["locality", url + "data/a.root"], capsys)
+    assert (code, out.strip()) == (0, "/data/a.root: on tape")
+
+
+def test_locality_as_json_carries_the_state_word(url, capsys):
+    code, out, _ = run(["locality", "--json", url + "data/a.root"], capsys)
+    record = json.loads(out)[0]
+    assert code == 0
+    assert (record["path"], record["state"], record["online"]) == ("/data/a.root", "ONLINE", True)
+
+
+def test_locality_says_nothing_when_asked_to_be_quiet(url, capsys):
+    assert run(["locality", "-q", url + "data/a.root"], capsys)[1] == ""
+
+
 def test_ln_makes_a_symbolic_link_and_readlink_reads_it_back(url, capsys):
     assert run(["ln", "-s", url + "data/a.root", url + "data/soft"], capsys)[0] == 0
     _code, out, _ = run(["readlink", url + "data/soft"], capsys)

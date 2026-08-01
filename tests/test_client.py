@@ -400,6 +400,39 @@ def test_a_staging_query_with_no_paths_asks_about_the_request_itself(fs):
     assert fs.query_prepare(fs.prepare(["/data/a.root"]), []) == []
 
 
+def test_a_file_on_tape_is_reported_as_waiting_rather_than_online(fs, server):
+    server.nearline.add("/data/a.root")
+    handle = fs.prepare(["/data/a.root"])
+    waiting = fs.query_prepare(handle, ["/data/a.root"])[0]
+    assert (waiting.on_tape, waiting.online) == (True, False)
+    assert str(waiting) == "/data/a.root: on tape"
+
+
+def test_a_file_on_tape_stats_as_offline(fs, server):
+    server.nearline.add("/data/a.root")
+    info = fs.stat("/data/a.root")
+    assert info.is_offline() and info.is_readable()
+
+
+def test_archive_info_says_where_each_file_lives(fs, server):
+    server.nearline.add("/data/a.root")
+    server.files["/data/b.root"] = bytearray(b"disk")
+    on_tape, on_disk, gone = fs.archive_info(
+        ["/data/a.root", "/data/b.root", "/data/none.root"]
+    )
+    assert (on_tape.on_tape, on_tape.online, on_tape.state) == (True, False, "NEARLINE")
+    assert (on_disk.online, on_disk.state, bool(on_disk)) == (True, "ONLINE", True)
+    assert (gone.exists, gone.error, gone.state) == (False, "no such file", "")
+
+
+def test_archive_info_is_one_round_trip_for_the_lot(fs, server):
+    from xrd.proto import constants as c
+
+    server.seen.clear()
+    fs.archive_info(["/data/a.root", "/data/a.root"])
+    assert server.seen.count(c.kXR_statx) == 1
+
+
 def test_cancel_prepare_withdraws_by_handle(fs, server):
     handle = fs.prepare(["/data/a.root"])
     fs.cancel_prepare(handle)

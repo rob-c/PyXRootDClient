@@ -122,6 +122,9 @@ class FakeServer:
         self.files: dict[str, bytearray] = {}
         #: Directories that exist, including the parents of every file.
         self.dirs: set[str] = {"/"}
+        #: Files whose bytes are on tape rather than on disk. They stat as
+        #: ``kXR_offline``, which is how a caller learns a read would wait.
+        self.nearline: set[str] = set()
         #: Symbolic links: link path to the target it names.
         self.links: dict[str, str] = {}
         #: Extended attributes, per path.
@@ -436,6 +439,8 @@ class _Connection:
             size = 4096
         elif path in self.s.files:
             flags = c.kXR_readable | c.kXR_writable
+            if path in self.s.nearline:
+                flags |= c.kXR_offline
             size = len(self.s.files[path])
         else:
             raise _NotFound(path)
@@ -531,7 +536,8 @@ def _h_statx(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
         if path in conn.s.dirs:
             out.append(c.kXR_isDir)
         elif path in conn.s.files:
-            out.append(c.kXR_readable | c.kXR_writable)
+            offline = c.kXR_offline if path in conn.s.nearline else 0
+            out.append(c.kXR_readable | c.kXR_writable | offline)
         else:
             out.append(c.kXR_other)
     yield _frame(sid, c.kXR_ok, bytes(out))
@@ -870,8 +876,9 @@ def _h_query(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
                 {
                     "path": _clean(path),
                     "path_exists": _clean(path) in conn.s.files,
-                    "on_tape": False,
-                    "online": _clean(path) in conn.s.files,
+                    "on_tape": _clean(path) in conn.s.nearline,
+                    "online": _clean(path) in conn.s.files
+                    and _clean(path) not in conn.s.nearline,
                     "requested": _clean(path) in asked,
                     "has_reqid": _clean(path) in asked,
                     "req_time": "",

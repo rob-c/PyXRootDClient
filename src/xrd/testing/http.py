@@ -16,6 +16,7 @@ answering ``202``).
 
 from __future__ import annotations
 
+import json
 import posixpath
 import socketserver
 import threading
@@ -101,6 +102,14 @@ class FakeDAVServer:
         self.tpc_markers = 2
         #: The headers of every ``COPY`` served, in order.
         self.copies: list[dict[str, str]] = []
+        #: Files that live on tape rather than on disk. A staging request for
+        #: one of them stays ``SUBMITTED`` until the test discards it here,
+        #: which is how a test watches a file come online.
+        self.nearline: set[str] = set()
+        #: Request id to the paths it named, for the WLCG tape API.
+        self.staged: dict[str, list[str]] = {}
+        #: Answer ``/api/v1`` at all - ``False`` is a site with no tape.
+        self.no_tape = False
 
         for path, data in (files or {}).items():
             self.add_file(path, data)
@@ -281,6 +290,10 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if not self._gate():
             return
+        rest = self._api
+        if rest is not None:
+            self._tape(rest)
+            return
         path = self.target
         if path in self.fake.dirs:
             self._send(200, b"", Content_Type="text/html")
@@ -321,6 +334,10 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:
         if not self._gate():
+            return
+        rest = self._api
+        if rest is not None:
+            self._tape(rest)
             return
         path = self.target
         if self.fake.files.pop(path, None) is not None:
@@ -433,6 +450,10 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if not self._gate():
             return
+        rest = self._api
+        if rest is not None:
+            self._tape(rest)
+            return
         self._body()
         if self.headers.get("Content-Type") == "application/macaroon-request":
             body = b'{"macaroon": "%s", "uri": {}}' % self.fake.macaroon.encode()
@@ -469,6 +490,80 @@ class _Handler(BaseHTTPRequestHandler):
             if name.startswith(prefix) and "/" not in name[len(prefix) :]:
                 seen[name] = (name, True, 0)
         return [seen[key] for key in sorted(seen)]
+
+    # -- the WLCG tape API ---------------------------------------------
+
+    @property
+    def _api(self) -> list[str] | None:
+        """What follows ``/api/v1`` in the target, or ``None`` if it is a file."""
+        parts = self.target.strip("/").split("/")
+        return parts[2:] if parts[:2] == ["api", "v1"] else None
+
+    def _tape(self, rest: list[str]) -> None:
+        """Serve one request to the API, whichever verb it arrived as."""
+        body = self._body() if self.command == "POST" else b""
+        if self.fake.no_tape:
+            self._json(404, {"message": "there is no tape behind this endpoint"})
+        elif self.command == "POST":
+            self._tape_post(rest, body)
+        elif self.command == "DELETE":
+            self._tape_delete(rest)
+        else:
+            self._tape_get(rest)
+
+    def _tape_post(self, rest: list[str], body: bytes) -> None:
+        try:
+            document = json.loads(body or b"{}")
+        except ValueError:
+            self._json(400, {"message": "that is not a JSON document"})
+            return
+        if rest == ["stage"]:
+            paths = [str(entry.get("path", "")) for entry in document.get("files", [])]
+            if not paths:
+                self._json(400, {"message": "a staging request names at least one file"})
+                return
+            handle = f"stage-{len(self.fake.staged) + 1:04d}"
+            self.fake.staged[handle] = paths
+            self._json(201, {"requestId": handle}, Location=f"/api/v1/stage/{handle}")
+        elif rest == ["archiveinfo"]:
+            given = [str(path) for path in document.get("paths", [])]
+            self._json(200, [self._locality(path) for path in given])
+        else:
+            self._json(404, {"message": "no such endpoint"})
+
+    def _tape_get(self, rest: list[str]) -> None:
+        paths = self.fake.staged.get(rest[1]) if rest[:1] == ["stage"] and len(rest) == 2 else None
+        if paths is None:
+            self._json(404, {"message": "no such staging request"})
+            return
+        self._json(200, {"files": [self._staging(path) for path in paths]})
+
+    def _tape_delete(self, rest: list[str]) -> None:
+        known = rest[:1] == ["stage"] and len(rest) == 2
+        if known and self.fake.staged.pop(rest[1], None) is not None:
+            self._send(204)
+        else:
+            self._json(404, {"message": "no such staging request"})
+
+    def _staging(self, given: str) -> dict[str, object]:
+        """One file of a staging request, as its poll reply describes it."""
+        path = _clean(given)
+        if path not in self.fake.files:
+            return {"path": given, "state": "FAILED", "onDisk": False, "error": "no such file"}
+        if path in self.fake.nearline:
+            return {"path": given, "state": "SUBMITTED", "onDisk": False, "startedAt": 1}
+        return {"path": given, "state": "COMPLETED", "onDisk": True, "startedAt": 1}
+
+    def _locality(self, given: str) -> dict[str, str]:
+        """One file of an ``archiveinfo`` reply, in the specification's words."""
+        path = _clean(given)
+        if path not in self.fake.files:
+            return {"path": given, "locality": "LOST", "error": "no such file"}
+        return {"path": given, "locality": "TAPE" if path in self.fake.nearline else "DISK"}
+
+    def _json(self, status: int, document: object, **headers: str) -> None:
+        body = json.dumps(document).encode()
+        self._send(status, body, Content_Type="application/json", **headers)
 
 
 class _TPCFailure(Exception):

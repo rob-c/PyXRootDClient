@@ -151,6 +151,18 @@ A request that has not run yet can be withdrawn by the same handle:
 fs.cancel_prepare(handle)
 ```
 
+Where a file is *now* is a separate question, and asking it stages nothing:
+
+```python
+for report in fs.archive_info(["/store/a.root", "/store/b.root"]):
+    print(report.path, report.state)         # /store/a.root NEARLINE
+    report.online                            # readable without a wait
+```
+
+That is one `statx` over `root://` - the protocol's offline flag is the whole
+answer - and `POST /api/v1/archiveinfo` over `davs://`, which is why the
+`state` word is the tape API's (`ONLINE`, `NEARLINE`, `DISK`, `TAPE`) on both.
+
 Cancelling names the request, not the files, which is why it is a separate
 method rather than a flag: passing paths here would ask the server to cancel
 whatever requests have handles that look like filenames.

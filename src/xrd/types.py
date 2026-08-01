@@ -156,7 +156,10 @@ class PrepareStatus:
     and did the request this query names ever ask for it (:attr:`requested`).
 
     ``error`` is the server's own text for a file it could not report on, and
-    is empty for the ones it could.
+    is empty for the ones it could. ``state`` is the word the server used -
+    ``"COMPLETED"``, ``"NEARLINE"`` and so on - kept verbatim because the
+    vocabulary differs between the tape API and the storage behind it, and
+    because the booleans above are the part worth branching on.
     """
 
     path: str = ""
@@ -167,6 +170,7 @@ class PrepareStatus:
     has_request_id: bool = False
     requested_at: str = ""
     error: str = ""
+    state: str = ""
 
     def __bool__(self) -> bool:
         """``True`` once the file is on disk, which is what staging is for."""
