@@ -1,0 +1,83 @@
+site_name: PyXRootDClient
+site_description: A pure-Python, Pythonic client for XRootD and HEP WebDAV
+site_url: https://example.org/pyxrootdclient/
+repo_url: https://github.com/rcurrie/PyXRootDClient
+copyright: LGPL-3.0-or-later
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Guides:
+      - Files and paths: files.md
+      - Namespaces: filesystem.md
+      - Copying: copying.md
+      - Authentication: auth.md
+      - Asynchronous use: async.md
+      - HTTP and WebDAV: http.md
+      - fsspec: fsspec.md
+      - Command line: cli.md
+  - Coming from pyxrootd: migrating.md
+  - Reference:
+      - API: api.md
+      - Configuration: config.md
+      - Errors: errors.md
+      - Typing: typing.md
+  - Under the hood:
+      - Performance: performance.md
+      - Testing and fault injection: testing.md
+      - Interoperability and parity: interop.md
+      - Security: security.md
+  - Design notes:
+      - Design: superpowers/specs/2026-07-31-pyxrootd-client-design.md
+      - Roadmap: superpowers/plans/2026-07-31-pyxrootd-client-roadmap.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            members_order: source
+            filters: ["!^_"]
+
+watch:
+  - src/xrd

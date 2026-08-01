@@ -1,0 +1,332 @@
+"""``xrd-fs`` - the remote namespace from a shell.
+
+    $ xrd-fs ls -l root://eos.example.org//store/user/me
+    $ xrd-fs stat --json davs://dav.example.org/store/f.root
+    $ xrd-fs mkdir -p root://eos.example.org//store/user/me/new/tree
+    $ xrd-fs cat root://eos.example.org//store/small.txt | head
+
+Every subcommand takes whole URLs rather than a host plus a path, because
+that is what the library takes and what a user already has in hand. Several
+URLs on one endpoint share one connection.
+"""
+
+from __future__ import annotations
+
+import argparse
+import stat as _stat
+import sys
+import time
+from collections.abc import Callable, Sequence
+from typing import Any
+
+from ..errors import XRootDError
+from ..types import DirEntry, StatInfo
+from . import OK, Endpoints, common_flags, config_from, dumps, fail
+
+__all__ = ["main"]
+
+PROGRAM = "xrd-fs"
+
+
+# ---------------------------------------------------------------------------
+# Formatting
+# ---------------------------------------------------------------------------
+
+
+def _mode(info: StatInfo) -> str:
+    """``drwxr-xr-x``-shaped, from whatever flags the endpoint gave us."""
+    return _stat.filemode(info.st_mode)
+
+
+def _when(seconds: int) -> str:
+    return time.strftime("%Y-%m-%d %H:%M", time.localtime(seconds)) if seconds else "-"
+
+
+def _long(entry: DirEntry) -> str:
+    info = entry.stat or StatInfo()
+    return f"{_mode(info)} {info.st_size:>12} {_when(info.st_mtime)} {entry.name}"
+
+
+def _stat_lines(info: StatInfo) -> list[str]:
+    return [
+        f"  Path:  {info.path}",
+        f"  Id:    {info.id}",
+        f"  Size:  {info.st_size}",
+        f"  Mode:  {_mode(info)} ({info.flags!r})",
+        f"  MTime: {_when(info.st_mtime)}",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+#
+# Each takes the parsed arguments and an open :class:`Endpoints`, prints what
+# it has to print, and returns an exit code. They are ordinary functions so
+# they can be called from a test without going through argv.
+
+
+def _ls(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    listings: dict[str, list[DirEntry]] = {}
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        if args.recursive:
+            for root, _dirs, _files in filesystem.walk(path):
+                listings[root] = filesystem.scandir(root)
+        else:
+            listings[path] = filesystem.scandir(path)
+    if args.json:
+        print(dumps({root: [_entry_record(e) for e in items] for root, items in listings.items()}))
+        return OK
+    multiple = len(listings) > 1
+    for index, (root, items) in enumerate(listings.items()):
+        if multiple:
+            print(f"{'' if index == 0 else chr(10)}{root}:")
+        for entry in sorted(items, key=lambda e: e.name):
+            print(_long(entry) if args.long else entry.name)
+    return OK
+
+
+def _entry_record(entry: DirEntry) -> dict[str, Any]:
+    info = entry.stat
+    return {
+        "name": entry.name,
+        "path": entry.path,
+        "size": info.st_size if info else None,
+        "dir": entry.is_dir(),
+        "mtime": info.st_mtime if info else None,
+    }
+
+
+def _stat_cmd(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    found = []
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        found.append(filesystem.stat(path))
+    if args.json:
+        print(dumps(found))
+        return OK
+    for url, info in zip(args.url, found, strict=True):
+        print(url)
+        print("\n".join(_stat_lines(info)))
+    return OK
+
+
+def _cat(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    out = getattr(sys.stdout, "buffer", sys.stdout)
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        with filesystem.open(path, "rb") as handle:
+            while chunk := handle.read(1 << 20):
+                out.write(chunk)
+    return OK
+
+
+def _checksum(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    results = []
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        results.append((url, filesystem.checksum(path, args.algorithm)))
+    if args.json:
+        print(dumps(dict(results)))
+        return OK
+    for url, info in results:
+        print(f"{info.value}  {url}" if len(results) > 1 else f"{info.algorithm} {info.value}")
+    return OK
+
+
+def _mkdir(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.mkdir(path, parents=args.parents, exist_ok=args.parents)
+    return OK
+
+
+def _rm(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    code = OK
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        try:
+            if args.recursive:
+                filesystem.rmtree(path)
+            else:
+                filesystem.remove(path)
+        except (XRootDError, OSError) as exc:
+            if not args.force:
+                code = fail(PROGRAM, exc)
+    return code
+
+
+def _rmdir(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.rmdir(path)
+    return OK
+
+
+def _mv(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, source = endpoints.at(args.source)
+    other, target = endpoints.at(args.dest)
+    if other is not filesystem:
+        raise ValueError("mv works within one endpoint; use xrd-cp between servers")
+    filesystem.rename(source, target)
+    return OK
+
+
+def _touch(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.touch(path)
+    return OK
+
+
+def _df(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, path = endpoints.at(args.url)
+    info = filesystem.statvfs(path)
+    if args.json:
+        print(dumps(info))
+        return OK
+    print(f"  Read/write nodes: {info.nodes_rw}")
+    print(f"  Read/write free:  {info.free_rw} MB ({info.utilization_rw}% used)")
+    print(f"  Staging nodes:    {info.nodes_staging}")
+    print(f"  Staging free:     {info.free_staging} MB ({info.utilization_staging}% used)")
+    return OK
+
+
+def _locate(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, path = endpoints.at(args.url)
+    places = filesystem.deep_locate(path) if args.deep else filesystem.locate(path)
+    if args.json:
+        print(dumps(places))
+        return OK
+    for place in places:
+        print(f"{place.address} {place.type} {place.access}")
+    return OK
+
+
+def _ping(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, _path = endpoints.at(args.url)
+    started = time.monotonic()
+    filesystem.ping()
+    elapsed = (time.monotonic() - started) * 1e3
+    if args.json:
+        print(dumps({"endpoint": filesystem.endpoint, "ms": round(elapsed, 3)}))
+    elif not args.quiet:
+        print(f"{filesystem.endpoint} responded in {elapsed:.1f} ms")
+    return OK
+
+
+def _query(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, _path = endpoints.at(args.url)
+    values = filesystem.query_config(*args.name)
+    if args.json:
+        print(dumps(values))
+        return OK
+    for name in args.name:
+        print(f"{name} {values.get(name, '')}")
+    return OK
+
+
+def _xattr(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, path = endpoints.at(args.url)
+    if args.set is not None:
+        name, _, value = args.set.partition("=")
+        filesystem.setxattr(path, name, value.encode())
+        return OK
+    if args.remove is not None:
+        filesystem.removexattr(path, args.remove)
+        return OK
+    attributes = filesystem.xattrs(path)
+    if args.json:
+        print(dumps(attributes))
+        return OK
+    for name, value in attributes.items():
+        print(f"{name}={value.decode('utf-8', 'replace')}")
+    return OK
+
+
+# ---------------------------------------------------------------------------
+# Command line
+# ---------------------------------------------------------------------------
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=PROGRAM, description="Inspect and change a remote namespace."
+    )
+    subs = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
+
+    def command(name: str, handler: Callable[..., int], help_text: str) -> argparse.ArgumentParser:
+        sub = subs.add_parser(name, help=help_text, description=help_text)
+        sub.set_defaults(handler=handler)
+        common_flags(sub)
+        return sub
+
+    ls = command("ls", _ls, "list a directory")
+    ls.add_argument("url", nargs="+")
+    ls.add_argument("-l", "--long", action="store_true", help="one entry per line, with detail")
+    ls.add_argument("-R", "--recursive", action="store_true", help="descend into subdirectories")
+
+    st = command("stat", _stat_cmd, "show what the server knows about a path")
+    st.add_argument("url", nargs="+")
+
+    cat = command("cat", _cat, "write a file to standard output")
+    cat.add_argument("url", nargs="+")
+
+    cks = command("checksum", _checksum, "ask the server for a checksum")
+    cks.add_argument("url", nargs="+")
+    cks.add_argument("-a", "--algorithm", metavar="NAME", help="adler32, md5, crc32c, ...")
+
+    mkdir = command("mkdir", _mkdir, "create a directory")
+    mkdir.add_argument("url", nargs="+")
+    mkdir.add_argument("-p", "--parents", action="store_true", help="create missing parents")
+
+    rm = command("rm", _rm, "remove files")
+    rm.add_argument("url", nargs="+")
+    rm.add_argument("-r", "--recursive", action="store_true", help="remove a directory tree")
+    rm.add_argument("-f", "--force", action="store_true", help="ignore what is not there")
+
+    rmdir = command("rmdir", _rmdir, "remove an empty directory")
+    rmdir.add_argument("url", nargs="+")
+
+    mv = command("mv", _mv, "rename within one endpoint")
+    mv.add_argument("source")
+    mv.add_argument("dest")
+
+    touch = command("touch", _touch, "create an empty file")
+    touch.add_argument("url", nargs="+")
+
+    df = command("df", _df, "space and utilisation")
+    df.add_argument("url")
+
+    locate = command("locate", _locate, "which servers hold a path")
+    locate.add_argument("url")
+    locate.add_argument("--deep", action="store_true", help="follow managers down to the data")
+
+    ping = command("ping", _ping, "is the endpoint answering")
+    ping.add_argument("url")
+
+    query = command("query", _query, "read server configuration values")
+    query.add_argument("url")
+    query.add_argument("name", nargs="+")
+
+    xattr = command("xattr", _xattr, "extended attributes")
+    xattr.add_argument("url")
+    xattr.add_argument("--set", metavar="NAME=VALUE", help="set one attribute")
+    xattr.add_argument("--remove", metavar="NAME", help="remove one attribute")
+
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    config = config_from(args)
+    try:
+        with Endpoints(config) as endpoints:
+            return int(args.handler(args, endpoints))
+    except (XRootDError, OSError, ValueError) as exc:
+        return fail(PROGRAM, exc)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

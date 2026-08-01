@@ -1,0 +1,231 @@
+"""Public value types.
+
+All frozen and slotted. ``StatInfo`` deliberately mirrors ``os.stat_result``
+field names so code that inspects a local stat works unchanged on a remote one.
+"""
+
+from __future__ import annotations
+
+import stat as _stat
+from dataclasses import dataclass, field
+
+from .flags import StatInfoFlags
+
+__all__ = [
+    "StatInfo",
+    "DirEntry",
+    "VFSInfo",
+    "LocationInfo",
+    "ProtocolInfo",
+    "ChecksumInfo",
+    "ReadRange",
+    "WriteChunk",
+    "PageResult",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class StatInfo:
+    """Result of a ``stat``. ``st_*`` names match ``os.stat_result``."""
+
+    id: str = ""
+    st_size: int = 0
+    flags: StatInfoFlags = StatInfoFlags.NONE
+    st_mtime: int = 0
+    st_ctime: int = 0
+    st_atime: int = 0
+    path: str = ""
+    mode_str: str = ""
+    owner: str = ""
+    group: str = ""
+
+    @property
+    def size(self) -> int:
+        return self.st_size
+
+    @property
+    def modtime(self) -> int:
+        return self.st_mtime
+
+    @property
+    def st_mode(self) -> int:
+        """POSIX mode bits, synthesised from the XRootD flag set."""
+        mode = _stat.S_IFDIR if self.is_dir() else _stat.S_IFREG
+        if self.flags & StatInfoFlags.IS_READABLE:
+            mode |= 0o444
+        if self.flags & StatInfoFlags.IS_WRITABLE:
+            mode |= 0o222
+        if self.is_dir():
+            mode |= 0o111
+        return mode
+
+    def is_dir(self) -> bool:
+        return bool(self.flags & StatInfoFlags.IS_DIR)
+
+    def is_file(self) -> bool:
+        return not (self.flags & (StatInfoFlags.IS_DIR | StatInfoFlags.OTHER))
+
+    def is_offline(self) -> bool:
+        return bool(self.flags & StatInfoFlags.OFFLINE)
+
+    def is_readable(self) -> bool:
+        return bool(self.flags & StatInfoFlags.IS_READABLE)
+
+    def is_writable(self) -> bool:
+        return bool(self.flags & StatInfoFlags.IS_WRITABLE)
+
+
+@dataclass(frozen=True, slots=True)
+class DirEntry:
+    """One entry of a directory listing."""
+
+    name: str
+    parent: str = ""
+    stat: StatInfo | None = None
+    checksum: str | None = None
+
+    @property
+    def path(self) -> str:
+        """Full path, ``parent`` joined with ``name``."""
+        return f"{self.parent.rstrip('/')}/{self.name}" if self.parent else self.name
+
+    def is_dir(self) -> bool:
+        return self.stat is not None and self.stat.is_dir()
+
+    def is_file(self) -> bool:
+        return self.stat is not None and self.stat.is_file()
+
+    def __fspath__(self) -> str:
+        return self.path
+
+
+@dataclass(frozen=True, slots=True)
+class VFSInfo:
+    """Result of a ``statvfs`` (``kXR_stat`` with ``kXR_vfs``)."""
+
+    nodes_rw: int = 0
+    free_rw: int = 0
+    utilization_rw: int = 0
+    nodes_staging: int = 0
+    free_staging: int = 0
+    utilization_staging: int = 0
+
+    @property
+    def f_bavail(self) -> int:
+        return self.free_rw
+
+
+@dataclass(frozen=True, slots=True)
+class LocationInfo:
+    """One entry of a ``locate`` result."""
+
+    address: str
+    type: str = "S"
+    access: str = "r"
+
+    @property
+    def host(self) -> str:
+        """The bare host, with any IPv6 brackets removed."""
+        host = self.address.rsplit(":", 1)[0] if self._has_port else self.address
+        return host[1:-1] if host.startswith("[") and host.endswith("]") else host
+
+    @property
+    def port(self) -> int:
+        _, sep, port = self.address.rpartition(":")
+        return int(port) if sep and port.isdigit() else 1094
+
+    @property
+    def _has_port(self) -> bool:
+        _, sep, port = self.address.rpartition(":")
+        return bool(sep and port.isdigit())
+
+    @property
+    def is_manager(self) -> bool:
+        return self.type in "Mm"
+
+    @property
+    def is_server(self) -> bool:
+        return self.type in "Ss"
+
+    @property
+    def is_pending(self) -> bool:
+        """The server has the file staged-out or is still deciding."""
+        return self.type.islower()
+
+    @property
+    def is_writable(self) -> bool:
+        return self.access == "w"
+
+    def __str__(self) -> str:
+        return self.address
+
+
+@dataclass(frozen=True, slots=True)
+class ProtocolInfo:
+    """Result of ``kXR_protocol``."""
+
+    version: int = 0
+    flags: int = 0
+    security_level: int = 0
+    security_version: int = 0
+    security_options: int = 0
+    security_overrides: dict[int, int] = field(default_factory=dict)
+
+    @property
+    def version_str(self) -> str:
+        return f"{(self.version >> 8) & 0xF}.{(self.version >> 4) & 0xF}.{self.version & 0xF}"
+
+    @property
+    def has_tls(self) -> bool:
+        return bool(self.flags & 0x80000000)
+
+    @property
+    def is_manager(self) -> bool:
+        return bool(self.flags & 0x00000002)
+
+    @property
+    def is_server(self) -> bool:
+        return bool(self.flags & 0x00000001)
+
+
+@dataclass(frozen=True, slots=True)
+class ChecksumInfo:
+    """A server-computed checksum."""
+
+    algorithm: str
+    value: str
+
+    def __str__(self) -> str:
+        return f"{self.algorithm}:{self.value}"
+
+
+@dataclass(frozen=True, slots=True)
+class ReadRange:
+    """One element of a vector read."""
+
+    offset: int
+    length: int
+
+
+@dataclass(frozen=True, slots=True)
+class WriteChunk:
+    """One element of a vector write."""
+
+    offset: int
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class PageResult:
+    """Result of a ``pgread``: the data plus any pages that failed CRC."""
+
+    data: bytes
+    offset: int = 0
+    corrupt_pages: tuple[int, ...] = field(default_factory=tuple)
+
+    @property
+    def ok(self) -> bool:
+        return not self.corrupt_pages
+
+    def __len__(self) -> int:
+        return len(self.data)

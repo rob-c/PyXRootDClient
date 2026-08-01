@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_COLOR: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,fsspec]"
+      - name: ruff
+        run: ruff check src tests benchmarks
+      - name: mypy --strict
+        run: mypy
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # The point of the library is that it needs nothing compiled; installing
+      # the fsspec extra as well keeps that adapter's tests from silently
+      # skipping on every run.
+      - run: pip install -e ".[dev,fsspec]"
+      # pytest-cov rather than `coverage run`, because the workers xdist
+      # spawns are separate processes and only pytest-cov collects them all.
+      # `fail_under = 100` on proto/, crypto/ and client/ comes from
+      # pyproject.toml, so the gate lives with the configuration.
+      - name: pytest
+        run: >-
+          pytest -q -p no:cacheprovider -n auto
+          -m "not interop and not parity"
+          --cov=xrd --cov-report=term-missing
+
+  interop:
+    # A real daemon, because a fake written from the same reading of the
+    # specification as the client would agree with a misreading.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.12"
+          channels: conda-forge
+          auto-activate-base: false
+          activate-environment: interop
+      - name: install xrootd and the official bindings
+        shell: bash -el {0}
+        run: conda install -y xrootd
+      - name: install
+        shell: bash -el {0}
+        run: pip install -e ".[dev,fsspec]"
+      - name: interop and parity
+        shell: bash -el {0}
+        run: |
+          xrootd -v
+          pytest -q -p no:cacheprovider -m "interop or parity"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[docs]"
+      # --strict turns a broken link or a page missing from the nav into a
+      # failure, which is the only way documentation stays true.
+      - run: mkdocs build --strict
+
+  benchmarks:
+    # Informational: a regression shows up as a number in the log, not a
+    # failing job, because a shared runner cannot promise stable timings.
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.12"
+          channels: conda-forge
+          activate-environment: bench
+      - shell: bash -el {0}
+        run: conda install -y xrootd
+      - shell: bash -el {0}
+        run: pip install -e .
+      - shell: bash -el {0}
+        run: python benchmarks/bench.py --size 16 --repeat 3 --json bench.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: bench.json

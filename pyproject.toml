@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyxrootdclient"
+version = "0.1.0"
+description = "A pure-Python, Pythonic client for XRootD (root://, roots://) and HEP WebDAV"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "LGPL-3.0-or-later" }
+authors = [{ name = "Robert Currie", email = "robert.andrew.currie@gmail.com" }]
+keywords = ["xrootd", "hep", "webdav", "storage", "root"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: System :: Filesystems",
+]
+dependencies = []
+
+[project.optional-dependencies]
+krb5 = ["gssapi>=1.8"]
+fsspec = ["fsspec>=2024.2.0"]
+dev = ["pytest>=8", "pytest-timeout", "pytest-xdist", "pytest-cov", "mypy>=1.10", "ruff>=0.5"]
+docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.25"]
+
+[project.scripts]
+xrd-cp = "xrd.cli.cp:main"
+xrd-fs = "xrd.cli.fs:main"
+
+[project.entry-points."fsspec.specs"]
+root = "xrd.fsspec_impl:XRootDFileSystem"
+roots = "xrd.fsspec_impl:XRootDFileSystem"
+xroot = "xrd.fsspec_impl:XRootDFileSystem"
+dav = "xrd.fsspec_impl:HTTPXRootDFileSystem"
+davs = "xrd.fsspec_impl:HTTPXRootDFileSystem"
+webdav = "xrd.fsspec_impl:HTTPXRootDFileSystem"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xrd"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 120
+filterwarnings = ["error::ResourceWarning"]
+markers = [
+    "interop: needs a real xrootd daemon on PATH",
+    "parity: needs the official XRootD python bindings as well",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["xrd"]
+parallel = true
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "\\.\\.\\.$",
+  "if __name__ == .__main__.:",
+]
+# The wire protocol, the cryptography and the client surface are where a gap
+# in coverage means an untested code path against a real server, so they are
+# gated at the full line-and-branch mark; the optional adapters (fsspec,
+# asyncio, CLI) are not, because their coverage depends on which extras are
+# installed - the suite covers those too, but only when they are there.
+include = ["*/xrd/proto/*", "*/xrd/crypto/*", "*/xrd/client/*"]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "RUF"]
+# RUF022/RUF023: ``__all__`` and ``__slots__`` are grouped by meaning here -
+# urls, values, flags, errors - with a comment on each group. Alphabetising
+# them would trade a reader's map of the package for a sort order nobody reads.
+ignore = ["E741", "RUF022", "RUF023"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["xrd"]
+mypy_path = "src"
+
+# The optional accelerators and adapters ship no stubs. They are reached
+# through narrow, guarded imports, so untyped is the honest description of
+# them rather than a hole in our own checking.
+[[tool.mypy.overrides]]
+module = ["gssapi.*", "google_crc32c.*", "fsspec.*"]
+ignore_missing_imports = true
+
+# ``AbstractFileSystem`` is therefore ``Any``, and subclassing it is the whole
+# point of the adapter.
+[[tool.mypy.overrides]]
+module = "xrd.fsspec_impl"
+disallow_subclassing_any = false

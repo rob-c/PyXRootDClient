@@ -1,0 +1,524 @@
+"""An open remote file.
+
+:class:`File` is the low-level handle: every method is one protocol
+operation, with no buffering and no implicit position. The file-like objects
+in :mod:`xrd.io` are built on top of it, and that is what most code should
+use. Reach for :class:`File` when you want vector reads, paged I/O with
+per-page checksums, extended attributes on a handle, or checkpoints.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextlib import contextmanager
+
+from .._log import get_logger
+from ..config import Config
+from ..crypto.crc32c import pack_pages, unpack_pages
+from ..errors import ChecksumMismatchError, ProtocolError, TransientError
+from ..flags import Access, ChkPointCode, OpenFlags
+from ..proto import constants as c
+from ..proto import requests as r
+from ..proto import responses as rp
+from ..proto.frames import Request
+from ..session.router import Router
+from ..session.sync import Result
+from ..types import ChecksumInfo, PageResult, ReadRange, StatInfo, WriteChunk
+from ..url import XRootDURL, parse
+
+__all__ = ["File"]
+
+_log = get_logger(__name__)
+
+#: Server-side ceilings on one ``kXR_readv``.
+READV_MAX_CHUNKS = 1024
+READV_MAX_BYTES = 2 << 20
+
+#: Opening with any of these means the handle has side effects on the server,
+#: so it is not safe to silently re-open: ``NEW`` and ``DELETE`` would recreate
+#: or re-truncate the file, and a re-opened writer would have lost whatever the
+#: dead connection had not yet flushed.
+_WRITING = OpenFlags.WRITE | OpenFlags.UPDATE | OpenFlags.NEW | OpenFlags.DELETE | OpenFlags.APPEND
+
+
+class File:
+    """One open file handle on one data server."""
+
+    def __init__(
+        self,
+        url: str | XRootDURL,
+        config: Config | None = None,
+        *,
+        router: Router | None = None,
+    ) -> None:
+        self.url = parse(url) if isinstance(url, str) else url
+        self.config = config or Config()
+        self._router = router or Router(self.url, self.config)
+        self._owns_router = router is None
+        self._handle: bytes | None = None
+        self._stat: StatInfo | None = None
+        self._size_hint = 0
+        self._flags = OpenFlags.NONE
+        self._mode = 0
+        #: How many times this handle has been re-opened after losing its
+        #: server. Zero on a healthy connection; useful in a log line when a
+        #: long read survived a restart nobody noticed.
+        self.recoveries = 0
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    @property
+    def is_open(self) -> bool:
+        return self._handle is not None
+
+    @property
+    def handle(self) -> bytes:
+        if self._handle is None:
+            raise ValueError("I/O operation on closed file")
+        return self._handle
+
+    @property
+    def endpoint(self) -> str:
+        return self._router.endpoint
+
+    def open(
+        self,
+        flags: OpenFlags | int = OpenFlags.READ,
+        mode: Access | int = Access.OWNER_READ | Access.OWNER_WRITE,
+    ) -> StatInfo | None:
+        """``kXR_open``. Returns the stat the server volunteered, if any."""
+        if self._handle is not None:
+            raise ValueError(f"{self.url} is already open")
+        self._flags, self._mode = OpenFlags(int(flags)), int(mode) & 0o777
+        try:
+            self._do_open()
+        except BaseException:
+            # An open that fails leaves nothing to close, so nobody closes it,
+            # so a caller that catches FileExistsError in a loop would hold a
+            # connection per attempt. Only a connection this handle made
+            # itself is dropped: a shared router belongs to its owner.
+            if self._owns_router:
+                self._router.close()
+            raise
+        return self._stat
+
+    def _do_open(self) -> bytes:
+        """Issue the ``kXR_open`` and adopt the handle it returns."""
+        request = r.Open(
+            self.url.path_with_cgi, int(self._flags) | c.kXR_retstat, self._mode
+        )
+        result = self._router.execute(request, path=self.url.path)
+        # The open may have been redirected; every later operation on this
+        # handle must stay on the server that issued it.
+        self._router = self._router.pin()
+        self._handle, self._stat = rp.parse_open(result.data, self.url.path)
+        if self._stat is not None:
+            self._size_hint = self._stat.st_size
+        return self.handle
+
+    @property
+    def recoverable(self) -> bool:
+        """Whether losing the connection is survivable rather than fatal.
+
+        A read-only handle can be got back: re-opening the same path yields a
+        file with the same contents, and every read carries its own offset, so
+        nothing was lost with the connection. A handle opened for writing
+        cannot — see :data:`_WRITING`.
+        """
+        return bool(self.config.recover_handles) and not (self._flags & _WRITING)
+
+    def _execute(self, build: Callable[[bytes], Request], **kwargs: object) -> Result:
+        """Run a handle-bearing request, re-opening once if the server is lost.
+
+        ``build`` takes the handle rather than closing over it, because a
+        recovered file has a different one: the retry has to be issued against
+        the new handle, not the dead one.
+        """
+        kwargs.setdefault("path", self.url.path)
+        try:
+            return self._router.execute(build(self.handle), **kwargs)  # type: ignore[arg-type]
+        except TransientError as exc:
+            if not self.recoverable:
+                raise
+            _log.debug("recovering %s after %s", self.url, exc)
+            handle = self._reopen()
+            return self._router.execute(build(handle), **kwargs)  # type: ignore[arg-type]
+
+    def _reopen(self) -> bytes:
+        """Get the handle back on a fresh connection, from the original URL.
+
+        Not from the pinned endpoint: the data server that just went away is
+        the least likely one to answer, and going back to where the open
+        started is what lets a manager route around it.
+        """
+        stale, self._handle, self._stat = self._router, None, None
+        if self._owns_router:
+            stale.close()
+        self._router = Router(self.url, self.config)
+        self._owns_router = True
+        self.recoveries += 1
+        return self._do_open()
+
+    def close(self) -> None:
+        """``kXR_close``, then release the connection. Idempotent.
+
+        A handle that was never opened still owns a connection, so the
+        release happens either way.
+        """
+        handle, self._handle = self._handle, None
+        try:
+            if handle is not None:
+                self._router.execute(r.Close(handle))
+        except TransientError as exc:
+            # The connection is already gone, which is what a close is for.
+            # Raising here would mask whatever the ``with`` body was doing.
+            _log.debug("close of %s found the connection gone: %s", self.url, exc)
+        finally:
+            if self._owns_router:
+                self._router.close()
+
+    def __enter__(self) -> File:
+        if self._handle is None:
+            self.open()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def __repr__(self) -> str:
+        state = "open" if self.is_open else "closed"
+        return f"File({str(self.url)!r}, {state})"
+
+    def __fspath__(self) -> str:
+        return str(self.url)
+
+    # ------------------------------------------------------------------
+    # Metadata
+    # ------------------------------------------------------------------
+
+    def stat(self, *, refresh: bool = False) -> StatInfo:
+        """Stat the open handle."""
+        if self._stat is not None and not refresh:
+            return self._stat
+        result = self._execute(lambda handle: r.Stat(fhandle=handle))
+        self._stat = rp.parse_stat(result.data, self.url.path)
+        self._size_hint = self._stat.st_size
+        return self._stat
+
+    @property
+    def size(self) -> int:
+        """File length; cached from the open, refreshed on demand."""
+        return self._size_hint if self._stat is not None else self.stat().st_size
+
+    def checksum(self, algorithm: str | None = None) -> ChecksumInfo:
+        """Ask the server to checksum this file."""
+        path = self.url.path_with_cgi
+        if algorithm:
+            path += ("&" if "?" in path else "?") + f"cks.type={algorithm}"
+        result = self._router.execute(r.Query(c.kXR_Qcksum, path), path=self.url.path)
+        return rp.parse_checksum(result.data)
+
+    def visa(self) -> bytes:
+        """``kXR_query`` visa - opaque server metadata about this handle."""
+        return self._execute(lambda handle: r.Query(c.kXR_Qvisa, fhandle=handle)).data
+
+    # ------------------------------------------------------------------
+    # Reading
+    # ------------------------------------------------------------------
+
+    def read(self, size: int = -1, offset: int = 0) -> bytes:
+        """Read ``size`` bytes at ``offset``; ``-1`` means to end of file.
+
+        Large reads are split into ``config.chunk_size`` requests so that one
+        stalled request cannot hold an unbounded buffer.
+        """
+        if size < 0:
+            size = max(self.size - offset, 0)
+        if size == 0:
+            return b""
+        limit = self.config.chunk_size
+        if size <= limit:
+            return self._read_one(offset, size)
+        parts = []
+        remaining = size
+        at = offset
+        while remaining:
+            n = min(remaining, limit)
+            chunk = self._read_one(at, n)
+            parts.append(chunk)
+            if len(chunk) < n:
+                break  # short read: end of file
+            at += n
+            remaining -= n
+        return b"".join(parts)
+
+    def _read_one(self, offset: int, length: int) -> bytes:
+        data = self._execute(lambda handle: r.Read(handle, offset, length)).data
+        if len(data) > length:
+            raise ProtocolError(
+                f"the server answered a {length} byte read at offset {offset} with "
+                f"{len(data)} bytes"
+            )
+        return data
+
+    def pread(self, size: int, offset: int) -> bytes:
+        """:func:`os.pread` order of arguments."""
+        return self.read(size, offset)
+
+    def readinto(self, buffer: bytearray | memoryview, offset: int = 0) -> int:
+        """Read into a pre-allocated buffer; returns the byte count."""
+        view = memoryview(buffer).cast("B")
+        data = self.read(len(view), offset)
+        view[: len(data)] = data
+        return len(data)
+
+    def readv(self, ranges: Iterable[ReadRange | tuple[int, int]]) -> list[bytes]:
+        """``kXR_readv`` - many scattered ranges in as few round trips as possible.
+
+        Returns one ``bytes`` per requested range, in the order asked for,
+        regardless of how the server batches or reorders them.
+        """
+        wanted = [
+            rng if isinstance(rng, ReadRange) else ReadRange(rng[0], rng[1]) for rng in ranges
+        ]
+        if not wanted:
+            return []
+        out: dict[int, list[bytes]] = {}
+        for batch in _batches(wanted):
+            result = self._execute(_readv_for(batch))
+            for segment in rp.parse_readv(result.data):
+                out.setdefault(segment.offset, []).append(segment.data)
+        return [_segment_for(rng, out.get(rng.offset)) for rng in wanted]
+
+    def pgread(self, size: int, offset: int, *, verify: bool = True) -> PageResult:
+        """``kXR_pgread`` - read with a CRC-32C per 4 KiB page.
+
+        With ``verify`` the checksums are checked here and any failing page
+        offsets come back in :attr:`~xrd.types.PageResult.corrupt_pages`.
+        """
+        result = self._execute(lambda handle: r.PgRead(handle, offset, size))
+        if len(result.data) > _packed_length(size, offset):
+            raise ProtocolError(
+                f"the server answered a {size} byte paged read at offset {offset} with "
+                f"{len(result.data)} bytes of pages and checksums"
+            )
+        if not verify:
+            data, _ = unpack_pages(result.data, offset)
+            return PageResult(data, offset)
+        data, corrupt = unpack_pages(result.data, offset)
+        return PageResult(data, offset, corrupt)
+
+    def __iter__(self) -> Iterator[bytes]:
+        """Iterate the file in ``config.chunk_size`` blocks."""
+        offset = 0
+        while True:
+            chunk = self._read_one(offset, self.config.chunk_size)
+            if not chunk:
+                return
+            yield chunk
+            offset += len(chunk)
+
+    # ------------------------------------------------------------------
+    # Writing
+    # ------------------------------------------------------------------
+
+    def write(self, data: bytes, offset: int = 0) -> int:
+        """``kXR_write``. Returns the number of bytes accepted."""
+        view = memoryview(data).cast("B")
+        limit = self.config.chunk_size
+        written = 0
+        while written < len(view):
+            piece = view[written : written + limit]
+            self._router.execute(
+                r.Write(self.handle, offset + written, piece.tobytes()), path=self.url.path
+            )
+            written += len(piece)
+        self._invalidate(offset + written)
+        return written
+
+    def pwrite(self, data: bytes, offset: int) -> int:
+        """:func:`os.pwrite` order of arguments."""
+        return self.write(data, offset)
+
+    def writev(
+        self, chunks: Iterable[WriteChunk | tuple[int, bytes]], *, sync: bool = False
+    ) -> int:
+        """``kXR_writev`` - many scattered writes in one round trip."""
+        items = [
+            ch if isinstance(ch, WriteChunk) else WriteChunk(ch[0], ch[1]) for ch in chunks
+        ]
+        if not items:
+            return 0
+        total = 0
+        high = 0
+        for batch in _write_batches(items):
+            request = r.WriteV(
+                [(self.handle, ch.offset, ch.data) for ch in batch], sync=sync
+            )
+            self._router.execute(request, path=self.url.path)
+            for ch in batch:
+                total += len(ch.data)
+                high = max(high, ch.offset + len(ch.data))
+        self._invalidate(high)
+        return total
+
+    def pgwrite(self, data: bytes, offset: int = 0) -> int:
+        """``kXR_pgwrite`` - write with a CRC-32C per 4 KiB page.
+
+        The server verifies each page and rejects the request outright if one
+        fails, which turns a silent corruption into a loud one.
+        """
+        if not data:
+            return 0
+        payload = pack_pages(data, offset)
+        self._router.execute(
+            r.PgWrite(self.handle, offset, payload), path=self.url.path
+        )
+        self._invalidate(offset + len(data))
+        return len(data)
+
+    def truncate(self, size: int = 0) -> int:
+        """``kXR_truncate`` on the open handle."""
+        self._router.execute(r.Truncate(size=size, fhandle=self.handle), path=self.url.path)
+        self._invalidate(size, exact=True)
+        return size
+
+    def sync(self) -> None:
+        """``kXR_sync`` - flush the server's buffers to storage."""
+        self._router.execute(r.Sync(self.handle), path=self.url.path)
+
+    #: :func:`os.fsync` spelling.
+    flush = sync
+
+    def _invalidate(self, high_water: int, *, exact: bool = False) -> None:
+        self._size_hint = high_water if exact else max(self._size_hint, high_water)
+        self._stat = None
+
+    # ------------------------------------------------------------------
+    # Extended attributes on the handle
+    # ------------------------------------------------------------------
+
+    def getxattr(self, name: str) -> bytes:
+        result = self._execute(lambda handle: r.Fattr.get("", name, fhandle=handle))
+        for item in rp.parse_fattr(result.data).items:
+            if item.code == 0 and item.value is not None:
+                return item.value
+        raise KeyError(name)
+
+    def setxattr(self, name: str, value: bytes) -> None:
+        self._router.execute(
+            r.Fattr.set("", name, value, fhandle=self.handle), path=self.url.path
+        )
+
+    def listxattr(self) -> list[str]:
+        result = self._execute(lambda handle: r.Fattr.list("", fhandle=handle))
+        return [i.name for i in rp.parse_fattr(result.data, values=False).items]
+
+    def removexattr(self, name: str) -> None:
+        self._router.execute(
+            r.Fattr.delete("", name, fhandle=self.handle), path=self.url.path
+        )
+
+    # ------------------------------------------------------------------
+    # Checkpoints
+    # ------------------------------------------------------------------
+
+    @contextmanager
+    def checkpoint(self) -> Iterator[File]:
+        """Transactional writes: commit on clean exit, roll back on error.
+
+            >>> with fh.checkpoint():
+            ...     fh.write(payload, offset)
+
+        Requires server-side ``kXR_chkpoint`` support; a server without it
+        raises :class:`~xrd.errors.UnsupportedError` on entry, before any
+        write has happened.
+        """
+        self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.BEGIN)))
+        try:
+            yield self
+        except BaseException:
+            self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.ROLLBACK)))
+            raise
+        else:
+            self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.COMMIT)))
+
+    # ------------------------------------------------------------------
+    # Verification
+    # ------------------------------------------------------------------
+
+    def verify(self, expected: str, algorithm: str = "adler32") -> None:
+        """Compare the server's checksum against ``expected``."""
+        actual = self.checksum(algorithm)
+        if actual.value.lower() != expected.lower():
+            raise ChecksumMismatchError(algorithm, expected.lower(), actual.value.lower())
+
+
+def _readv_for(batch: Sequence[ReadRange]) -> Callable[[bytes], Request]:
+    """Bind ``batch`` to a builder that still takes the handle as an argument.
+
+    :meth:`File._execute` re-opens a lost file and retries, and the retry must
+    be issued against the new handle - so the ranges are captured here and the
+    handle is not.
+    """
+    return lambda handle: r.ReadV([(handle, rng.offset, rng.length) for rng in batch])
+
+
+def _packed_length(size: int, offset: int) -> int:
+    """How long a ``kXR_pgread`` reply of ``size`` bytes may be, CRCs included."""
+    if size <= 0:
+        return 0
+    page = c.kXR_pgPageSZ
+    head = page - offset % page          # short first unit when unaligned
+    rest = max(size - head, 0)
+    return size + 4 * (1 + -(-rest // page))
+
+
+def _segment_for(wanted: ReadRange, answers: list[bytes] | None) -> bytes:
+    """One vector-read segment, or a refusal - never a silent empty string."""
+    if not answers:
+        raise ProtocolError(
+            f"the server left the {wanted.length} bytes at offset {wanted.offset} "
+            "out of its vector read reply"
+        )
+    data = answers.pop(0) if len(answers) > 1 else answers[0]
+    if len(data) > wanted.length:
+        raise ProtocolError(
+            f"the server answered a {wanted.length} byte vector-read segment at "
+            f"offset {wanted.offset} with {len(data)} bytes"
+        )
+    return data
+
+
+def _batches(ranges: Sequence[ReadRange]) -> Iterator[list[ReadRange]]:
+    """Split vector reads to respect the server's per-request ceilings."""
+    batch: list[ReadRange] = []
+    total = 0
+    for rng in ranges:
+        if rng.length > READV_MAX_BYTES:
+            raise ProtocolError(
+                f"readv element of {rng.length} bytes exceeds the {READV_MAX_BYTES} limit; "
+                "use read() for ranges this large"
+            )
+        if batch and (len(batch) >= READV_MAX_CHUNKS or total + rng.length > READV_MAX_BYTES):
+            yield batch
+            batch, total = [], 0
+        batch.append(rng)
+        total += rng.length
+    if batch:
+        yield batch
+
+
+def _write_batches(chunks: Sequence[WriteChunk]) -> Iterator[list[WriteChunk]]:
+    batch: list[WriteChunk] = []
+    total = 0
+    for chunk in chunks:
+        if batch and (len(batch) >= READV_MAX_CHUNKS or total + len(chunk.data) > READV_MAX_BYTES):
+            yield batch
+            batch, total = [], 0
+        batch.append(chunk)
+        total += len(chunk.data)
+    if batch:
+        yield batch
