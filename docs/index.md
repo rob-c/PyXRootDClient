@@ -1,8 +1,8 @@
 # PyXRootDClient
 
-A pure-Python client for XRootD. `root://`, `roots://`, `https://` and HEP
-WebDAV, spoken by the same objects, with no compiled extension, no `libXrdCl`,
-and no third-party import in the core.
+A pure-Python client for XRootD. `root://`, `roots://`, `https://`, HEP
+WebDAV and `s3://`, spoken by the same objects, with no compiled extension, no
+`libXrdCl`, and no third-party import in the core.
 
 ```python
 import xrd
@@ -48,6 +48,7 @@ can only honestly be tested against a live KDC.
 - **[Quickstart](quickstart.md)** - the ten things you will actually do.
 - **[Files and paths](files.md)**, **[Namespaces](filesystem.md)**,
   **[Copying](copying.md)** - the three halves of the API.
+- **[S3 object storage](s3.md)** - the same three entry points over a bucket.
 - **[Authentication](auth.md)** - proxies, tokens, keytabs, and what to do
   when the ladder refuses everything.
 - **[Coming from pyxrootd](migrating.md)** - a translation table.
@@ -59,12 +60,12 @@ can only honestly be tested against a live KDC.
 
 The wire protocol, the session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
-the copy engine, the CLI and the fsspec bindings are implemented and tested -
-2035 tests, the great majority of which need no network, no KDC and no
+S3, the copy engine, the CLI and the fsspec bindings are implemented and
+tested - 2413 tests, the great majority of which need no network, no KDC and no
 `openssl`, plus [interoperability and parity suites](interop.md) that run
 against a real `xrootd` daemon and the official bindings side by side.
 Coverage is 100% of statements and branches across the package, and `proto/`,
-`crypto/` and `client/` are gated at 100%;
+`crypto/`, `client/` and `s3/` are gated at 100%;
 `ruff` and `mypy --strict` pass clean over the package, which ships
 `py.typed` ([Typing](typing.md)).
 

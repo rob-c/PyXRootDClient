@@ -108,6 +108,10 @@ def _reader(url: XRootDURL, config: Config, stack: ExitStack) -> tuple[IO[bytes]
         from ..http import open_http
 
         return stack.enter_context(open_http(url, "rb", config=config)), None
+    if url.is_s3:
+        from ..s3 import open_s3
+
+        return stack.enter_context(open_s3(url, "rb", config=config)), None
     raise UnsupportedError(kXR_Unsupported, f"cannot read from {url.scheme}://")
 
 
@@ -125,6 +129,10 @@ def _writer(url: XRootDURL, config: Config, stack: ExitStack, *, overwrite: bool
         from ..http import open_http
 
         return stack.enter_context(open_http(url, mode, config=config))
+    if url.is_s3:
+        from ..s3 import open_s3
+
+        return stack.enter_context(open_s3(url, mode, config=config))
     raise UnsupportedError(kXR_Unsupported, f"cannot write to {url.scheme}://")
 
 

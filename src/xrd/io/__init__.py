@@ -103,7 +103,8 @@ def open_url(
     """Open a remote file. Mirrors :func:`open`, including its return types.
 
     An ``http``/``https``/``dav``/``davs`` URL is handed to
-    :func:`~xrd.http.open_http`, which returns the same stack of objects.
+    :func:`~xrd.http.open_http` and an ``s3://`` one to
+    :func:`~xrd.s3.open_s3`, both of which return the same stack of objects.
 
     ``buffering`` of 0 gives the raw layer (binary only), a positive value
     sets the buffer size, and ``-1`` uses
@@ -117,6 +118,18 @@ def open_url(
         raise ValueError("binary mode doesn't take an encoding argument")
 
     target = parse(url)
+    if target.is_s3:
+        from ..s3 import open_s3
+
+        return open_s3(
+            target,
+            mode,
+            buffering=buffering,
+            encoding=encoding,
+            errors=errors,
+            newline=newline,
+            config=config,
+        )
     if target.is_http:
         from ..http import open_http
 

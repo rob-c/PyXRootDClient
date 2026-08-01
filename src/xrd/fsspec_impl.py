@@ -29,7 +29,7 @@ from .config import Config
 from .types import StatInfo
 from .url import parse
 
-__all__ = ["XRootDFileSystem"]
+__all__ = ["XRootDFileSystem", "HTTPXRootDFileSystem", "S3XRootDFileSystem"]
 
 
 class XRootDFileSystem(AbstractFileSystem):
@@ -44,7 +44,7 @@ class XRootDFileSystem(AbstractFileSystem):
     server share this object - and therefore share its connection.
     """
 
-    protocol = ("root", "roots", "xroot")
+    protocol: tuple[str, ...] = ("root", "roots", "xroot")
     root_marker = "/"
     sep = "/"
 
@@ -288,3 +288,16 @@ class HTTPXRootDFileSystem(XRootDFileSystem):
     """The same bindings for ``https://``/``davs://`` endpoints."""
 
     protocol = ("dav", "davs", "webdav")
+
+
+class S3XRootDFileSystem(XRootDFileSystem):
+    """The same bindings for ``s3://`` buckets.
+
+    Deliberately *not* registered as an entry point: ``s3fs`` owns that
+    protocol in most environments, and silently taking it over would change
+    what an unrelated ``fsspec.open("s3://...")`` does. Ask for it explicitly::
+
+        fsspec.register_implementation("s3", S3XRootDFileSystem, clobber=True)
+    """
+
+    protocol: tuple[str, ...] = ("s3",)

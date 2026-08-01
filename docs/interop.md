@@ -42,6 +42,17 @@ checksum, the same directory listing, the same bytes at the same offsets.
 
 Needs the official bindings installed as well; skips otherwise.
 
+## Against AWS's own worked examples
+
+The same argument applies to the S3 signature, which is a hash of a string
+this client builds: a fake endpoint that verified it with this client's own
+signer would agree with any misreading. So two things are true of the test
+suite instead. `xrd.s3.sign` is asserted against the worked examples the AWS
+documentation publishes - the canonical request, the string to sign and the
+final signature, byte for byte - and `FakeS3Server` re-derives the signature
+from the raw request as it arrived, written out from the specification with
+`hmac` and `hashlib` rather than borrowed from the code under test.
+
 ## Reading files other tools wrote
 
 There is nothing to say here, which is the point. The wire format is the wire

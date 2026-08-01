@@ -139,19 +139,32 @@ def _cgi(explicit: str, inherited: dict[str, str]) -> str:
 class FileSystem:
     """Namespace and administrative operations on one endpoint."""
 
-    def __new__(cls, url: str | XRootDURL, config: Config | None = None) -> FileSystem:
+    def __new__(
+        cls, url: str | XRootDURL, config: Config | None = None, **_extra: object
+    ) -> FileSystem:
         """Pick the implementation the scheme calls for.
 
+        ``_extra`` is whatever a subclass's own constructor takes - S3's
+        credentials, say - which ``__new__`` has no use for but must accept,
+        because Python hands it the same arguments ``__init__`` gets.
+
         ``root://`` is this class; ``https://`` and the WebDAV spellings are
-        :class:`~xrd.http.HTTPFileSystem`, which offers the same methods. The
+        :class:`~xrd.http.HTTPFileSystem`, and ``s3://`` is
+        :class:`~xrd.s3.S3FileSystem`. All three offer the same methods. The
         dispatch lives in ``__new__`` for the same reason
         :class:`pathlib.Path`'s does: callers should name what they want, not
         which implementation provides it.
         """
-        if cls is FileSystem and parse(url).is_http:
-            from ..http.dav import HTTPFileSystem
+        if cls is FileSystem:
+            target = parse(url)
+            if target.is_http:
+                from ..http.dav import HTTPFileSystem
 
-            return object.__new__(HTTPFileSystem)
+                return object.__new__(HTTPFileSystem)
+            if target.is_s3:
+                from ..s3.fs import S3FileSystem
+
+                return object.__new__(S3FileSystem)
         return object.__new__(cls)
 
     def __init__(self, url: str | XRootDURL, config: Config | None = None) -> None:

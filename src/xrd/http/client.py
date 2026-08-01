@@ -17,6 +17,7 @@ import os
 import socket
 import ssl
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from .._log import get_logger
@@ -42,7 +43,12 @@ from ..errors import (
 from ..transport.base import tls_context
 from ..url import XRootDURL, parse
 
-__all__ = ["HTTPClient", "Response", "bearer_token", "check_status", "status_code"]
+__all__ = ["HTTPClient", "Response", "Signer", "bearer_token", "check_status", "status_code"]
+
+#: What signs a request that needs more than a header of standing credentials:
+#: ``(method, url, headers, body) -> headers to add``. The body is ``None``
+#: when it is being streamed and so cannot be hashed up front.
+Signer = Callable[[str, "XRootDURL", "dict[str, str]", "bytes | None"], "dict[str, str]"]
 
 _log = get_logger(__name__)
 
@@ -148,6 +154,10 @@ class HTTPClient:
 
     config: Config = field(default_factory=Config)
     _pool: dict[tuple[str, str, int], http.client.HTTPConnection] = field(default_factory=dict)
+    #: Called with ``(method, url, headers, body)`` just before a request goes
+    #: out, and answers with the headers that authorise it. ``None`` is an
+    #: endpoint that wants no such thing; :mod:`xrd.s3` is what sets one.
+    signer: Signer | None = None
 
     def close(self) -> None:
         """Drop every pooled connection. Idempotent."""
@@ -203,6 +213,15 @@ class HTTPClient:
             headers["Authorization"] = f"Bearer {token}"
         if extra:
             headers.update(extra)
+        return headers
+
+    def sign(
+        self, method: str, url: XRootDURL, headers: dict[str, str], body: bytes | None
+    ) -> dict[str, str]:
+        """Add whatever authorises this request, in place. A no-op without a
+        :attr:`signer`, which is every endpoint that takes a bearer token."""
+        if self.signer is not None:
+            headers.update(self.signer(method, url, headers, body))
         return headers
 
     def open(
@@ -308,7 +327,7 @@ class HTTPClient:
     ) -> http.client.HTTPResponse:
         """One request, retried once if a pooled connection had gone stale."""
         target = request_target(url)
-        sent = self.headers_for(url, headers)
+        sent = self.sign(method, url, self.headers_for(url, headers), body)
         # A conditional request is not safe to repeat: the first attempt may
         # have been applied, which makes the second one fail its condition.
         repeatable = method in _RETRYABLE and not any(k.lower().startswith("if-") for k in sent)
@@ -336,7 +355,10 @@ def request_target(url: XRootDURL) -> str:
     target = urllib.parse.quote(url.path or "/", safe="/:@!$&'()*+,;=~")
     query = {k: v for k, v in url.query.items() if k not in ("authz", "access_token")}
     if query:
-        target += "?" + urllib.parse.urlencode(query)
+        # ``quote``, not the default ``quote_plus``: a space is ``%20`` here.
+        # Both are legal in a query string, but only one of them is what a
+        # signature covers, and ``+`` for space is ambiguous to sign.
+        target += "?" + urllib.parse.urlencode(query, quote_via=urllib.parse.quote)
     return target
 
 

@@ -7,9 +7,9 @@
         assert fs.read_bytes("/data/a.root") == b"hello"
 
 :class:`FakeDAVServer` is the same idea for ``http``, ``https`` and WebDAV,
-and :class:`FaultProxy` is the network those servers do not have: put it in
-front of either one and the connection can be made to drop, stall, corrupt or
-reorder on cue.
+:class:`FakeS3Server` for ``s3://`` buckets, and :class:`FaultProxy` is the
+network those servers do not have: put it in front of any of them and the
+connection can be made to drop, stall, corrupt or reorder on cue.
 
 Nothing here is imported by the library itself, so it costs nothing at run
 time; it is a supported part of the public API all the same, because a client
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from .faults import FaultProxy
 from .http import FakeDAVServer
+from .s3 import FakeS3Server
 from .server import FakeServer, error, frame
 
-__all__ = ["FakeServer", "FakeDAVServer", "FaultProxy", "frame", "error"]
+__all__ = ["FakeServer", "FakeDAVServer", "FakeS3Server", "FaultProxy", "frame", "error"]

@@ -18,6 +18,17 @@ df = pd.read_parquet("root://eos.example.org//store/t.parquet")
 | `root`, `roots`, `xroot` | `XRootDFileSystem` |
 | `dav`, `davs`, `webdav` | `HTTPXRootDFileSystem` |
 
+`s3` is the one this library will not claim: `s3fs` owns it, and clobbering
+that scheme would break every notebook that has it installed. Register it by
+hand when you want this one instead:
+
+```python
+import fsspec
+from xrd.fsspec_impl import S3XRootDFileSystem
+
+fsspec.register_implementation("s3", S3XRootDFileSystem, clobber=True)
+```
+
 ## Direct use
 
 ```python

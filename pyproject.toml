@@ -66,7 +66,7 @@ exclude_also = [
 # gated at the full line-and-branch mark; the optional adapters (fsspec,
 # asyncio, CLI) are not, because their coverage depends on which extras are
 # installed - the suite covers those too, but only when they are there.
-include = ["*/xrd/proto/*", "*/xrd/crypto/*", "*/xrd/client/*"]
+include = ["*/xrd/proto/*", "*/xrd/crypto/*", "*/xrd/client/*", "*/xrd/s3/*"]
 fail_under = 100
 show_missing = true
 skip_covered = true

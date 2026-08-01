@@ -123,10 +123,22 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.http.HTTPClient
 
+## S3
+
+::: xrd.s3.S3FileSystem
+
+::: xrd.s3.open_s3
+
+::: xrd.s3.Credentials
+
+::: xrd.s3.sign
+
 ## Testing
 
 ::: xrd.testing.FakeServer
 
 ::: xrd.testing.FakeDAVServer
+
+::: xrd.testing.FakeS3Server
 
 ::: xrd.testing.FaultProxy

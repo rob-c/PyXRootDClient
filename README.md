@@ -1,8 +1,8 @@
 # PyXRootDClient
 
-A pure-Python client for XRootD. `root://`, `roots://`, `https://` and HEP
-WebDAV, spoken by the same objects, with no compiled extension, no `libXrdCl`,
-and no third-party import in the core.
+A pure-Python client for XRootD. `root://`, `roots://`, `https://`, HEP
+WebDAV and `s3://`, spoken by the same objects, with no compiled extension, no
+`libXrdCl`, and no third-party import in the core.
 
 ```python
 import xrd
@@ -30,8 +30,8 @@ $ pip install pyxrootdclient[krb5]           # the Kerberos mechanism
 ```
 
 Requires Python 3.10+. Almost nothing needs an extra: `http://`, `https://`
-and WebDAV are `http.client`, and GSI/X.509 proxies are pure Python down to
-the AES and RSA. Kerberos is the one exception — see below.
+and WebDAV are `http.client`, S3 is that plus `hmac`, and GSI/X.509 proxies
+are pure Python down to the AES and RSA. Kerberos is the one exception — see below.
 
 ## What it does
 
@@ -86,6 +86,21 @@ transfer is continued rather than restarted with `resume=True`, or `xrd-cp -c`,
 and a file long enough to be worth it is moved by `config.parallel_chunks`
 connections at once, one span of the file each. A tree of small files copies
 `workers=` of them in parallel, `xrd-cp -r --parallel N`.
+
+**Objects.** A bucket is one more endpoint: `s3://bucket/key` reads, writes,
+lists and copies through the same `xrd.open`, `xrd.FileSystem` and `xrd.copy`,
+signed with AWS SigV4 out of `hmac` and `hashlib` — no `boto3`, in the
+dependency tree or the import graph. Credentials come from the environment or
+`~/.aws/credentials`, or are left out entirely for a public bucket; an object
+too long to hold goes up as a multipart upload, and a failed one is aborted
+rather than left in the bucket. Ceph RGW, MinIO and anything else with an
+endpoint are addressed path-style, AWS virtual-hosted.
+
+```python
+fs = xrd.FileSystem("s3://my-bucket", endpoint="https://rgw.example.org")
+fs.listdir("/store/user/me")
+xrd.copy("root://eos.example.org//store/f.root", "s3://my-bucket/store/f.root")
+```
 
 **Async.** `xrd.aio` mirrors the whole surface — same names, same arguments,
 `await` in front. `import xrd` does not import `asyncio`; the facade is
@@ -171,14 +186,16 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
     assert fs.read_bytes("/data/a.root") == b"hello"
 ```
 
-`FakeDAVServer` is the same idea for HTTP and WebDAV.
+`FakeDAVServer` is the same idea for HTTP and WebDAV, and `FakeS3Server` a
+bucket — signatures checked against the AWS specification rather than trusted.
 
 ## Status
 
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
-the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2335 tests, of which the great majority need no network, no KDC and no
+S3, the copy engine, the CLI and the fsspec bindings are implemented and
+tested —
+2413 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

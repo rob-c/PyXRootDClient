@@ -6,7 +6,7 @@ the retry loop, the failure handler, the thing that has to cope with a data
 server disappearing.
 
 ```python
-from xrd.testing import FakeServer, FakeDAVServer, FaultProxy
+from xrd.testing import FakeServer, FakeDAVServer, FakeS3Server, FaultProxy
 ```
 
 Nothing here needs a daemon, a port you own, or root. Everything binds an
@@ -168,6 +168,31 @@ with FakeDAVServer(files={"/d/f.root": b"payload"}) as src, FakeDAVServer(dirs=[
     xrd.third_party(src.url / "d/f.root", dst.url / "d/f.root")
     assert dst.contents("/d/f.root") == b"payload"
 ```
+
+## `FakeS3Server` - a bucket in the test process
+
+```python
+with FakeS3Server(objects={"d/a.root": b"payload"}) as s3:
+    fs = xrd.FileSystem(s3.url, endpoint=s3.endpoint, credentials=creds)
+    assert fs.read_bytes("/d/a.root") == b"payload"
+    assert ("GET", "/test-bucket/d/a.root", "") in s3.seen
+```
+
+| Attribute | Effect |
+| --- | --- |
+| `s3.objects` | key to contents, readable and writable by the test |
+| `s3.access_key`, `s3.secret_key` | what a signature must be made with; `""` accepts anything |
+| `s3.page_size` | keys per listing page, which is how a test reaches the second one |
+| `s3.etags` | the tags of objects that arrived as multipart uploads |
+| `s3.uploads`, `s3.aborted` | multipart uploads in flight, and the ones abandoned |
+| `s3.nameless_uploads = True` | begin an upload without naming it, as nothing sane does |
+| `s3.complete_fails = True` | report a failure inside the `200` that completes an upload |
+| `s3.forbidden = True` | refuse everything, whatever it is signed with |
+| `s3.seen` | `(method, path, query)` for every request served, in order |
+
+Signatures are checked rather than trusted, and the check is written out again
+from the AWS specification instead of calling `xrd.s3.sigv4` - a client that
+signs the wrong string is caught here rather than agreed with.
 
 ## `FaultProxy` - breaking the network
 

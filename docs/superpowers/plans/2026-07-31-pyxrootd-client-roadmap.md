@@ -26,15 +26,23 @@ schedulable and several can run in parallel.
 ## Status — as built
 
 Phases 0–10 are **implemented**: 18 kLOC under `src/xrd/` against 18 kLOC of
-tests, **2335 tests green in ~65 s** with no third-party import anywhere —
+tests, **2413 tests green in ~50 s** with no third-party import anywhere —
 `root://` and `davs://` are peers, any endpoint copies to any other, both are
 awaitable, both are a URL scheme in pandas and a command in a shell, and the
-whole authentication ladder bar Kerberos is pure Python. Of the 2335, 47 are
+whole authentication ladder bar Kerberos is pure Python. Of the 2413, 47 are
 the interoperability and parity suites (a real `xrootd` daemon, and the
 official bindings alongside), 17 need the `[fsspec]` extra and one runs `mypy`
 over the public surface and checks the revealed types; the rest run
-against the stdlib alone. Coverage on `proto/`, `crypto/` and `client/` is
-**100%**, line and branch, and gated there.
+against the stdlib alone. Coverage on `proto/`, `crypto/`, `client/` and `s3/` is
+**100%**, line and branch, and gated there — and is 100% across the whole
+package besides.
+
+Landed since Phase 10, from the same reading of the reference clients: the
+WLCG tape API and `kXR_QPrep` staging, `archive_info`, `kXR_clone` server-side
+range copies, read-ahead in the copy engine, credential prompting, and
+**S3** — `s3://bucket/key` as one more scheme, with SigV4 out of `hmac`,
+multipart uploads, and `xrd.testing.FakeS3Server` to test against
+([S3 object storage](../../s3.md)).
 
 | Phase | State | Shipped as |
 |---|---|---|
@@ -48,7 +56,7 @@ against the stdlib alone. Coverage on `proto/`, `crypto/` and `client/` is
 | 7 GSI / Kerberos | done, **no `[gsi]` extra** | `crypto/{der,aes,rsa,x509}.py` (949) · `auth/gsi.py` (397) · `auth/krb5.py` (299) — X.509 proxies, unsigned-DH GSI, ccache reader, mTLS on both schemes |
 | 8 Copy engine | done | `copy/engine.py` (277) · `copy/tpc.py` (161) · `http/tpc.py` (230) — `copy` · `copy_tree` · `third_party`, which dispatches on the URLs: the `XrdOucTPC` rendezvous for a `root://` pair, the WLCG `COPY` dialect for an HTTP one |
 | 9 Ecosystem (fsspec, CLI) | done | `fsspec_impl.py` (290) · `cli/{__init__,fs,cp}.py` (701) — `xrd-fs` (16 subcommands) · `xrd-cp` · six registered URL schemes |
-| 10 Hardening / 1.0 | done | `tests/test_parity.py` · `tests/test_interop.py` · `tests/test_faults.py` · `testing/faults.py` · `benchmarks/bench.py` · `SECURITY.md` · `docs/` (19 pages, MkDocs Material) · `.github/workflows/ci.yml` · `tests/test_typing.py` |
+| 10 Hardening / 1.0 | done | `tests/test_parity.py` · `tests/test_interop.py` · `tests/test_faults.py` · `testing/faults.py` · `benchmarks/bench.py` · `SECURITY.md` · `docs/` (20 pages, MkDocs Material) · `.github/workflows/ci.yml` · `tests/test_typing.py` |
 
 **Deltas from the plan, and why**
 
@@ -559,7 +567,7 @@ purpose. As built:
    the C client; and `parse_dirlist` accepted server-supplied names containing
    `/` or `..`, which `copy_tree` joins onto a local destination. `SECURITY.md`
    states the threat model and what is enforced.
-5. **Docs** — done: MkDocs Material, 19 pages, including the API reference,
+5. **Docs** — done: MkDocs Material, 20 pages, including the API reference,
    the "coming from pyxrootd" mapping, an auth page per mechanism, the tuning
    notes, and the testing and interoperability guides.
 6. **Coverage gate** — done: 97% on `proto/`, `crypto/` and `client/`, gated

@@ -12,12 +12,15 @@ import posixpath
 import urllib.parse
 from dataclasses import dataclass, field, replace
 
-__all__ = ["XRootDURL", "parse", "DEFAULT_PORT", "ROOT_SCHEMES", "HTTP_SCHEMES"]
+__all__ = ["XRootDURL", "parse", "DEFAULT_PORT", "ROOT_SCHEMES", "HTTP_SCHEMES", "S3_SCHEMES"]
 
 DEFAULT_PORT = 1094
 ROOT_SCHEMES = frozenset({"root", "roots", "xroot", "xroots", "xrootd"})
 HTTP_SCHEMES = frozenset({"http", "https", "dav", "davs", "webdav"})
-_TLS_SCHEMES = frozenset({"roots", "xroots", "https", "davs"})
+#: Object storage. ``s3://bucket/key`` is HTTP underneath, but the host is a
+#: bucket rather than a server, so it is its own thing to this parser.
+S3_SCHEMES = frozenset({"s3"})
+_TLS_SCHEMES = frozenset({"roots", "xroots", "https", "davs", "s3"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +52,10 @@ class XRootDURL:
     @property
     def is_http(self) -> bool:
         return self.scheme in HTTP_SCHEMES
+
+    @property
+    def is_s3(self) -> bool:
+        return self.scheme in S3_SCHEMES
 
     @property
     def is_local(self) -> bool:
@@ -119,7 +126,10 @@ class XRootDURL:
                 auth += ":" + urllib.parse.quote(self.password, safe="")
             auth += "@"
         sep = "//" if self.is_root else "/"
-        base = f"{self.scheme}://{auth}{self.netloc}{sep}{self.path.lstrip('/')}"
+        # A bucket is a name rather than an endpoint, so an ``s3`` URL carries
+        # no port: ``s3://bucket:443/key`` is not what anyone wrote or expects.
+        where = self.host if self.is_s3 else self.netloc
+        base = f"{self.scheme}://{auth}{where}{sep}{self.path.lstrip('/')}"
         if self.query:
             base += "?" + urllib.parse.urlencode(self.query)
         return base
@@ -186,7 +196,7 @@ def parse(url: str | os.PathLike[str] | XRootDURL) -> XRootDURL:
     else:
         host, _, port_s = hostport.partition(":")
 
-    default_port = 443 if scheme in ("https", "davs", "webdav") else (
+    default_port = 443 if scheme in ("https", "davs", "webdav", "s3") else (
         80 if scheme in ("http", "dav") else DEFAULT_PORT
     )
     try:

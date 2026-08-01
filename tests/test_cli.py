@@ -13,7 +13,7 @@ from xrd.cli import Endpoints, config_from, dumps, size_arg
 from xrd.cli import cp as cp_cli
 from xrd.cli import fs as fs_cli
 from xrd.errors import XRootDError
-from xrd.testing import FakeDAVServer, FakeServer
+from xrd.testing import FakeDAVServer, FakeS3Server, FakeServer
 from xrd.types import ChecksumInfo, StatInfo
 from xrd.url import parse
 
@@ -400,6 +400,20 @@ def test_a_copy_between_protocols_works_both_ways(url, dav, tmp_path, capsys):
     assert cp_cli.main(["-q", url + "data/a.root", str(dav.url) + "d/from-root"]) == 0
     capsys.readouterr()
     assert dav.contents("/d/from-root") == BODY
+
+
+def test_a_bucket_is_a_url_like_any_other_at_the_command_line(url, monkeypatch, capsys):
+    """No S3 flags: the credentials come from the environment, as they do for
+    every other S3 tool, and the URL is what tells the CLI where to look."""
+    with FakeS3Server(objects={"d/a.root": BODY}) as s3:
+        monkeypatch.setenv("AWS_ENDPOINT_URL", s3.endpoint)
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", s3.access_key)
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", s3.secret_key)
+        code, out, _err = run(["ls", "-l", "s3://test-bucket/d"], capsys)
+        assert (code, "a.root" in out) == (0, True)
+        assert cp_cli.main(["-q", url + "data/a.root", "s3://test-bucket/d/from-root"]) == 0
+        capsys.readouterr()
+        assert s3.contents("d/from-root") == BODY
 
 
 # ---------------------------------------------------------------------------

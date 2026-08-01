@@ -190,9 +190,9 @@ class HTTPRawIO(io.RawIOBase):
         if not self._writable:
             raise io.UnsupportedOperation("not writable")
         payload = bytes(data)
-        if self._upload is None:
+        if not self._streaming:
             self._buffer += payload
-            if len(self._buffer) <= self.config.chunk_size:
+            if len(self._buffer) <= self._stream_after():
                 return len(payload)
             self._begin_upload()  # too big to hold: switch to streaming
         else:
@@ -200,10 +200,28 @@ class HTTPRawIO(io.RawIOBase):
         self._pos += len(payload)
         return len(payload)
 
+    @property
+    def _streaming(self) -> bool:
+        """Has the upload started? A subclass whose upload is a series of
+        requests rather than one open connection says so its own way."""
+        return self._upload is not None
+
+    def _stream_after(self) -> int:
+        """How much may be held in hand before the upload has to start.
+
+        A subclass whose protocol has a minimum piece size - S3's multipart
+        upload does - raises this so that the first piece is a legal one.
+        """
+        return self.config.chunk_size
+
     def _begin_upload(self) -> None:
         """Start a chunked ``PUT`` and flush whatever is already buffered."""
         conn = self.client.connection(self.url)
-        headers = self.client.headers_for(self.url, self._conditional())
+        # ``None`` for the body: it is about to be streamed, so a signer that
+        # would hash it has nothing to hash yet.
+        headers = self.client.sign(
+            "PUT", self.url, self.client.headers_for(self.url, self._conditional()), None
+        )
         conn.putrequest("PUT", request_target(self.url))
         for name, value in headers.items():
             conn.putheader(name, value)
@@ -268,7 +286,7 @@ class HTTPRawIO(io.RawIOBase):
         self._done = True
         try:
             if self._writable:
-                self._finish_upload() if self._upload is not None else self._put_buffered()
+                self._finish_upload() if self._streaming else self._put_buffered()
         finally:
             self._drop_stream()
             if self._owns_client:
@@ -289,6 +307,7 @@ def open_http(  # type: ignore[overload-overlap]
     newline: None = ...,
     config: Config | None = ...,
     client: HTTPClient | None = ...,
+    raw: type[HTTPRawIO] = ...,
 ) -> HTTPRawIO: ...
 
 
@@ -303,6 +322,7 @@ def open_http(
     newline: None = ...,
     config: Config | None = ...,
     client: HTTPClient | None = ...,
+    raw: type[HTTPRawIO] = ...,
 ) -> BinaryIO: ...
 
 
@@ -317,6 +337,7 @@ def open_http(
     newline: str | None = ...,
     config: Config | None = ...,
     client: HTTPClient | None = ...,
+    raw: type[HTTPRawIO] = ...,
 ) -> TextIO: ...
 
 
@@ -331,6 +352,7 @@ def open_http(
     newline: str | None = ...,
     config: Config | None = ...,
     client: HTTPClient | None = ...,
+    raw: type[HTTPRawIO] = ...,
 ) -> IO[Any]: ...
 
 
@@ -344,6 +366,7 @@ def open_http(
     newline: str | None = None,
     config: Config | None = None,
     client: HTTPClient | None = None,
+    raw: type[HTTPRawIO] = HTTPRawIO,
 ) -> IO[Any] | io.RawIOBase:
     """Open an ``http``/``https``/``dav``/``davs`` URL like :func:`open`.
 
@@ -355,6 +378,10 @@ def open_http(
     binary stream otherwise, wrapped in a text layer unless the mode says
     ``b``. ``x`` refuses an existing resource; ``a`` cannot be honoured over
     HTTP and raises.
+
+    ``raw`` names the class that does the talking, which is how
+    :class:`xrd.s3.S3RawIO` gets S3's upload without a second copy of the
+    buffering, text and mode handling around it.
     """
     from ..io import parse_mode
 
@@ -368,12 +395,12 @@ def open_http(
             kXR_Unsupported, "HTTP has no partial update; open for reading or for writing"
         )
 
-    raw = HTTPRawIO(url, mode, config=config, client=client)
+    handle = raw(url, mode, config=config, client=client)
     if buffering == 0:
-        return raw
+        return handle
     size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
     stream: BinaryIO = (
-        io.BufferedWriter(raw, size) if raw.writable() else io.BufferedReader(raw, size)
+        io.BufferedWriter(handle, size) if handle.writable() else io.BufferedReader(handle, size)
     )
     if binary:
         return stream

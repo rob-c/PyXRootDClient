@@ -8,6 +8,7 @@ the *client* does, which is the only part of this that ships.
 
 from __future__ import annotations
 
+import socket
 import threading
 import time
 
@@ -386,3 +387,59 @@ def test_a_connection_is_recorded_only_once_its_thread_is_running(broken, monkey
     with FileSystem(broken.url) as fs:
         fs.ping()
     assert recorded_early and not any(recorded_early)
+
+
+def test_a_peer_that_stops_reading_is_dropped_instead_of_jamming_the_proxy():
+    """The proxy writes with a timeout, so one wedged connection cannot stop it
+    serving the next: the wedged one is torn down and the port stays usable."""
+    blast = b"Z" * (2 << 20)
+    listener = socket.create_server(("127.0.0.1", 0))
+
+    def send(peer: socket.socket) -> None:
+        with peer:
+            try:
+                peer.sendall(blast)
+            except OSError:
+                pass  # the proxy hung up on us, which is the point
+
+    def flood() -> None:
+        while True:
+            peer, _ = listener.accept()
+            threading.Thread(target=send, args=(peer,), daemon=True).start()
+
+    thread = threading.Thread(target=flood, daemon=True)
+    thread.start()
+    try:
+        with FaultProxy(listener.getsockname()) as proxy:
+            client = socket.socket()
+            client.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)  # no autotuning
+            with client:
+                client.connect(proxy.address)
+                client.settimeout(10.0)
+                done = threading.Event()
+
+                def trickle() -> None:
+                    """Keep asking, so the proxy is never idle - only wedged."""
+                    while not done.is_set():
+                        try:
+                            client.send(b".")
+                        except OSError:
+                            return
+                        time.sleep(0.001)
+
+                threading.Thread(target=trickle, daemon=True).start()
+                quiet = 0
+                while quiet < 4:  # nothing moving means the proxy gave up
+                    seen = proxy.bytes_from_server
+                    time.sleep(0.1)
+                    quiet = quiet + 1 if proxy.bytes_from_server == seen else 0
+                done.set()
+                got = 0
+                while chunk := client.recv(65536):
+                    got += len(chunk)
+            assert 0 < got < len(blast)  # dropped part-way, not delivered whole
+
+            with socket.create_connection(proxy.address) as after:
+                assert after.recv(1)  # and the proxy is still serving
+    finally:
+        listener.close()
