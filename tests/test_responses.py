@@ -378,6 +378,36 @@ def test_protocol_flags_are_readable_as_questions():
     assert server.is_server and not server.is_manager and not server.has_tls
 
 
+@pytest.mark.parametrize(
+    "flag, question",
+    [
+        (c.kXR_attrMeta, "is_meta"),
+        (c.kXR_attrProxy, "is_proxy"),
+        (c.kXR_attrSuper, "is_supervisor"),
+        (c.kXR_attrCache, "is_cache"),
+        (c.kXR_supposc, "supports_posc"),
+        (c.kXR_suppgrw, "supports_pgio"),
+        (c.kXR_supgpf, "supports_gpfile"),
+        (c.kXR_anongpf, "allows_anonymous_gpfile"),
+        (c.kXR_tlsData, "requires_tls_for_data"),
+    ],
+)
+def test_every_capability_the_server_announces_is_one_property(flag, question):
+    from xrd.types import ProtocolInfo
+
+    assert getattr(ProtocolInfo(flags=flag), question)
+    assert not getattr(ProtocolInfo(flags=~flag & 0xFFFFFFFF), question)
+
+
+def test_the_tls_qualifier_bits_are_the_ones_xprotocol_defines():
+    """``kXR_tlsData`` and ``kXR_tlsGPF`` are adjacent and easy to transpose,
+    and a client that swapped them would encrypt for the wrong reason."""
+    assert c.kXR_tlsData == 0x01000000
+    assert c.kXR_tlsGPF == 0x02000000
+    for flag in (c.kXR_tlsData, c.kXR_tlsGPF, c.kXR_tlsLogin, c.kXR_tlsSess, c.kXR_tlsTPC):
+        assert flag & c.kXR_tlsAny == flag
+
+
 def test_a_page_result_measures_the_data_it_carries():
     from xrd.types import PageResult
 

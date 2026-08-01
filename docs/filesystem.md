@@ -127,7 +127,7 @@ fh = fs.open("/store/f.root", "rb")     # shares this connection
 
 ```python
 fs.ping()                     # returns None; raises if it is not there
-fs.protocol()                 # ProtocolInfo: version, flags, security
+fs.protocol()                 # ProtocolInfo: version, flags, capabilities
 fs.query_config("version", "role", "sitename")
 fs.query(QueryCode.SPACE, "/store")
 fs.checksum("/store/f.root")            # ChecksumInfo(algorithm, value)
@@ -233,6 +233,20 @@ fs.set_property("monitor off")       # kXR_set, for anything else
 `appid()` is `set_property("appid ...")` with the string built for you. The
 directive goes to the server verbatim, so `set_property()` is also how a new
 one reaches you without waiting for a release.
+
+`protocol()` answers what kind of server this is and what it can do, one
+question per property rather than a flags word to mask by hand:
+
+```python
+info = fs.protocol()
+info.version_str                    # '5.6.0'
+info.is_server, info.is_manager     # a data server, or something that redirects
+info.is_meta, info.is_supervisor, info.is_proxy, info.is_cache
+info.supports_pgio                  # pgread/pgwrite, with a CRC per page
+info.supports_posc                  # a failed write leaves no file behind
+info.supports_gpfile, info.allows_anonymous_gpfile
+info.has_tls, info.requires_tls_for_data
+```
 
 `checksum()` asks for `config.preferred_checksum` (`adler32` by default) and
 returns whatever the server actually computed, which is not always what you

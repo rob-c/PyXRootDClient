@@ -254,6 +254,46 @@ class ProtocolInfo:
     def is_server(self) -> bool:
         return bool(self.flags & 0x00000001)
 
+    @property
+    def is_meta(self) -> bool:
+        """A meta-manager: it redirects to managers, not to data servers."""
+        return bool(self.flags & 0x00000100)  # kXR_attrMeta
+
+    @property
+    def is_proxy(self) -> bool:
+        return bool(self.flags & 0x00000200)  # kXR_attrProxy
+
+    @property
+    def is_supervisor(self) -> bool:
+        return bool(self.flags & 0x00000400)  # kXR_attrSuper
+
+    @property
+    def is_cache(self) -> bool:
+        return bool(self.flags & 0x00000080)  # kXR_attrCache
+
+    @property
+    def supports_posc(self) -> bool:
+        """Persist-on-successful-close: a write that dies leaves no file."""
+        return bool(self.flags & 0x00100000)  # kXR_supposc
+
+    @property
+    def supports_pgio(self) -> bool:
+        """``pgread`` and ``pgwrite`` - reads and writes with a CRC per page."""
+        return bool(self.flags & 0x00200000)  # kXR_suppgrw
+
+    @property
+    def supports_gpfile(self) -> bool:
+        return bool(self.flags & 0x00400000)  # kXR_supgpf
+
+    @property
+    def allows_anonymous_gpfile(self) -> bool:
+        return bool(self.flags & 0x00800000)  # kXR_anongpf
+
+    @property
+    def requires_tls_for_data(self) -> bool:
+        """File data must move encrypted, whatever the login did."""
+        return bool(self.flags & 0x01000000)  # kXR_tlsData
+
 
 @dataclass(frozen=True, slots=True)
 class ChecksumInfo:

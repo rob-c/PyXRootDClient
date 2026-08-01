@@ -330,13 +330,34 @@ def test_a_server_that_demands_tls_stops_for_the_upgrade():
     assert struct.unpack(">H", machine.data_to_send()[2:4])[0] == c.kXR_login
 
 
-@pytest.mark.parametrize("flag", [c.kXR_gotoTLS, c.kXR_tlsLogin, c.kXR_tlsSess])
+@pytest.mark.parametrize("flag", [c.kXR_gotoTLS, c.kXR_tlsLogin, c.kXR_tlsSess, c.kXR_tlsData])
 def test_every_tls_demand_flag_is_honoured(flag):
     machine = new()
     machine.start()
     machine.receive_data(handshake_reply())
     machine.receive_data(ok(1, protocol_body(flags=c.kXR_haveTLS | flag)))
     assert machine.state is m.State.TLS
+
+
+def test_a_server_that_wants_data_encrypted_gets_the_whole_socket_encrypted():
+    """``kXR_tlsData`` names file data, not the login - but this client reads
+    and writes on the connection it logged in on, so there is nowhere else for
+    the bytes to go."""
+    machine = new()
+    machine.start()
+    machine.receive_data(handshake_reply())
+    machine.receive_data(ok(1, protocol_body(flags=c.kXR_haveTLS | c.kXR_tlsData)))
+    assert only(machine, m.NeedTLS).reason == "server requested TLS"
+
+
+def test_a_bit_that_names_one_request_does_not_upgrade_the_session():
+    """``kXR_tlsGPF`` and ``kXR_tlsTPC`` qualify requests this client either
+    does not send or does not send over this socket."""
+    machine = new()
+    machine.start()
+    machine.receive_data(handshake_reply())
+    machine.receive_data(ok(1, protocol_body(flags=c.kXR_haveTLS | c.kXR_tlsGPF | c.kXR_tlsTPC)))
+    assert machine.state is not m.State.TLS
 
 
 def test_client_policy_upgrades_even_when_the_server_did_not_ask():

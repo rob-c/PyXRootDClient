@@ -93,17 +93,29 @@ kXR_asynresp = 5008
 # ---- kXR_protocol response flags ----
 kXR_isManager = 0x00000002
 kXR_isServer = 0x00000001
+kXR_attrCache = 0x00000080
 kXR_attrMeta = 0x00000100
 kXR_attrProxy = 0x00000200
 kXR_attrSuper = 0x00000400
+kXR_attrVirtRdr = 0x00000800
+# Set on a redirect rather than announced by the server it came from.
+kXR_recoverWrts = 0x00001000
+kXR_collapseRedir = 0x00002000
+kXR_ecRedir = 0x00004000
+# What the server says it supports.
+kXR_supposc = 0x00100000
+kXR_suppgrw = 0x00200000
+kXR_supgpf = 0x00400000
+kXR_anongpf = 0x00800000
 kXR_haveTLS = 0x80000000
 kXR_gotoTLS = 0x40000000
 kXR_tlsAny = 0x1F000000
-kXR_tlsData = 0x02000000
-kXR_tlsGPF = 0x01000000
+kXR_tlsData = 0x01000000
+kXR_tlsGPF = 0x02000000
 kXR_tlsLogin = 0x04000000
 kXR_tlsSess = 0x08000000
 kXR_tlsTPC = 0x10000000
+kXR_tlsGPFA = 0x20000000
 
 # ---- handshake / kXR_protocol request ----
 ROOTD_PQ = 2012

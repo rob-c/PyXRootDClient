@@ -33,6 +33,15 @@ reviewer reads. `Config(require_tls=True)` refuses to speak to a server that
 will not upgrade, which is the setting to use when you are carrying a bearer
 token.
 
+**A server's own TLS demand is honoured, including the one about data.** A
+`kXR_protocol` reply carries what the server insists on encrypting; `kXR_gotoTLS`,
+`kXR_tlsLogin` and `kXR_tlsSess` all upgrade the connection before the login
+goes out, and so does `kXR_tlsData`. That last one names file data rather than
+the session, but this client reads and writes on the connection it logged in
+on, so there is nowhere for the bytes to go that the socket does not reach -
+encrypting everything is the only reading that keeps the promise. A server
+that demands TLS and does not offer it is an error, not a downgrade.
+
 **Credentials do not reach logs, reprs or tracebacks.** Every logger under
 `xrd.` carries a filter that interpolates the record and then redacts the
 result, so a secret that only becomes recognisable once the format string and

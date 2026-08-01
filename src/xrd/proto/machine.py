@@ -539,7 +539,12 @@ class SessionMachine:
 
     def _after_protocol(self) -> None:
         flags = self.protocol_info.flags
-        demanded = bool(flags & (c.kXR_gotoTLS | c.kXR_tlsLogin | c.kXR_tlsSess))
+        # ``kXR_tlsData`` belongs here with the session-wide bits: this client
+        # reads and writes on the connection it logged in on, so a server that
+        # wants file data encrypted wants this socket encrypted.
+        demanded = bool(
+            flags & (c.kXR_gotoTLS | c.kXR_tlsLogin | c.kXR_tlsSess | c.kXR_tlsData)
+        )
         if self.want_tls or demanded:
             if not flags & c.kXR_haveTLS:
                 self._fail(
