@@ -194,6 +194,10 @@ kXR_fattrSet = 3
 kXR_fattrMaxVars = 16
 kXR_fattrIsNew = 0x01
 kXR_fattrAData = 0x10
+# nginx-xrootd's ``kXR_fa_recurse``: list the attributes of every file under a
+# directory rather than the directory's own. The reply is not the reply the
+# other subcodes send - see ``parse_fattr_tree``.
+kXR_fattrRecurse = 0x20
 
 # ---- kXR_chkpoint subcodes ----
 kXR_ckpBegin = 0

@@ -38,6 +38,7 @@ $ xrd-fs locate --deep root://host//store/f.root
 $ xrd-fs ping root://host
 $ xrd-fs query root://host version role sitename
 $ xrd-fs xattr --set user.experiment=atlas root://host//store/f.root
+$ xrd-fs xattr -r root://host//store/run7               # names, whole subtree
 $ xrd-fs tail -n 20 root://host//store/log.txt
 $ xrd-fs tail -f root://host//store/running.log        # keep printing appends
 $ xrd-fs du root://host//store/run7
@@ -62,7 +63,9 @@ listing, one request per directory, and falls back to one stat per entry when
 the server lists without sizes. `ln`, `ln -s`, `readlink`, `chown` and
 `touch --time` are a **vendor extension** - stock XRootD answers
 `kXR_Unsupported`, and HTTP has no verb for them at all; see
-[Interoperability](interop.md). Plain `touch` is not: it creates a file and
+[Interoperability](interop.md). So is `xattr -r`, which prints one
+`path: name` line per attribute found under a directory, and prints nothing
+at all on a server that does not implement it. Plain `touch` is not: it creates a file and
 leaves an existing one alone, which every server understands.
 
 ## `xrd-cp`

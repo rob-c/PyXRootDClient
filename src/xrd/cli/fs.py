@@ -444,6 +444,15 @@ def _xattr(args: argparse.Namespace, endpoints: Endpoints) -> int:
     if args.remove is not None:
         filesystem.removexattr(path, args.remove)
         return OK
+    if args.recursive:
+        tree = filesystem.listxattr_tree(path)
+        if args.json:
+            print(dumps(tree))
+            return OK
+        for name, names in tree.items():
+            for attribute in names:
+                print(f"{name}: {attribute}")
+        return OK
     attributes = filesystem.xattrs(path)
     if args.json:
         print(dumps(attributes))
@@ -578,6 +587,12 @@ def _parser() -> argparse.ArgumentParser:
     xattr.add_argument("url")
     xattr.add_argument("--set", metavar="NAME=VALUE", help="set one attribute")
     xattr.add_argument("--remove", metavar="NAME", help="remove one attribute")
+    xattr.add_argument(
+        "-r",
+        "--recursive",
+        action="store_true",
+        help="names only, for every file under a directory (a vendor extension)",
+    )
 
     return parser
 

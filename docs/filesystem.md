@@ -237,6 +237,26 @@ a request that failed for the attribute you named still comes back as
 `create_only=True` name that is already there, `AttrNotFoundError` (an
 `OSError` with `ENODATA`) for removing one that is not.
 
+A whole subtree's names come back in one round trip:
+
+```python
+fs.listxattr_tree("/store/run7")
+# {'a.root': ['user.experiment'], 'sub/b.root': ['user.run', 'user.experiment']}
+```
+
+The paths are relative to the directory asked about, only files that have
+attributes appear, and the values are not included - the reply has nowhere to
+put them.
+
+!!! warning "`listxattr_tree` is a vendor extension, and a quiet one"
+    It sets `kXR_fa_recurse` (`0x20`), which only nginx-xrootd implements. A
+    server that does not know the bit ignores it and lists the *directory's*
+    own attributes, whose reply has a different shape and parses here as an
+    empty tree - so an empty answer means "nothing, or nobody listening", and
+    is not something to branch on. The server also caps its reply and drops
+    the remainder of a large tree without saying so. Where either matters,
+    `fs.walk()` and a `listxattr` per file is the answer you can trust.
+
 ## Sharing a connection
 
 Every object that talks to a server accepts an existing router, and

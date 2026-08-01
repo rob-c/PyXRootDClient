@@ -320,6 +320,27 @@ def test_parse_fattr_stops_when_the_body_runs_out_before_the_count_does():
     assert result.as_dict() == {"a": b"hi"}
 
 
+def test_parse_fattr_tree_groups_the_names_by_the_file_they_are_on():
+    body = b"a.root:user.owner\x00sub/b.root:user.run\x00sub/b.root:user.owner\x00"
+    assert rp.parse_fattr_tree(body) == {
+        "a.root": ["user.owner"],
+        "sub/b.root": ["user.run", "user.owner"],
+    }
+
+
+def test_parse_fattr_tree_splits_on_the_last_colon():
+    """A colon is legal in a path and unheard of in an attribute name, so the
+    last one is the separator - anything else would lose the file."""
+    assert rp.parse_fattr_tree(b"odd:name.root:user.x\x00") == {"odd:name.root": ["user.x"]}
+
+
+def test_parse_fattr_tree_ignores_an_entry_that_is_not_one():
+    """A server that does not know the flag answers the ordinary list reply,
+    whose bytes carry no colon: an empty tree beats a confident wrong one."""
+    assert rp.parse_fattr_tree(b"") == {}
+    assert rp.parse_fattr_tree(bytes([0, 1]) + struct.pack(">H", 0) + b"user.x\x00") == {}
+
+
 # ---------------------------------------------------------------------------
 # The value objects the parsers hand back
 # ---------------------------------------------------------------------------

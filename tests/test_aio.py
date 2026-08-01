@@ -349,6 +349,7 @@ def test_extended_attributes(server):
             assert await fs.getxattr("/data/a.root", "run") == b"42"
             assert await fs.listxattr("/data/a.root") == ["run"]
             assert await fs.xattrs("/data/a.root") == {"run": b"42"}
+            assert await fs.listxattr_tree("/data") == {"a.root": ["run"]}
             await fs.removexattr("/data/a.root", "run")
             assert await fs.xattrs("/data/a.root") == {}
 

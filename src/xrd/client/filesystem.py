@@ -757,6 +757,23 @@ class FileSystem:
         res = self._router.execute(r.Fattr.list(target), path=target)
         return [item.name for item in rp.parse_fattr(res.data, values=False).items]
 
+    def listxattr_tree(self, path: str) -> dict[str, list[str]]:
+        """Attribute names for a whole subtree: ``relative path -> names``.
+
+        One round trip for a directory that :meth:`listxattr` would have to
+        walk. It is a vendor extension - ``kXR_fattrRecurse``, nginx-xrootd's
+        ``kXR_fa_recurse`` - and a server without it lists the directory's own
+        attributes instead, which parses as an empty tree rather than as an
+        error, so treat the empty answer as "nothing, or nobody listening".
+
+        Only regular files are reported, the paths are relative to *path*, and
+        a server that hits its reply ceiling drops the rest of the tree
+        silently; a subtree of any size is safer walked with :meth:`walk`.
+        """
+        target = self._abs(path)
+        res = self._router.execute(r.Fattr.list(target, recurse=True), path=target)
+        return rp.parse_fattr_tree(res.data)
+
     def xattrs(self, path: str) -> dict[str, bytes]:
         """Every attribute and its value, in one round trip."""
         target = self._abs(path)

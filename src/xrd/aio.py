@@ -617,6 +617,9 @@ class AsyncFileSystem:
     async def listxattr(self, path: str) -> list[str]:
         return await _run(self._sync.listxattr, path)
 
+    async def listxattr_tree(self, path: str) -> dict[str, list[str]]:
+        return await _run(self._sync.listxattr_tree, path)
+
     async def xattrs(self, path: str) -> dict[str, bytes]:
         return await _run(self._sync.xattrs, path)
 

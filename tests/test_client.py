@@ -536,6 +536,36 @@ def test_reading_a_missing_xattr_raises(fs):
         fs.getxattr("/data/a.root", "user.nothing")
 
 
+def test_a_subtree_of_attributes_arrives_in_one_round_trip(fs):
+    """The paths come back relative to the directory asked about, the files
+    without attributes are not mentioned at all, and neither is anything
+    outside the tree - a walk that escaped the directory asked about would be
+    the same bug the listings are checked for."""
+    fs.write_bytes("/data/sub/b.root", b"x")
+    fs.write_bytes("/data/sub/quiet.root", b"x")
+    fs.write_bytes("/elsewhere/c.root", b"x")
+    fs.setxattr("/data/a.root", "user.owner", b"alice")
+    fs.setxattr("/data/sub/b.root", "user.run", b"42")
+    fs.setxattr("/data/sub/b.root", "user.owner", b"bob")
+    fs.setxattr("/elsewhere/c.root", "user.owner", b"eve")
+    assert fs.listxattr_tree("/data") == {
+        "a.root": ["user.owner"],
+        "sub/b.root": ["user.owner", "user.run"],
+    }
+
+
+def test_a_subtree_with_no_attributes_anywhere_is_empty(fs):
+    assert fs.listxattr_tree("/data") == {}
+
+
+def test_a_subtree_listing_of_a_file_falls_back_to_the_files_own(fs):
+    """A server that does not know the flag ignores it, and one that does
+    only takes the recursive path for a directory. Either way a file lists
+    its own attributes, which parse as no tree at all."""
+    fs.setxattr("/data/a.root", "user.owner", b"alice")
+    assert fs.listxattr_tree("/data/a.root") == {}
+
+
 # ---------------------------------------------------------------------------
 # FileSystem: lifecycle
 # ---------------------------------------------------------------------------

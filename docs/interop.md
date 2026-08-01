@@ -89,12 +89,22 @@ Mode is deliberately not in the block, because `kXR_chmod` already carries it.
 Neither call follows a final symbolic link: the server uses
 `AT_SYMLINK_NOFOLLOW`, so on a link they change the link.
 
-Two option bits are vendor extensions of standard requests rather than new
+Three option bits are vendor extensions of standard requests rather than new
 requests. `kXR_statNoFollow` (`0x40` of the `kXR_stat` options byte, the value
 nginx-xrootd reads) is what `lstat` and `stat(follow_symlinks=False)` set;
 XProtocol's stat options stop at `kXR_vfs`, and XRootD.jl picked `0x02` for the
 same idea, which no server implements. `kXR_clone` (3032) is one past
 `kXR_REQFENCE` - see [Files](files.md#copying-ranges-without-moving-them).
+`kXR_fa_recurse` (`0x20` of the `kXR_fattr` options byte) is the third, and the
+one that fails most quietly: it turns a list of a directory's own attributes
+into a walk of the files beneath it, and the reply it comes back with is not a
+`kXR_fattr` reply at all but a flat run of `relpath:name\0` entries with no
+count and no per-attribute status. A server that does not know the bit ignores
+it and answers the ordinary list, which is why `listxattr_tree` parses an
+answer with no entries in it as an empty tree rather than raising - there is no
+way to tell "no attributes anywhere" from "not implemented here". The server
+also caps the reply at 256 KiB and drops what does not fit, without a flag to
+say it did, so a subtree big enough to matter is one to walk instead.
 
 `kXR_evict` is the opposite case: a real protocol flag that is easy to send
 wrongly. It is `0x0001` of `optionX`, the extended half-word four bytes into a

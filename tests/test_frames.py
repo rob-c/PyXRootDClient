@@ -276,6 +276,15 @@ def test_fattr_list_takes_no_names():
     assert body_of(r.Fattr.list("/p")) == b"/p\x00"
 
 
+def test_fattr_list_asks_for_values_and_a_subtree_in_the_options_byte():
+    """The two flags are independent bits of the same byte, and a subtree
+    listing asks for names only - the reply has nowhere to put a value."""
+    assert r.Fattr.list("/p").options == 0
+    assert r.Fattr.list("/p", values=True).options == c.kXR_fattrAData
+    assert r.Fattr.list("/p", recurse=True).options == c.kXR_fattrRecurse
+    assert body_of(r.Fattr.list("/p", recurse=True)) == b"/p\x00"
+
+
 def test_only_reading_fattr_subcodes_are_replayable():
     assert r.Fattr.get("/p", "a").idempotent is True
     assert r.Fattr.list("/p").idempotent is True

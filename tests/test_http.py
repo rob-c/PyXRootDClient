@@ -367,6 +367,7 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.protocol(),
         lambda: fs.xattrs("/d/a.root"),
         lambda: fs.listxattr("/d/a.root"),
+        lambda: fs.listxattr_tree("/d"),
         lambda: fs.getxattr("/d/a.root", "x"),
         lambda: fs.setxattr("/d/a.root", "x", b"1"),
         lambda: fs.removexattr("/d/a.root", "x"),

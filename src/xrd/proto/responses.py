@@ -33,7 +33,7 @@ __all__ = [
     "parse_dirlist", "parse_locate", "parse_open", "parse_checksum",
     "parse_checkpoint", "parse_readlink", "parse_space", "parse_prepare_status",
     "parse_error", "parse_redirect", "parse_wait", "parse_waitresp", "parse_attn",
-    "parse_status", "parse_readv", "parse_fattr",
+    "parse_status", "parse_readv", "parse_fattr", "parse_fattr_tree",
 ]
 
 
@@ -529,3 +529,26 @@ def parse_fattr(data: bytes, values: bool = True) -> FattrResult:
             value = r.bytes(r.i32())
         items.append(FattrItem(name, code, value))
     return FattrResult(errors, items)
+
+
+def parse_fattr_tree(data: bytes) -> dict[str, list[str]]:
+    """``kXR_fattr`` list with ``kXR_fattrRecurse`` - ``relpath:name\\0`` each.
+
+    The recursive reply carries neither the count header nor the per-attribute
+    return codes the other subcodes send, because there is no one attribute for
+    a code to belong to: it is a flat run of NUL-terminated entries, each a
+    path relative to the directory asked about and the attribute found on it.
+
+    The separator is a colon, which a path is allowed to contain and an
+    attribute name is not expected to, so the *last* one is the split. Names
+    arrive grouped by file already; the order of both is the server's.
+    """
+    tree: dict[str, list[str]] = {}
+    for entry in data.split(b"\x00"):
+        if not entry:
+            continue
+        path, sep, name = entry.decode("utf-8", "replace").rpartition(":")
+        if not sep:
+            continue
+        tree.setdefault(path, []).append(name)
+    return tree

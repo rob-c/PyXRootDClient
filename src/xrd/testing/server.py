@@ -996,6 +996,20 @@ def _h_fattr(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
     path = _clean(path)
     if path not in conn.s.files and path not in conn.s.dirs:
         raise _NotFound(path)
+    if subcode == c.kXR_fattrList and options & c.kXR_fattrRecurse and path in conn.s.dirs:
+        # The recursive reply is a flat run of ``relpath:name`` entries with no
+        # header, and only regular files carry them - directories in the way
+        # are walked through rather than reported.
+        prefix = path.rstrip("/") + "/"
+        entries = bytearray()
+        for name in sorted(conn.s.files):
+            if not name.startswith(prefix):
+                continue
+            for attribute in sorted(conn.s.xattrs.get(name, {})):
+                entries += f"{name[len(prefix) :]}:{attribute}".encode() + b"\x00"
+        yield _frame(sid, c.kXR_ok, bytes(entries))
+        return
+
     store = conn.s.xattrs.setdefault(path, {})
 
     if subcode == c.kXR_fattrList:

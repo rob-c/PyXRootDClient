@@ -877,11 +877,18 @@ class Fattr(Request):
         )
 
     @classmethod
-    def list(cls, path: str, values: bool = False, fhandle: bytes = c.NULL_FHANDLE) -> Fattr:
+    def list(
+        cls,
+        path: str,
+        values: bool = False,
+        fhandle: bytes = c.NULL_FHANDLE,
+        recurse: bool = False,
+    ) -> Fattr:
+        options = (c.kXR_fattrAData if values else 0) | (c.kXR_fattrRecurse if recurse else 0)
         return cls(
             c.kXR_fattrList,
             Writer().text(path, nul=True).bytes(),
-            options=c.kXR_fattrAData if values else 0,
+            options=options,
             fhandle=fhandle,
         )
 

@@ -248,6 +248,14 @@ def test_xattr_gets_sets_and_removes(url, capsys):
     assert run(["xattr", "--json", url + "data/a.root"], capsys)[1].strip() == "{}"
 
 
+def test_xattr_recursive_lists_names_under_a_directory(url, capsys):
+    assert run(["xattr", url + "data/a.root", "--set", "run=42"], capsys)[0] == 0
+    _code, out, _ = run(["xattr", "-r", url + "data"], capsys)
+    assert out.strip() == "a.root: run"
+    _code, payload, _ = run(["xattr", "--json", "-r", url + "data"], capsys)
+    assert json.loads(payload) == {"a.root": ["run"]}
+
+
 # ---------------------------------------------------------------------------
 # xrd-fs: failure modes
 # ---------------------------------------------------------------------------

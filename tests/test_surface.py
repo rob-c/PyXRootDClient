@@ -123,6 +123,7 @@ FILESYSTEM = {
     "hardlink": lambda fs: fs.hardlink("f.root", "hard.root"),
     "link": lambda fs: fs.link("f.root", "linked.root"),
     "listxattr": lambda fs: fs.listxattr("f.root"),
+    "listxattr_tree": lambda fs: fs.listxattr_tree("."),
     "locate": lambda fs: fs.locate("f.root"),
     "makedirs": lambda fs: fs.makedirs("deep/deeper"),
     "mkdir": lambda fs: fs.mkdir("fresh"),

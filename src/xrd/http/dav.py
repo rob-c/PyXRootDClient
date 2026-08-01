@@ -668,6 +668,9 @@ class HTTPFileSystem(FileSystem):
     def listxattr(self, path: str) -> list[str]:
         raise self._unsupported("extended attributes")
 
+    def listxattr_tree(self, path: str) -> dict[str, list[str]]:
+        raise self._unsupported("extended attributes")
+
     def xattrs(self, path: str) -> dict[str, bytes]:
         raise self._unsupported("extended attributes")
 
