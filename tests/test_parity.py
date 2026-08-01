@@ -121,10 +121,15 @@ def test_the_protocol_negotiation_lands_on_the_same_numbers(ours, theirs):
 
     ``XRootD.client`` reports ``version`` and ``hostinfo`` in network order,
     so 5.1.1 arrives as ``0x11050000``; swap it and the two agree exactly.
+
+    The number itself belongs to whichever daemon is installed - 5.9.6 answers
+    ``0x0511``, later ones answer more - so the assertion is that both clients
+    read the same word, and that it is a protocol 5 server.
     """
     mine = ours.protocol()
     yours = check(*theirs.protocol())
-    assert mine.version == socket.ntohl(yours.version) == 0x0511
+    assert mine.version == socket.ntohl(yours.version)
+    assert mine.version >> 8 == 0x05
     assert mine.flags == socket.ntohl(yours.hostinfo)
 
 

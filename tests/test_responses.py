@@ -301,6 +301,15 @@ def test_parse_fattr_tolerates_an_empty_body():
     assert rp.parse_fattr(b"").items == []
 
 
+def test_parse_fattr_stops_when_the_body_runs_out_before_the_count_does():
+    """``nattr`` is the server's promise, not a guarantee: a truncated reply
+    yields the entries that did arrive rather than raising over the rest."""
+    body = bytes([0, 3]) + struct.pack(">H", 0) + b"a\x00" + struct.pack(">i", 2) + b"hi" + b"\x00"
+    result = rp.parse_fattr(body)
+    assert [i.name for i in result.items] == ["a"]
+    assert result.as_dict() == {"a": b"hi"}
+
+
 # ---------------------------------------------------------------------------
 # The value objects the parsers hand back
 # ---------------------------------------------------------------------------
