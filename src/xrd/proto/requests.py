@@ -21,7 +21,7 @@ __all__ = [
     "Mkdir", "Rm", "Rmdir", "Mv", "Symlink", "Link", "Readlink",
     "Chmod", "Truncate", "Set",
     "Open", "Close", "Read", "Write", "Sync",
-    "ReadV", "WriteV", "PgRead", "PgWrite", "ChkPoint", "Fattr", "Sigver",
+    "ReadV", "WriteV", "Clone", "PgRead", "PgWrite", "ChkPoint", "Fattr", "Sigver",
 ]
 
 
@@ -615,6 +615,38 @@ class WriteV(Request):
 
     def __repr__(self) -> str:
         return f"WriteV(chunks={len(self.chunks)})"
+
+
+class Clone(Request):
+    """``kXR_clone`` - copy byte ranges between two open files, server-side.
+
+    The parameter area is the destination handle; the payload is an array of
+    ``clone_item``: ``src_fhandle[4] reserved[4] offset[8] length[8]
+    target_offset[8]``, all big-endian, one per range.
+    """
+
+    __slots__ = ("fhandle", "items")
+    opcode = c.kXR_clone
+    signed = True
+    idempotent = False
+
+    def __init__(self, fhandle: bytes, items: Sequence[tuple[bytes, int, int, int]]) -> None:
+        #: The destination handle: where every range is written.
+        self.fhandle = fhandle
+        #: ``(src_fhandle, offset, length, target_offset)`` quadruples.
+        self.items = list(items)
+
+    def params(self, w: Writer) -> None:
+        w.padded(self.fhandle, 4).zeros(12)
+
+    def payload(self) -> bytes:
+        w = Writer()
+        for source, offset, length, target in self.items:
+            w.padded(source, 4).zeros(4).i64(offset).i64(length).i64(target)
+        return w.bytes()
+
+    def __repr__(self) -> str:
+        return f"Clone(ranges={len(self.items)})"
 
 
 class PgRead(Request):

@@ -21,7 +21,7 @@ SIGNED_OPCODES = frozenset(
     {
         c.kXR_chmod, c.kXR_fattr, c.kXR_mkdir, c.kXR_mv, c.kXR_open,
         c.kXR_pgwrite, c.kXR_prepare, c.kXR_rm, c.kXR_rmdir, c.kXR_set,
-        c.kXR_truncate, c.kXR_write, c.kXR_writev, c.kXR_chkpoint,
+        c.kXR_truncate, c.kXR_write, c.kXR_writev, c.kXR_chkpoint, c.kXR_clone,
     }
 )
 

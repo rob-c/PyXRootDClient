@@ -42,7 +42,10 @@ __all__ = ["FakeServer", "frame", "error"]
 #: Requests whose body is payload rather than a path, so nothing about them
 #: belongs in :attr:`FakeServer.arguments`.
 _DATA_REQUESTS = frozenset(
-    {c.kXR_write, c.kXR_writev, c.kXR_pgwrite, c.kXR_auth, c.kXR_login, c.kXR_sigver}
+    {
+        c.kXR_write, c.kXR_writev, c.kXR_clone, c.kXR_pgwrite,
+        c.kXR_auth, c.kXR_login, c.kXR_sigver,
+    }
 )
 
 #: What :attr:`FakeServer.handlers` entries look like.
@@ -721,6 +724,25 @@ def _h_writev(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterat
     yield _frame(sid, c.kXR_ok)
 
 
+def _h_clone(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    """``kXR_clone``: copy ranges between two open handles, without the wire."""
+    if not body or len(body) % c.CLONE_ITEM_LEN:
+        yield _error(sid, kXR_ArgInvalid, "Clone list is invalid")
+        return
+    target = conn._file(conn._path(params, b"", at=slice(0, 4)))
+    reader = Reader(body, "kXR_clone")
+    while reader.remaining >= c.CLONE_ITEM_LEN:
+        handle = reader.bytes(4)
+        reader.bytes(4)
+        offset, length, at = reader.i64(), reader.i64(), reader.i64()
+        if handle not in conn.handles:
+            yield _error(sid, 3004, "file is not open")
+            return
+        source = conn._file(conn.handles[handle])
+        _splice(target, at, bytes(source[offset : offset + length]))
+    yield _frame(sid, c.kXR_ok)
+
+
 def _h_pgread(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
     from ..crypto.crc32c import pack_pages
 
@@ -974,6 +996,7 @@ _HANDLERS = {
     c.kXR_sync: _h_sync,
     c.kXR_readv: _h_readv,
     c.kXR_writev: _h_writev,
+    c.kXR_clone: _h_clone,
     c.kXR_pgread: _h_pgread,
     c.kXR_pgwrite: _h_pgwrite,
     c.kXR_chkpoint: _h_chkpoint,

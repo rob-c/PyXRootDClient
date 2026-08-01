@@ -72,6 +72,16 @@ await fs.symlink("/store/f.root", "/store/latest")
 await fs.readlink("/store/latest")
 ```
 
+So are server-side range copies, which take either an `AsyncFile` or the
+`xrd.File` under one:
+
+```python
+async with fs.open("/store/dst.root", "r+b") as dst, \
+           fs.open("/store/src.root") as src:
+    await dst.flush()                    # the server can only clone what it has
+    await dst.clone(src, [(0, 4096, 0)])  # kXR_clone; see Files -> copying ranges
+```
+
 So is the second data connection, which is a coroutine here because opening
 it is a round trip:
 

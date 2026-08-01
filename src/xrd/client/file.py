@@ -18,8 +18,10 @@ from ..crypto.crc32c import pack_pages, unpack_pages
 from ..errors import (
     ChecksumMismatchError,
     ProtocolError,
+    ServerError,
     TransientError,
     UnsupportedError,
+    kXR_InvalidRequest,
     kXR_Unsupported,
 )
 from ..flags import Access, ChkPointCode, OpenFlags
@@ -32,6 +34,7 @@ from ..session.sync import Result
 from ..types import (
     CheckpointInfo,
     ChecksumInfo,
+    CloneRange,
     PageResult,
     ReadRange,
     StatInfo,
@@ -46,6 +49,9 @@ _log = get_logger(__name__)
 #: Server-side ceilings on one ``kXR_readv``.
 READV_MAX_CHUNKS = 1024
 READV_MAX_BYTES = 2 << 20
+
+#: ``maxClonesz`` - how many ranges one ``kXR_clone`` may carry.
+CLONE_MAX_RANGES = 1024
 
 #: Opening with any of these means the handle has side effects on the server,
 #: so it is not safe to silently re-open: ``NEW`` and ``DELETE`` would recreate
@@ -423,6 +429,67 @@ class File:
         self._invalidate(high)
         return total
 
+    def clone(
+        self,
+        source: File,
+        ranges: Iterable[CloneRange | tuple[int, int] | tuple[int, int, int]] | None = None,
+    ) -> int:
+        """``kXR_clone`` - have the server copy ranges of ``source`` into this file.
+
+            >>> dst.clone(src)                       # all of it, server-side
+            >>> dst.clone(src, [(4096, 1024, 0)])    # one range, moved to the front
+
+        The bytes never cross the network: the server reads them out of one
+        open handle and writes them into another, which is the cheap way to
+        assemble a file out of pieces of another one. Each range is
+        ``(offset, length)`` or ``(offset, length, target_offset)``, or a
+        :class:`~xrd.types.CloneRange`; leaving ``ranges`` out copies the
+        whole of ``source`` to the same offsets. Returns the bytes copied.
+
+        Both handles must belong to the same session - a handle means nothing
+        to a server that did not hand it out - so open them from one
+        :class:`~xrd.FileSystem`.
+
+        Opcode 3032 is not in XProtocol.hh, so this is a fast path to try
+        rather than one to depend on: a server that does not implement it
+        rejects the request outright, and that comes back as
+        :class:`~xrd.errors.UnsupportedError` rather than as the bare "invalid
+        request code" a stock xrootd sends.
+        """
+        target, origin = self.handle, source.handle  # both open, or this raises
+        if source._router.session is not self._router.session:
+            raise ValueError(
+                f"{source.url} and {self.url} are open on different connections; "
+                f"a clone copies between two handles of one session"
+            )
+        if self._checkpoint:
+            raise UnsupportedError(
+                kXR_Unsupported,
+                "kXR_clone cannot be checkpointed; write, pgwrite and truncate can",
+            )
+        wanted = [CloneRange(0, source.size)] if ranges is None else [_range(x) for x in ranges]
+        items = [(origin, cr.offset, cr.length, cr.destination) for cr in wanted if cr.length]
+        total = 0
+        high = 0
+        for start in range(0, len(items), CLONE_MAX_RANGES):
+            batch = items[start : start + CLONE_MAX_RANGES]
+            try:
+                self._router.execute(r.Clone(target, batch), path=self.url.path)
+            except ServerError as exc:
+                if exc.code != kXR_InvalidRequest:
+                    raise
+                raise UnsupportedError(
+                    kXR_Unsupported,
+                    f"{self.url.host} does not implement kXR_clone (opcode 3032, "
+                    f"outside XProtocol.hh); copy the ranges through the client",
+                ) from exc
+            for _, _, length, at in batch:
+                total += length
+                high = max(high, at + length)
+        if total:
+            self._invalidate(high)
+        return total
+
     def pgwrite(self, data: bytes, offset: int = 0) -> int:
         """``kXR_pgwrite`` - write with a CRC-32C per 4 KiB page.
 
@@ -608,6 +675,14 @@ def _batches(ranges: Sequence[ReadRange]) -> Iterator[list[ReadRange]]:
         total += rng.length
     if batch:
         yield batch
+
+
+def _range(item: CloneRange | tuple[int, int] | tuple[int, int, int]) -> CloneRange:
+    """One clone range, however it was spelled."""
+    span = item if isinstance(item, CloneRange) else CloneRange(*item)
+    if span.offset < 0 or span.length < 0 or span.destination < 0:
+        raise ValueError(f"a clone range is two offsets and a length, none negative: {span}")
+    return span
 
 
 def _write_batches(chunks: Sequence[WriteChunk]) -> Iterator[list[WriteChunk]]:

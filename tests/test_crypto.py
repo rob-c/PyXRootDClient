@@ -259,6 +259,9 @@ def test_nothing_is_signed_below_the_standard_level(level):
 def test_mutating_requests_are_signed_at_the_standard_level():
     assert is_signed(c.kXR_write, c.kXR_secStandard) is True
     assert is_signed(c.kXR_read, c.kXR_secStandard) is False
+    # A clone writes to the destination without a byte of data on the wire,
+    # so nothing but the signature says the request was not tampered with.
+    assert is_signed(c.kXR_clone, c.kXR_secStandard) is True
 
 
 def test_an_override_can_force_or_exempt_one_opcode():

@@ -54,6 +54,7 @@ from .path import XRootDPath as Path  # ``xrd.Path`` reads the way pathlib does
 from .types import (
     CheckpointInfo,
     ChecksumInfo,
+    CloneRange,
     DirEntry,
     LocationInfo,
     PageResult,
@@ -114,6 +115,7 @@ __all__ = [
     # values
     "CheckpointInfo",
     "ChecksumInfo",
+    "CloneRange",
     "DirEntry",
     "LocationInfo",
     "PageResult",

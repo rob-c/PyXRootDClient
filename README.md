@@ -38,8 +38,9 @@ the AES and RSA. Kerberos is the one exception — see below.
 **Files.** `xrd.open(url, mode)` returns something from the `io` stack:
 seekable, buffered, iterable, context-managed, `read`/`write`/`readinto`,
 text mode when you ask for it. Vector reads (`kXR_readv`), paged I/O with
-CRC32c verification, checkpointed writes, and `sendfile`-shaped bulk copies
-are on the underlying object when you want them.
+CRC32c verification, checkpointed writes, server-side range copies
+(`kXR_clone`), and `sendfile`-shaped bulk copies are on the underlying object
+when you want them.
 
 ```python
 with xrd.open("root://host//store/f.root", "rb") as fh:
@@ -176,7 +177,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2218 tests, of which the great majority need no network, no KDC and no
+2241 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

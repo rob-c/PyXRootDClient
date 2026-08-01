@@ -222,6 +222,7 @@ FILE = {
     "visa": lambda fh: fh.visa(),
     "write": lambda fh: fh.write(b"W", 0),
     "writev": lambda fh: fh.writev([WriteChunk(0, b"a"), (2, b"b")]),
+    "clone": lambda fh: fh.clone(fh, [(0, 2, 4)]),
 }
 
 
@@ -387,6 +388,7 @@ NAMES = {
     "Path": lambda srv, tmp: xrd.Path(srv.url.with_path("/store"), config=CONFIG).close(),
     "ProtocolInfo": lambda srv, tmp: xrd.ProtocolInfo(version=0x310).version,
     "QueryCode": lambda srv, tmp: int(QueryCode.CHECKSUM),
+    "CloneRange": lambda srv, tmp: xrd.CloneRange(0, 4).destination,
     "ReadRange": lambda srv, tmp: xrd.ReadRange(0, 4).length,
     "PrepareStatus": lambda srv, tmp: str(xrd.PrepareStatus(path="/a", online=True)),
     "SpaceInfo": lambda srv, tmp: xrd.SpaceInfo(free=1).unlimited,

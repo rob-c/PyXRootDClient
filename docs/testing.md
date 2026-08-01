@@ -27,9 +27,10 @@ with FakeServer(files={"/store/f.root": b"payload"}, dirs=["/store/empty"]) as s
 ```
 
 A real server, in the sense that matters: it speaks the binary protocol,
-frames responses, handles `kXR_open`/`read`/`write`/`readv`/`pgread`, dirlist,
-stat, mkdir, rm, mv, truncate, chmod, xattrs, query, prepare, checkpoints, the
-link extensions, and ping, plus the login and authentication handshake.
+frames responses, handles `kXR_open`/`read`/`write`/`readv`/`pgread`/`clone`,
+dirlist, stat, mkdir, rm, mv, truncate, chmod, xattrs, query, prepare,
+checkpoints, the link extensions, and ping, plus the login and authentication
+handshake.
 
 It also speaks `kXR_bind`, and speaks it properly: a second connection that
 names a live session is registered as that session's data path, and from then

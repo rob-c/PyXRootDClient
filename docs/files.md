@@ -67,6 +67,7 @@ head, tail = handle.readv([(0, 4096), (1 << 30, 4096)])   # kXR_readv
 page = handle.pgread(1 << 20, 0)                          # CRC32c per 4 KiB
 print(page.corrupt_pages)                                 # [] when clean
 handle.writev([(0, b"first"), (4096, b"second")])         # kXR_writev
+handle.clone(other, [(0, 4096, 0)])                       # kXR_clone, server-side
 handle.sync()
 handle.truncate(1 << 20)
 print(handle.checksum())                                  # adler32:1a0b045d
@@ -114,6 +115,52 @@ result = handle.pgread(1 << 20, 0)
 if result.corrupt_pages:
     raise IOError(f"corrupt pages at {result.corrupt_pages}")
 ```
+
+### Copying ranges without moving them
+
+`clone()` (`kXR_clone`, opcode 3032) has the server copy byte ranges out of
+one open file and into another. The data never leaves the server, which makes
+it the cheap way to build a file out of pieces of another one:
+
+```python
+with xrd.FileSystem("root://host") as fs, \
+     fs.open("/store/src.root", "rb") as reader, \
+     fs.open("/store/dst.root", "wb") as writer:
+    src, dst = reader.raw.file, writer.raw.file
+    dst.clone(src)                            # all of it, at the same offsets
+    dst.clone(src, [(4096, 1024, 0)])         # one range, moved to the front
+    dst.clone(src, [CloneRange(0, 8192)])     # or the dataclass, if you prefer
+```
+
+`clone` is a protocol operation, not an `io` one, so it sees the file as the
+server has it: `flush()` anything still sitting in a buffer above it first.
+A range is `(offset, length)` or `(offset, length, target_offset)`; leaving
+the target offset out puts the bytes where they came from. `clone()` returns
+the number of bytes copied, batches more than 1024 ranges into as many
+requests as it takes, and skips empty ones.
+
+Both handles must belong to the same session — a handle means nothing to a
+server that did not hand it out — so open them from one `FileSystem`, as
+above; two handles on separate connections are refused with `ValueError`
+before anything is sent. A clone cannot be part of a checkpoint. For a copy
+between two *different* servers, see
+[third-party copy](copying.md#third-party-copy), which is the same idea one
+level up.
+
+!!! warning "Not every server has it"
+    Opcode 3032 is one past `kXR_REQFENCE`, where `XProtocol.hh` stops: a
+    stock `xrootd` (5.9 is the newest) answers "invalid request code", and
+    only the servers that added the extension - the nginx-xrootd family -
+    implement it. The client turns that refusal into `UnsupportedError` so
+    the fallback is easy to write:
+
+    ```python
+    try:
+        dst.clone(src, ranges)
+    except xrd.UnsupportedError:
+        for offset, length in ranges:
+            dst.write(src.read(length, offset), offset)
+    ```
 
 ### A second connection for the bytes
 

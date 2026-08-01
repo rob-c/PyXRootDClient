@@ -56,6 +56,7 @@ from .io import open_url as _open_url
 from .types import (
     CheckpointInfo,
     ChecksumInfo,
+    CloneRange,
     DirEntry,
     LocationInfo,
     PageResult,
@@ -247,6 +248,15 @@ class AsyncFile:
     ) -> int:
         """Scattered writes in one round trip. ``root://`` only."""
         return await _run(functools.partial(self._native("writev").writev, chunks, sync=sync))
+
+    async def clone(
+        self,
+        source: AsyncFile | _File,
+        ranges: Iterable[CloneRange | tuple[int, int] | tuple[int, int, int]] | None = None,
+    ) -> int:
+        """Copy ranges of ``source`` into this file, server-side. ``root://`` only."""
+        native = source._native("clone") if isinstance(source, AsyncFile) else source
+        return await _run(self._native("clone").clone, native, ranges)
 
     async def pgwrite(self, data: bytes, offset: int = 0) -> int:
         """Paged write with per-page CRC32c. ``root://`` only."""

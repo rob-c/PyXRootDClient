@@ -65,6 +65,7 @@ already know - see [Errors](errors.md).
 | `write(data, offset)` | `fh.write(data)` / `file.write(data, offset)` |
 | `vector_read(chunks)` | `file.readv([(off, len), ...])` |
 | `pgread` / `pgwrite` | `file.pgread(size, offset)` / `file.pgwrite(data, offset)` |
+| - (no equivalent) | `file.clone(source, ranges)` - `kXR_clone`, copied inside the server |
 | `truncate(size)` | `fh.truncate(size)` |
 | `sync()` | `file.sync()` |
 | `stat(force)` | `file.stat()` |

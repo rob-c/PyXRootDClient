@@ -180,6 +180,18 @@ def test_writev_counts_only_its_descriptors_and_trails_the_data():
     assert frame[24 + dlen :] == b"aabbb" == request.trailer()
 
 
+def test_clone_names_the_destination_in_the_header_and_the_sources_in_the_body():
+    """The destination is one handle for the whole request; each item carries
+    the handle it reads from, so ranges of several files can land in one."""
+    request = r.Clone(b"DST0", [(b"SRC0", 100, 10, 0), (b"SRC1", 0, 4, 10)])
+    frame = encode(request, 1)
+    assert frame[4:20] == b"DST0" + bytes(12)
+    assert struct.unpack(">i", frame[20:24])[0] == 64 == 2 * c.CLONE_ITEM_LEN
+    assert struct.unpack(">4s4sqqq", frame[24:56]) == (b"SRC0", bytes(4), 100, 10, 0)
+    assert struct.unpack(">4s4sqqq", frame[56:88]) == (b"SRC1", bytes(4), 0, 4, 10)
+    assert repr(request) == "Clone(ranges=2)"
+
+
 def test_every_other_request_has_no_trailer():
     assert r.Read(b"H1\x00\x00", 0, 10).trailer() == b""
     assert r.Write(b"H1\x00\x00", 0, b"data").trailer() == b""
@@ -252,6 +264,7 @@ def test_only_reading_fattr_subcodes_are_replayable():
         r.Truncate("/a", 0),
         r.Prepare(["/a"]),
         r.WriteV([]),
+        r.Clone(b"H", []),
         r.PgWrite(b"H", 0, b""),
     ],
 )
@@ -302,6 +315,7 @@ SAMPLES = [
     r.Sync(b"H"),
     r.ReadV([]),
     r.WriteV([]),
+    r.Clone(b"H", []),
     r.PgRead(b"H", 0, 1),
     r.PgWrite(b"H", 0, b""),
     r.ChkPoint(b"H", c.kXR_ckpBegin),
@@ -316,6 +330,7 @@ UNREPEATABLE = {
     "Auth",
     "Bind",
     "ChkPoint",
+    "Clone",
     "Chmod",
     "Close",
     "EndSession",

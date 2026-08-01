@@ -40,6 +40,9 @@ kXR_truncate = 3028
 kXR_sigver = 3029
 kXR_pgread = 3030
 kXR_writev = 3031
+#: One past ``kXR_REQFENCE``: XProtocol.hh stops at ``kXR_writev``, and the
+#: nginx-xrootd family took 3032 for a server-side range copy. A stock xrootd
+#: (5.9 is the newest) answers "Invalid request code"; see ``File.clone``.
 kXR_clone = 3032
 
 kXR_1stRequest = 3000
@@ -179,6 +182,10 @@ kXR_ckpXeq = 4
 # ---- kXR_writev / kXR_readv ----
 kXR_wv_doSync = 0x01
 READ_LIST_ENTRY_LEN = 16
+
+# ---- kXR_clone ----
+#: One ``clone_item``: ``src_fhandle[4] reserved[4] offset[8] len[8] dest[8]``.
+CLONE_ITEM_LEN = 32
 
 # ---- kXR_sigver ----
 kXR_SHA256_sig = 0x01

@@ -155,6 +155,29 @@ def test_the_scattered_write_operations_are_there(server):
     assert server.contents("/data/v.bin") == b"aaaabbbbcc"
 
 
+def test_a_clone_copies_ranges_server_side(server):
+    async def main():
+        async with xrd.aio.open(server.url / "data/c.bin", "wb") as handle:
+            await handle.write(b"0123456789")
+            await handle.flush()  # the server can only clone what it has
+            assert await handle.clone(handle, [(0, 4, 10)]) == 4       # the async wrapper
+            assert await handle.clone(handle.file, [(0, 4, 14)]) == 4  # the file underneath
+
+    run(main())
+    assert server.contents("/data/c.bin") == b"0123456789" + b"0123" * 2
+
+
+def test_cloning_from_something_that_is_not_a_root_file_is_refused(server):
+    import io as _io
+
+    async def main():
+        async with xrd.aio.open(server.url / "data/c.bin", "wb") as handle:
+            with pytest.raises(UnsupportedError, match="clone needs a root://"):
+                await handle.clone(AsyncFile(_io.BytesIO(b"local")))
+
+    run(main())
+
+
 def test_lines_are_read_and_written_in_bulk(server):
     async def main():
         async with xrd.aio.open(server.url / "data/l.txt", "w") as handle:

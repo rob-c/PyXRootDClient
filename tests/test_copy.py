@@ -554,9 +554,14 @@ def test_a_long_file_is_moved_by_several_connections_at_once(src, server, monkey
     """``parallel_chunks`` is sessions, because one session serialises itself."""
     threads = set()
     positioned = engine._resumer
+    started = threading.Barrier(4, timeout=30)
 
     def spy(*args, **kwargs):
         threads.add(threading.get_ident())
+        # One span per worker, so all four must be in flight together. Waiting
+        # for that is what makes the count below a fact rather than a race: a
+        # pool that ran them one after another breaks the barrier instead.
+        started.wait()
         return positioned(*args, **kwargs)
 
     monkeypatch.setattr(engine, "_resumer", spy)

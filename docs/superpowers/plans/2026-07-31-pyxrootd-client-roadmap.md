@@ -292,7 +292,9 @@ operation in design §9 for the `root://` protocol.
    `statvfs`, `ping`, `getxattr`/`setxattr`/`listxattr`/`delxattr`, `protocol`.
 2. **`client/file.py`** — `open`/`close`, `read`, `write`, `readv`, `writev`,
    `pgread` (with per-page CRC32c verification and the retry-bad-page path),
-   `pgwrite`, `sync`, `truncate`, `chkpoint`, `visa`/`fcntl`, per-file xattr.
+   `pgwrite`, `clone` (`kXR_clone`: the server copies byte ranges from one
+   open handle into another, so the data never crosses the wire), `sync`,
+   `truncate`, `chkpoint`, `visa`/`fcntl`, per-file xattr.
 3. Handle recovery after reconnect (re-open at offset; refuse for `kXR_new`).
 4. Async mirrors, with `async for` on every generator.
 5. A test asserting the sync and async classes expose identical public method

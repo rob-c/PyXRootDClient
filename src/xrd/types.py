@@ -23,6 +23,7 @@ __all__ = [
     "CheckpointInfo",
     "ReadRange",
     "WriteChunk",
+    "CloneRange",
     "PageResult",
 ]
 
@@ -295,6 +296,24 @@ class WriteChunk:
 
     offset: int
     data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class CloneRange:
+    """One range of a server-side copy.
+
+    ``target_offset`` defaults to ``offset``, which is the common case: the
+    same bytes at the same place in another file.
+    """
+
+    offset: int
+    length: int
+    target_offset: int | None = None
+
+    @property
+    def destination(self) -> int:
+        """Where the bytes land, resolving the ``None`` default."""
+        return self.offset if self.target_offset is None else self.target_offset
 
 
 @dataclass(frozen=True, slots=True)

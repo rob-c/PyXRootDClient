@@ -14,11 +14,28 @@ import pytest
 
 from xrd.client.file import READV_MAX_BYTES, File, _batches, _write_batches
 from xrd.client.filesystem import FileSystem
-from xrd.errors import ChecksumMismatchError, InvalidArgumentError, ProtocolError
+from xrd.errors import (
+    ChecksumMismatchError,
+    InvalidArgumentError,
+    ProtocolError,
+    UnsupportedError,
+)
 from xrd.flags import Access, DirListFlags, OpenFlags
 from xrd.proto import constants as c
 from xrd.testing import FakeServer, error, frame
-from xrd.types import ReadRange, WriteChunk
+from xrd.types import CloneRange, ReadRange, WriteChunk
+
+
+@pytest.fixture
+def source(fs, server):
+    """A readable handle on known bytes, sharing the session ``opened`` uses."""
+    server.files["/data/src.bin"] = bytearray(b"0123456789")
+    handle = File(fs.url.with_path("/data/src.bin"), fs.config, router=fs._router)
+    handle.open(OpenFlags.READ)
+    try:
+        yield handle
+    finally:
+        handle.close()
 
 
 @pytest.fixture
@@ -662,6 +679,104 @@ def test_writev_scatters_in_one_round_trip(opened, server):
     assert server.contents("/data/w.bin") == b"abcdef"
     assert opened.writev([WriteChunk(6, b"gh")]) == 2
     assert opened.writev([]) == 0
+
+
+def test_clone_copies_the_whole_source_without_the_data_crossing_the_wire(source, opened, server):
+    assert opened.clone(source) == 10
+    assert server.contents("/data/w.bin") == b"0123456789"
+    assert server.seen.count(c.kXR_read) == 0  # nothing came back through us
+
+
+def test_clone_takes_ranges_as_pairs_triples_or_the_dataclass(source, opened, server):
+    copied = opened.clone(source, [(0, 2), (4, 2, 2), CloneRange(8, 2, target_offset=4)])
+    assert copied == 6
+    assert server.contents("/data/w.bin") == b"014589"
+
+
+def test_a_clone_range_lands_at_its_own_offset_by_default(source, opened, server):
+    assert opened.clone(source, [(6, 4)]) == 4
+    assert server.contents("/data/w.bin") == b"\x00" * 6 + b"6789"
+
+
+def test_cloning_nothing_asks_the_server_for_nothing(source, opened, server):
+    assert opened.clone(source, []) == 0
+    assert opened.clone(source, [(0, 0), CloneRange(4, 0)]) == 0
+    assert server.seen.count(c.kXR_clone) == 0
+    assert server.contents("/data/w.bin") == b""
+
+
+def test_a_clone_of_more_ranges_than_fit_is_split(source, opened, server):
+    from xrd.client.file import CLONE_MAX_RANGES
+
+    spans = [(i % 10, 1, i) for i in range(CLONE_MAX_RANGES + 1)]
+    assert opened.clone(source, spans) == CLONE_MAX_RANGES + 1
+    assert server.seen.count(c.kXR_clone) == 2
+    assert len(server.contents("/data/w.bin")) == CLONE_MAX_RANGES + 1
+
+
+def test_a_clone_refreshes_the_size_it_reports(source, opened):
+    opened.stat()
+    opened.clone(source, [(0, 10, 90)])
+    assert opened.size == 100
+
+
+@pytest.mark.parametrize("span", [(-1, 4), (0, -4), (0, 4, -1)])
+def test_a_clone_range_cannot_be_negative(source, opened, span):
+    with pytest.raises(ValueError, match="none negative"):
+        opened.clone(source, [span])
+
+
+def test_cloning_across_two_connections_is_refused(source, opened, server):
+    """A handle means nothing to a server that did not hand it out, and the
+    two sessions may not even be talking to the same machine."""
+    stranger = File(server.url.with_path("/data/src.bin"))
+    stranger.open(OpenFlags.READ)
+    try:
+        with pytest.raises(ValueError, match="different connections"):
+            opened.clone(stranger)
+    finally:
+        stranger.close()
+
+
+def test_a_clone_cannot_be_checkpointed(source, opened):
+    with opened.checkpoint():
+        with pytest.raises(UnsupportedError, match="cannot be checkpointed"):
+            opened.clone(source)
+
+
+def test_a_clone_of_a_handle_the_server_never_opened_is_an_error(opened):
+    from xrd.errors import XRootDError
+    from xrd.proto import requests as r
+
+    with pytest.raises(XRootDError, match="file is not open"):
+        opened._router.execute(r.Clone(opened.handle, [(b"\xff\xff\xff\xff", 0, 1, 0)]))
+
+
+def test_a_clone_list_that_is_not_whole_items_is_refused(opened):
+    from xrd.proto import requests as r
+
+    class Broken(r.Clone):
+        def payload(self) -> bytes:
+            return r.Clone.payload(self)[:20]
+
+    with pytest.raises(InvalidArgumentError, match="Clone list is invalid"):
+        opened._router.execute(Broken(opened.handle, [(opened.handle, 0, 1, 0)]))
+    with pytest.raises(InvalidArgumentError, match="Clone list is invalid"):
+        opened._router.execute(r.Clone(opened.handle, []))
+
+
+def test_a_server_that_never_heard_of_opcode_3032_says_so_in_those_words(source, opened, server):
+    """Opcode 3032 is past XProtocol.hh's fence, so a stock xrootd refuses it
+    with "invalid request code" - which is true and useless. Say what it means."""
+    server.handlers[c.kXR_clone] = _refuses(3006)  # kXR_InvalidRequest
+    with pytest.raises(UnsupportedError, match="does not implement kXR_clone"):
+        opened.clone(source)
+
+
+def test_a_clone_that_fails_for_any_other_reason_is_left_alone(source, opened, server):
+    server.handlers[c.kXR_clone] = _refuses(3010)  # kXR_NotAuthorized
+    with pytest.raises(PermissionError, match="read-only export"):
+        opened.clone(source)
 
 
 def test_pgwrite_checksums_each_page(opened, server):

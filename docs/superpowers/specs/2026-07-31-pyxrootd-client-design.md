@@ -26,7 +26,7 @@ second. It must:
   `host`, `ztn`/WLCG bearer tokens, `sss`, GSI/X.509 proxies, Kerberos 5, plus
   `kXR_sigver` request signing and mutual-TLS.
 - Support **full read and write**: not merely `read`/`write` but `readv`,
-  `writev`, `pgread`/`pgwrite` (per-page CRC32c), `sync`, `truncate`,
+  `writev`, `pgread`/`pgwrite` (per-page CRC32c), `clone`, `sync`, `truncate`,
   `chkpoint`, and the complete filesystem operation set including extended
   attributes.
 - Feel like the standard library. `open()` returns a real `io` object;
@@ -178,7 +178,8 @@ src/xrd/
     filesystem.py  FileSystem / AsyncFileSystem  (stat, dirlist, mkdir, rm, mv,
                    chmod, truncate, locate, query, prepare, statvfs, xattr, ping)
     file.py        File / AsyncFile (open, read, readv, pgread, write, writev,
-                   pgwrite, sync, truncate, chkpoint, fcntl/visa, xattr, close)
+                   pgwrite, clone, sync, truncate, chkpoint, fcntl/visa,
+                   xattr, close)
 
   http/                        ── L4', the WebDAV/XrdHttp peer ── (as built)
     client.py      pooled HTTP/1.1 client on http.client: keep-alive, bearer
@@ -669,7 +670,7 @@ all three references; go-hep's `xrdproto/*` is the tie-breaker.
 | File I/O | `open`, `close`, `read`, `write`, `sync` | ✔ | — |
 | Vector/paged | `readv`, `writev`, `pgread`, `pgwrite`, `verifyw`, `chkpoint` | ✗ | **all** — `readv` and `pgread` are the performance-critical ones |
 | Xattr | `fattr` get/set/list/del | ✗ | all four |
-| Advanced | `gpfile`, `clone`, `set`, `sigver` | ✔ (sigver) | `gpfile`, `clone`, `set` |
+| Advanced | `gpfile`, `clone`, `set`, `sigver` | ✔ (sigver, clone) | `gpfile`, `set` |
 | Async | `kXR_attn`, `asynresp`, `waitresp` | partial | full handling in `SessionMachine` |
 | HTTP/WebDAV | GET+Range, multi-range, HEAD, PUT (chunked), DELETE, PROPFIND 0/1/∞, MKCOL, MOVE, COPY, OPTIONS | ✗ | **all** (`XRootD.jl/src/Storage/web.jl` + `libxrdc/lib/protocols/http/` as models) |
 | Checksums | crc32c, adler32, crc64/xz, md5 — local + remote | partial (crc32c) | adler32, crc64, md5; `Want-Digest` negotiation |
@@ -679,8 +680,14 @@ metadata, namespace, file I/O, vector/paged (`readv`, `writev`, `pgread` with
 per-page CRC32c and the bad-page retry, `pgwrite`, `chkpoint`), xattr, and the
 full `kXR_attn`/`asynresp`/`waitresp`/`oksofar`/`wait`/`redirect` handling in
 `SessionMachine`. `proto/requests.py` also encodes `bind`, `endsess`, `set`, and `sigver`. The
-outstanding rows are the HTTP/WebDAV one (Phase 6) and the `gpfile`/`clone`
-verbs, which no deployment reachable from here exercises.
+`clone` (`kXR_clone`, opcode 3032) followed later: `File.clone` hands the
+server a list of byte ranges and a second open handle and lets it do the copy
+itself, which is the one operation here that moves data without moving it
+through the client. 3032 is past `kXR_REQFENCE` and so is an extension rather
+than a standard opcode; a server without it refuses the request, and the
+client reports that as `UnsupportedError` rather than "invalid request code". The only outstanding rows are the HTTP/WebDAV one
+(Phase 6) and `gpfile`, which no reference client implements and no
+deployment reachable from here exercises.
 
 ---
 
