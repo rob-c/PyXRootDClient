@@ -57,6 +57,7 @@ from .types import (
     DirEntry,
     LocationInfo,
     PageResult,
+    PrepareStatus,
     ProtocolInfo,
     ReadRange,
     SpaceInfo,
@@ -120,6 +121,7 @@ __all__ = [
     "ReadRange",
     "StatInfo",
     "SpaceInfo",
+    "PrepareStatus",
     "VFSInfo",
     "WriteChunk",
     # flags

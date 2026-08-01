@@ -127,11 +127,27 @@ space.free, space.total, space.largest_free      # bytes
 space.unlimited                                  # quota is -1, not zero
 ```
 
-`prepare()` hands back a request handle, and a request that has not run yet
-can be withdrawn by it:
+`prepare()` hands back a request handle. It returns as soon as the server has
+taken the request down, which at a tape site is a long time before anything is
+readable, so the handle is what the interesting question is asked with:
 
 ```python
-handle = fs.prepare(["/store/a.root"])
+handle = fs.prepare(["/store/a.root", "/store/b.root"])
+for status in fs.query_prepare(handle, ["/store/a.root", "/store/b.root"]):
+    print(status)                # /store/a.root: online
+    status.online                # on disk, and readable now
+    status.on_tape               # still only on tape
+    status.requested             # this request is the one that asked for it
+```
+
+One `PrepareStatus` per path, in the order asked, and each is true when its
+file is online - so `all(fs.query_prepare(handle, paths))` is "the stage has
+finished". A handle the server never issued is an error rather than a list of
+files it says nothing about.
+
+A request that has not run yet can be withdrawn by the same handle:
+
+```python
 fs.cancel_prepare(handle)
 ```
 

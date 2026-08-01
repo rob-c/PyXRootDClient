@@ -61,6 +61,7 @@ And for assertions:
 | `srv.properties` | the directives `kXR_set` carried, in order |
 | `srv.cancelled_checksums` | paths a client asked it to stop digesting |
 | `srv.cancelled_prepares` | staging handles withdrawn |
+| `srv.prepared` | staging handle → the paths it named |
 | `srv.links`, `srv.modes` | what `kXR_symlink` and `kXR_chmod` did |
 | `srv.config_values` | what `kXR_query` config answers |
 

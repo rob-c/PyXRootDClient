@@ -14,7 +14,7 @@ import pytest
 
 from xrd.client.file import READV_MAX_BYTES, File, _batches, _write_batches
 from xrd.client.filesystem import FileSystem
-from xrd.errors import ChecksumMismatchError, ProtocolError
+from xrd.errors import ChecksumMismatchError, InvalidArgumentError, ProtocolError
 from xrd.flags import Access, DirListFlags, OpenFlags
 from xrd.proto import constants as c
 from xrd.testing import FakeServer, error, frame
@@ -379,6 +379,25 @@ def test_evict_is_a_prepare(fs, server):
 
     fs.evict(["/data/a.root"])
     assert c.kXR_prepare in server.seen
+
+
+def test_query_prepare_reports_on_each_file_of_the_request(fs):
+    handle = fs.prepare(["/data/a.root"])
+    reports = fs.query_prepare(handle, ["/data/a.root", "/data/missing.root"])
+    assert [s.path for s in reports] == ["/data/a.root", "/data/missing.root"]
+    assert (reports[0].online, reports[0].requested, reports[0].error) == (True, True, "")
+    assert (bool(reports[0]), bool(reports[1])) == (True, False)
+    assert str(reports[1]) == "/data/missing.root: nowhere (no such file)"
+
+
+def test_a_staging_handle_the_server_never_issued_is_an_error(fs):
+    with pytest.raises(InvalidArgumentError, match="not one of ours"):
+        fs.query_prepare("prep-nobody", ["/data/a.root"])
+
+
+def test_a_staging_query_with_no_paths_asks_about_the_request_itself(fs):
+    """No path to route on, so it goes to whichever endpoint the client has."""
+    assert fs.query_prepare(fs.prepare(["/data/a.root"]), []) == []
 
 
 def test_cancel_prepare_withdraws_by_handle(fs, server):

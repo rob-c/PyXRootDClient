@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import stat as _stat
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
 from ..errors import XRootDError
@@ -231,6 +231,8 @@ def _prepare(args: argparse.Namespace, endpoints: Endpoints) -> int:
     for url in args.url:
         filesystem, path = endpoints.at(url)
         by_endpoint.setdefault(id(filesystem), (filesystem, []))[1].append(path)
+    if args.status:
+        return _prepare_status(args, by_endpoint.values())
     handles = []
     for filesystem, paths in by_endpoint.values():
         if args.evict:
@@ -241,6 +243,21 @@ def _prepare(args: argparse.Namespace, endpoints: Endpoints) -> int:
         print(dumps(handles))
     elif handles and not args.quiet:
         print("\n".join(handles))
+    return OK
+
+
+def _prepare_status(args: argparse.Namespace, work: Iterable[tuple[Any, list[str]]]) -> int:
+    """Report how the staging request ``--status`` names is going."""
+    reports = [
+        status
+        for filesystem, paths in work
+        for status in filesystem.query_prepare(args.status, paths)
+    ]
+    if args.json:
+        print(dumps(reports))
+    elif not args.quiet:
+        for status in reports:
+            print(status)
     return OK
 
 
@@ -450,6 +467,11 @@ def _parser() -> argparse.ArgumentParser:
     prepare.add_argument("url", nargs="+")
     prepare.add_argument("--evict", action="store_true", help="drop cached copies instead")
     prepare.add_argument("--priority", type=int, default=0, help="0 to 3, higher is sooner")
+    prepare.add_argument(
+        "--status",
+        metavar="HANDLE",
+        help="report on the request this handle names instead of making one",
+    )
 
     ln = command("ln", _ln, "link one path to another (vendor extension)")
     ln.add_argument("target")

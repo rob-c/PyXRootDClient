@@ -59,6 +59,7 @@ from .types import (
     DirEntry,
     LocationInfo,
     PageResult,
+    PrepareStatus,
     ProtocolInfo,
     ReadRange,
     SpaceInfo,
@@ -489,6 +490,9 @@ class AsyncFileSystem:
 
     async def evict(self, paths: Sequence[str]) -> str:
         return await _run(self._sync.evict, paths)
+
+    async def query_prepare(self, handle: str, paths: Sequence[str]) -> list[PrepareStatus]:
+        return await _run(self._sync.query_prepare, handle, paths)
 
     async def cancel_prepare(self, handle: str) -> None:
         await _run(self._sync.cancel_prepare, handle)

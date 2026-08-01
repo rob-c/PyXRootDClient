@@ -59,6 +59,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.PageResult
 
+::: xrd.PrepareStatus
+
 ::: xrd.ProtocolInfo
 
 ::: xrd.ReadRange

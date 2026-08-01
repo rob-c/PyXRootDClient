@@ -21,6 +21,7 @@ TLS is not implemented; point a client at it with ``root://``, not
 
 from __future__ import annotations
 
+import json
 import posixpath
 import socket
 import socketserver
@@ -136,6 +137,8 @@ class FakeServer:
         )
         #: Directives ``kXR_set`` carried, in order.
         self.properties: list[str] = []
+        #: Staging requests taken, ``handle -> the paths it named``.
+        self.prepared: dict[str, list[str]] = {}
         #: Checksums a client asked the server to stop computing.
         self.cancelled_checksums: list[str] = []
         #: Staging requests withdrawn by handle.
@@ -855,6 +858,28 @@ def _h_query(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
         yield _frame(sid, c.kXR_ok, f'<statistics sel="{args}"/>'.encode() + b"\x00")
     elif infotype == c.kXR_Qspace:
         yield _frame(sid, c.kXR_ok, conn.s.space.encode() + b"\x00")
+    elif infotype == c.kXR_QPrep:
+        handle, *wanted = args.split("\n")
+        if handle not in conn.s.prepared:
+            yield _error(sid, 3000, f"prepare request {handle} is not one of ours")
+            return
+        asked = conn.s.prepared[handle]
+        yield _frame(sid, c.kXR_ok, json.dumps({
+            "request_id": handle,
+            "responses": [
+                {
+                    "path": _clean(path),
+                    "path_exists": _clean(path) in conn.s.files,
+                    "on_tape": False,
+                    "online": _clean(path) in conn.s.files,
+                    "requested": _clean(path) in asked,
+                    "has_reqid": _clean(path) in asked,
+                    "req_time": "",
+                    "error_text": "" if _clean(path) in conn.s.files else "no such file",
+                }
+                for path in wanted
+            ],
+        }).encode() + b"\x00")
     elif infotype == c.kXR_Qvisa:
         yield _frame(sid, c.kXR_ok, b"visa\x00")
     else:
@@ -874,7 +899,9 @@ def _h_prepare(conn: _Connection, sid: int, params: bytes, body: bytes) -> Itera
         conn.s.cancelled_prepares.append(body.split(b"\x00", 1)[0].decode().strip())
         yield _frame(sid, c.kXR_ok)
         return
-    yield _frame(sid, c.kXR_ok, b"prep-0001\x00")
+    handle = "prep-0001"
+    conn.s.prepared[handle] = [_clean(p) for p in body.decode().split("\n") if p.strip()]
+    yield _frame(sid, c.kXR_ok, handle.encode() + b"\x00")
 
 
 def _h_fattr(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:

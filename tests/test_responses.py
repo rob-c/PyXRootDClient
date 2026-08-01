@@ -414,6 +414,39 @@ def test_a_space_reply_ignores_what_is_not_a_pair():
     assert str(SpaceInfo()) == "default: 0 of 0 bytes free"
 
 
+def test_a_prepare_status_is_one_entry_per_file_asked_about():
+    reply = (
+        b'{"request_id":"prep-1","responses":['
+        b'{"path":"/a.root","path_exists":true,"on_tape":true,"online":false,'
+        b'"requested":true,"has_reqid":true,"req_time":"1700000000","error_text":""},'
+        b'{"path":"/b.root","path_exists":false,"error_text":"no such file"}]}\x00'
+    )
+    first, second = rp.parse_prepare_status(reply)
+    assert (first.path, first.exists, first.on_tape, first.online) == ("/a.root", True, True, False)
+    assert (first.requested, first.has_request_id, first.requested_at) == (True, True, "1700000000")
+    assert str(first) == "/a.root: on tape"
+    assert (second.exists, second.error) == (False, "no such file")
+
+
+@pytest.mark.parametrize("spelling", [b"true", b"1", b'"1"', b'"True"', b'"yes"'])
+def test_a_staged_file_is_online_however_the_server_spelt_it(spelling):
+    """``true``, ``1`` and ``"1"`` have all been written by some version of it."""
+    reply = b'{"responses":[{"path":"/a","online":' + spelling + b"}]}\x00"
+    assert rp.parse_prepare_status(reply)[0].online is True
+
+
+def test_a_prepare_status_may_be_the_bare_list_and_may_be_empty():
+    assert rp.parse_prepare_status(b'[{"path":"/a"}]\x00')[0].path == "/a"
+    assert rp.parse_prepare_status(b"\x00") == []
+    assert rp.parse_prepare_status(b'{"request_id":"prep-1","responses":null}\x00') == []
+
+
+@pytest.mark.parametrize("body", [b"not json at all\x00", b'{"responses":[3]}\x00'])
+def test_a_prepare_status_that_is_not_the_document_it_claims_is_refused(body):
+    with pytest.raises(ProtocolError, match="not a JSON document"):
+        rp.parse_prepare_status(body)
+
+
 def test_a_checkpoint_query_is_capacity_then_use():
     info = rp.parse_checkpoint(struct.pack(">II", 1 << 20, 4096))
     assert (info.capacity, info.used, info.free) == (1 << 20, 4096, (1 << 20) - 4096)

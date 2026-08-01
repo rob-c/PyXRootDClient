@@ -16,6 +16,7 @@ __all__ = [
     "DirEntry",
     "VFSInfo",
     "SpaceInfo",
+    "PrepareStatus",
     "LocationInfo",
     "ProtocolInfo",
     "ChecksumInfo",
@@ -143,6 +144,37 @@ class SpaceInfo:
 
     def __str__(self) -> str:
         return f"{self.name or 'default'}: {self.free} of {self.total} bytes free"
+
+
+@dataclass(frozen=True, slots=True)
+class PrepareStatus:
+    """What a staging query (``kXR_query`` with ``kXR_QPrep``) says of one file.
+
+    A tape-backed site answers a :meth:`~xrd.FileSystem.prepare` call at once
+    and stages for minutes or hours afterwards, so the interesting question is
+    this one: is the file :attr:`online` yet, is it still only :attr:`on_tape`,
+    and did the request this query names ever ask for it (:attr:`requested`).
+
+    ``error`` is the server's own text for a file it could not report on, and
+    is empty for the ones it could.
+    """
+
+    path: str = ""
+    exists: bool = False
+    on_tape: bool = False
+    online: bool = False
+    requested: bool = False
+    has_request_id: bool = False
+    requested_at: str = ""
+    error: str = ""
+
+    def __bool__(self) -> bool:
+        """``True`` once the file is on disk, which is what staging is for."""
+        return self.online
+
+    def __str__(self) -> str:
+        where = "online" if self.online else ("on tape" if self.on_tape else "nowhere")
+        return f"{self.path}: {where}{f' ({self.error})' if self.error else ''}"
 
 
 @dataclass(frozen=True, slots=True)

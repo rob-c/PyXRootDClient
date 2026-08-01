@@ -120,6 +120,7 @@ space = await fs.query_space("/store")      # SpaceInfo, in bytes
 stats = await fs.query_stats("a")           # the XML summary
 await fs.appid("higgs-skim")                # label this connection
 await fs.set_property("monitor off")
+await fs.query_prepare(handle, paths)       # how the staging is going
 await fs.cancel_prepare(handle)             # withdraw a staging request
 await fs.checksum_cancel("/store/big.root")
 ```

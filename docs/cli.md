@@ -45,6 +45,7 @@ $ xrd-fs chmod 640 root://host//store/f.root
 $ xrd-fs truncate -s 0 root://host//store/scratch.bin
 $ xrd-fs prepare root://host//store/f.root             # stage it onto disk
 $ xrd-fs prepare --evict root://host//store/f.root     # drop the cached copy
+$ xrd-fs prepare --status prep-0001 root://host//store/f.root   # is it there yet?
 $ xrd-fs ln -s root://host//store/f.root root://host//store/latest
 $ xrd-fs readlink root://host//store/latest
 ```

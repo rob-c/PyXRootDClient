@@ -623,6 +623,25 @@ def test_prepare_can_evict_instead(url, server, capsys):
     assert c.kXR_prepare in server.seen
 
 
+def test_prepare_status_reports_instead_of_staging(url, capsys):
+    handle = json.loads(run(["prepare", "--json", url + "data/a.root"], capsys)[1])[0]
+    code, out, _ = run(["prepare", "--status", handle, url + "data/a.root"], capsys)
+    assert (code, out.strip()) == (0, "/data/a.root: online")
+
+
+def test_prepare_status_as_json_carries_every_flag(url, capsys):
+    handle = json.loads(run(["prepare", "--json", url + "data/a.root"], capsys)[1])[0]
+    code, out, _ = run(["prepare", "--json", "--status", handle, url + "data/a.root"], capsys)
+    record = json.loads(out)[0]
+    assert code == 0
+    assert (record["path"], record["online"], record["on_tape"]) == ("/data/a.root", True, False)
+
+
+def test_prepare_status_says_nothing_when_asked_to_be_quiet(url, capsys):
+    handle = json.loads(run(["prepare", "--json", url + "data/a.root"], capsys)[1])[0]
+    assert run(["prepare", "-q", "--status", handle, url + "data/a.root"], capsys)[1] == ""
+
+
 def test_prepare_groups_paths_by_endpoint(url, capsys):
     with FakeServer(files={"/other/b.bin": b"b"}) as second:
         argv = ["prepare", "--json", url + "data/a.root", str(second.url) + "other/b.bin"]

@@ -46,6 +46,7 @@ from ..types import (
     ChecksumInfo,
     DirEntry,
     LocationInfo,
+    PrepareStatus,
     ProtocolInfo,
     SpaceInfo,
     StatInfo,
@@ -588,6 +589,23 @@ class FileSystem:
     def evict(self, paths: Sequence[str]) -> str:
         """Ask the server to drop its cached copies."""
         return self.prepare(paths, flags=PrepareFlags.EVICT)
+
+    def query_prepare(self, handle: str, paths: Sequence[str]) -> list[PrepareStatus]:
+        """How the staging :meth:`prepare` asked for is going (``kXR_QPrep``).
+
+        ``prepare`` returns as soon as the server has taken the request down,
+        which for a tape-backed site is a long time before the files are
+        readable. This is the question that has an answer worth waiting on:
+        one :class:`~xrd.types.PrepareStatus` per path, in the order asked,
+        each of which is true once its file is online.
+
+        The handle is the one :meth:`prepare` returned; a server that has
+        never heard of it says so rather than reporting the files as absent.
+        """
+        targets = [self._abs(p) for p in paths]
+        args = "\n".join([handle, *targets])
+        res = self._router.execute(r.Query(c.kXR_QPrep, args), path=targets[0] if targets else "")
+        return rp.parse_prepare_status(res.data)
 
     def cancel_prepare(self, handle: str) -> None:
         """Withdraw a staging request :meth:`prepare` made.

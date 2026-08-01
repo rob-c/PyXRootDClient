@@ -232,6 +232,7 @@ def test_the_server_side_bookkeeping_is_mirrored(server):
     async def main():
         async with AsyncFileSystem(server.url) as fs:
             handle = await fs.prepare(["/data/a.root"])
+            assert (await fs.query_prepare(handle, ["/data/a.root"]))[0].online
             await fs.cancel_prepare(handle)
             await fs.checksum_cancel("/data/a.root")
             assert (await fs.query_stats("io")) == '<statistics sel="io"/>'
