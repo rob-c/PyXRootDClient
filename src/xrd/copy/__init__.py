@@ -11,7 +11,7 @@ binary stream before the pump ever sees it.
 
 from __future__ import annotations
 
-from .engine import CopyResult, copy, copy_tree
+from .engine import CopyResult, SyncMode, copy, copy_tree
 from .tpc import third_party
 
-__all__ = ["copy", "copy_tree", "third_party", "CopyResult"]
+__all__ = ["copy", "copy_tree", "third_party", "CopyResult", "SyncMode"]

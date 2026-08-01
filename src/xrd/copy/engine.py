@@ -11,21 +11,30 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass
-from typing import IO, Any, cast
+from fnmatch import fnmatch
+from typing import IO, Any, Literal, cast
 
+from .._log import get_logger
 from ..config import Config
 from ..crypto import new as new_checksum
 from ..errors import ChecksumMismatchError, UnsupportedError, kXR_Unsupported
 from ..types import ChecksumInfo
 from ..url import XRootDURL, parse
 
-__all__ = ["copy", "copy_tree", "CopyResult"]
+__all__ = ["copy", "copy_tree", "CopyResult", "SyncMode"]
 
 #: Called with ``(bytes_done, total_or_None)`` after every chunk.
 Progress = Callable[[int, "int | None"], None]
+
+#: How ``copy_tree(sync=...)`` decides a file is already at the target:
+#: ``"size"`` trusts the length, ``"mtime"`` also wants the copy to be no
+#: older than the original, and ``"checksum"`` compares the bytes themselves.
+SyncMode = Literal["size", "mtime", "checksum"]
+
+_log = get_logger(__name__)
 
 #: What :func:`copy` accepts on either side.
 Endpoint = "str | os.PathLike[str] | XRootDURL | IO[bytes]"
@@ -51,7 +60,9 @@ class CopyResult:
         return self.checksum is not None
 
     def __str__(self) -> str:
-        return f"{self.source} -> {self.target} ({self.size} bytes, {self.rate / 1e6:.1f} MB/s)"
+        # A dry run, or a copy too quick for the clock, has no rate to quote.
+        rate = f", {self.rate / 1e6:.1f} MB/s" if self.seconds > 0 else ""
+        return f"{self.source} -> {self.target} ({self.size} bytes{rate})"
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +113,35 @@ def _writer(url: XRootDURL, config: Config, stack: ExitStack, *, overwrite: bool
 
         return stack.enter_context(open_http(url, mode, config=config))
     raise UnsupportedError(kXR_Unsupported, f"cannot write to {url.scheme}://")
+
+
+def _probe(url: XRootDURL, config: Config) -> tuple[int, int] | None:
+    """``(size, mtime)`` for ``url``, or ``None`` when there is nothing there."""
+    if url.is_local:
+        try:
+            info = os.stat(url.path)
+        except OSError:
+            return None
+        return info.st_size, int(info.st_mtime)
+    from ..client import FileSystem
+
+    with FileSystem(url.with_path("/"), config) as fs:
+        try:
+            stat = fs.stat(url.path)
+        except OSError:
+            return None
+    return stat.st_size, stat.st_mtime
+
+
+def _remove(url: XRootDURL, config: Config) -> None:
+    """Delete ``url`` - what turns a copy into a move."""
+    if url.is_local:
+        os.remove(url.path)
+        return
+    from ..client import FileSystem
+
+    with FileSystem(url.with_path("/"), config) as fs:
+        fs.remove(url.path)
 
 
 def _server_checksum(url: XRootDURL, config: Config, algorithm: str) -> ChecksumInfo:
@@ -163,6 +203,8 @@ def copy(
     overwrite: bool = True,
     progress: Progress | None = None,
     config: Config | None = None,
+    dry_run: bool = False,
+    remove_source: bool = False,
 ) -> CopyResult:
     """Copy ``source`` to ``target`` and report what happened.
 
@@ -183,11 +225,24 @@ def copy(
 
     ``overwrite=False`` creates the target exclusively, raising
     :class:`FileExistsError` if it is already there.
+
+    ``dry_run`` reports the transfer it would have made without moving a byte;
+    ``remove_source`` deletes the source once the copy is on disk and has
+    passed whatever verification was asked for, which together make a move.
     """
     cfg = config or Config()
     chunk = chunk_size or cfg.chunk_size
     algo = algorithm or cfg.preferred_checksum
     src_url, dst_url = _target_url(source), _target_url(target)
+
+    if dry_run:
+        known = _probe(src_url, cfg) if src_url is not None else None
+        return CopyResult(
+            source=str(src_url) if src_url else repr(source),
+            target=str(dst_url) if dst_url else repr(target),
+            size=known[0] if known else 0,
+            seconds=0.0,
+        )
 
     wanted = cfg.verify_checksums if verify is None else verify
     # A digest of the bytes in flight is only worth taking if some server can
@@ -205,6 +260,9 @@ def copy(
     checksum = None
     if digest is not None and checkable is not None:
         checksum = _compare(checkable, cfg, algo, digest.hexdigest(), strict=verify is True)
+
+    if remove_source and src_url is not None:
+        _remove(src_url, cfg)  # only now: a failed verification kept the original
 
     return CopyResult(
         source=str(src_url) if src_url else repr(source),
@@ -235,6 +293,59 @@ def _compare(
 # ---------------------------------------------------------------------------
 
 
+def _digest_of(url: XRootDURL, config: Config, algorithm: str) -> str:
+    """``algorithm`` over ``url``: the server's answer, or ours if it is local."""
+    if not url.is_local:
+        return _server_checksum(url, config, algorithm).value.lower()
+    digest = new_checksum(algorithm)
+    with open(url.path, "rb") as handle:
+        while chunk := handle.read(1 << 20):
+            digest.update(chunk)
+    return digest.hexdigest().lower()
+
+
+def _up_to_date(
+    source: XRootDURL, target: XRootDURL, config: Config, mode: SyncMode, algorithm: str
+) -> bool:
+    """Is ``target`` already the copy of ``source`` that ``mode`` asks for?
+
+    A different length always means a different file, whatever the mode, so
+    that comparison comes first and saves the expensive one behind it.
+    """
+    theirs, ours = _probe(target, config), _probe(source, config)
+    if theirs is None or ours is None or theirs[0] != ours[0]:
+        return False
+    if mode == "size":
+        return True
+    if mode == "mtime":
+        return theirs[1] >= ours[1]
+    return _digest_of(source, config, algorithm) == _digest_of(target, config, algorithm)
+
+
+def _selected(rel: str, include: Sequence[str], exclude: Sequence[str]) -> bool:
+    """``rsync``'s rule: an explicit include list is a whitelist, exclude wins."""
+    if include and not any(fnmatch(rel, pattern) for pattern in include):
+        return False
+    return not any(fnmatch(rel, pattern) for pattern in exclude)
+
+
+def _prune(target: XRootDURL, config: Config, keep: set[str], *, dry_run: bool) -> list[str]:
+    """Remove everything under ``target`` that ``keep`` does not name.
+
+    Each removal is logged, because a deletion nobody asked for by name is
+    the one thing in a copy worth being able to read back afterwards.
+    """
+    removed = []
+    for rel in _walk(target, config):
+        if rel in keep:
+            continue
+        removed.append(rel)
+        _log.info("%s %s", "would delete" if dry_run else "deleting", target / rel)
+        if not dry_run:
+            _remove(target / rel, config)
+    return removed
+
+
 def _walk(url: XRootDURL, config: Config) -> Iterator[str]:
     """Every file under ``url``, as paths relative to it."""
     if url.is_local:
@@ -259,22 +370,40 @@ def copy_tree(
     *,
     config: Config | None = None,
     progress: Progress | None = None,
+    include: Sequence[str] = (),
+    exclude: Sequence[str] = (),
+    sync: SyncMode | None = None,
+    delete: bool = False,
     **options: Any,
 ) -> list[CopyResult]:
-    """Copy a directory recursively, returning one result per file.
+    """Copy a directory recursively, returning one result per file copied.
 
     Local target directories are created as needed; remote ones are, too,
     because a remote write asks the server for ``kXR_mkpath``. Options other
-    than ``progress`` and ``config`` are passed through to :func:`copy`.
+    than the ones named here - ``dry_run`` and ``verify`` among them - are
+    passed through to :func:`copy`.
+
+    ``include`` and ``exclude`` are :mod:`fnmatch` patterns matched against
+    each path relative to ``source``; an include list is a whitelist and an
+    exclusion always wins. ``sync`` skips files already at the target, and
+    ``delete`` removes files under the target that the source does not have -
+    excluded ones among them, since after this call the target is meant to
+    hold what the selection describes and nothing else.
     """
     cfg = config or Config()
     src_url, dst_url = parse(source), parse(target)
+    algo = options.get("algorithm") or cfg.preferred_checksum
+    wanted = [rel for rel in _walk(src_url, cfg) if _selected(rel, include, exclude)]
     results = []
-    for rel in _walk(src_url, cfg):
+    for rel in wanted:
         destination = dst_url / rel
-        if destination.is_local:
+        if sync is not None and _up_to_date(src_url / rel, destination, cfg, sync, algo):
+            continue
+        if destination.is_local and not options.get("dry_run"):
             os.makedirs(os.path.dirname(destination.path), exist_ok=True)
         results.append(
             copy(src_url / rel, destination, config=cfg, progress=progress, **options)
         )
+    if delete:
+        _prune(dst_url, cfg, set(wanted), dry_run=bool(options.get("dry_run")))
     return results

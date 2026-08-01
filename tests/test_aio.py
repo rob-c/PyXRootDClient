@@ -424,3 +424,61 @@ def test_leaving_an_unentered_open_alone_closes_nothing(server):
         await opening.__aexit__(None, None, None)
 
     run(main())
+
+
+# ---------------------------------------------------------------------------
+# Links and checkpoints
+# ---------------------------------------------------------------------------
+
+
+def test_the_link_family_is_mirrored(server):
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            await fs.symlink("/data/a.root", "/data/soft")
+            assert await fs.readlink("/data/soft") == "/data/a.root"
+            await fs.link("/data/a.root", "/data/hard")
+            await fs.hardlink("/data/a.root", "/data/harder")
+
+    run(main())
+    assert server.links["/data/soft"] == "/data/a.root"
+    assert server.contents("/data/harder") == BODY
+
+
+def test_a_checkpoint_commits_what_the_block_wrote(server):
+    from xrd.proto import constants as c
+
+    async def main():
+        async with xrd.aio.open(server.url / "data/a.root", "r+b") as handle:
+            async with handle.checkpoint() as checkpoint:
+                await handle.write(b"HELLO")
+                await handle.flush()
+                info = await checkpoint.query()
+                assert info.used == 5
+                assert repr(checkpoint).startswith("AsyncCheckpoint(")
+
+    run(main())
+    assert server.contents("/data/a.root") == b"HELLO world"
+    assert server.seen.count(c.kXR_chkpoint) == 4  # begin, the wrapped write, query, commit
+
+
+def test_a_checkpoint_rolls_back_what_raised(server):
+    async def main():
+        async with xrd.aio.open(server.url / "data/a.root", "r+b") as handle:
+            with pytest.raises(ZeroDivisionError):
+                async with handle.checkpoint():
+                    await handle.write(b"HELLO")
+                    await handle.flush()
+                    raise ZeroDivisionError("the block did not like what it saw")
+
+    run(main())
+    assert server.contents("/data/a.root") == BODY
+
+
+def test_a_checkpoint_needs_a_root_endpoint(dav):
+    async def main():
+        async with xrd.aio.open(str(dav.url) + "d/a.root") as handle:
+            with pytest.raises(UnsupportedError, match="checkpoint"):
+                async with handle.checkpoint():
+                    pass
+
+    run(main())

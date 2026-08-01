@@ -99,6 +99,55 @@ Config(username='me', ..., token='<redacted>', ...)
 
 The `repr` redacts, and so does every log record - see [Security](security.md).
 
+## The settings file
+
+An INI file, read by `Config.from_file` and by both commands via `--config` /
+`--alias`:
+
+```ini
+[defaults]
+username = atlasprd
+request_timeout = 600
+verify_checksums = true
+
+[alias eos]
+token_file = /run/user/1000/bt_u1000
+preferred_checksum = adler32
+```
+
+```python
+cfg = xrd.Config.from_file()                  # the usual places
+cfg = xrd.Config.from_file(alias="eos")       # [defaults], then [alias eos]
+cfg = xrd.Config.from_file("./job.ini")       # exactly this file
+```
+
+```console
+$ xrd-fs ls --alias eos root://eos.example.org//store/user/me
+$ xrd-cp --config ./job.ini /tmp/f.root root://host//store/f.root
+```
+
+`[defaults]` is applied first and the alias overlays it, so an alias only says
+what it changes. Field names are the `Config` field names, with `-` accepted
+for `_`; values are typed by the field, and booleans take `configparser`'s
+vocabulary (`true`, `yes`, `on`, `1`). Anything on the command line beats the
+file, and the file beats the environment.
+
+Looked for in this order:
+
+| Where | Note |
+| --- | --- |
+| `$XRD_CONFIG` | wins outright, and must exist - a typo there is an error |
+| `~/.config/xrd/config.ini` | |
+| `~/.xrdrc` | |
+
+No file at all means the defaults, which is what an absent dotfile should
+mean. An `--alias` that the file does not define is an error naming the
+aliases it does, because a typo there would quietly connect as somebody else.
+
+Two settings are refused in a file: `prompter`, which is a callable and cannot
+be spelled in INI, and `token`, because a literal bearer token in a dotfile is
+a secret in every backup of that dotfile - say `token_file` instead.
+
 ## Environment only
 
 If you set nothing, the defaults above already read the `XRD_*` variables the

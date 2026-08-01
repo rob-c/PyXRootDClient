@@ -197,6 +197,16 @@ def test_parse_dirlist_without_stat():
     assert entries[0].stat is None
 
 
+def test_a_server_that_ignored_the_stat_flag_still_lists():
+    """No dot entry means plain names, whatever we asked for."""
+    entries = rp.parse_dirlist(b"a.root\nsub\n\x00", "/d")
+    assert [(e.name, e.stat) for e in entries] == [("a.root", None), ("sub", None)]
+
+
+def test_an_empty_listing_is_empty_either_way():
+    assert rp.parse_dirlist(b"\x00", "/d") == []
+
+
 @pytest.mark.parametrize("name", ["..", "../evil", "a/b", "/etc/passwd"])
 def test_a_listing_entry_that_is_not_a_name_is_refused(name):
     """A hostile server does not get to steer a recursive copy off the tree."""
@@ -374,3 +384,25 @@ def test_a_file_nobody_may_read_has_no_read_bits():
 
     assert StatInfo(flags=StatInfoFlags.IS_WRITABLE).st_mode & 0o444 == 0
     assert StatInfo(flags=StatInfoFlags.IS_WRITABLE).st_mode & 0o222 == 0o222
+
+
+def test_a_checkpoint_query_is_capacity_then_use():
+    info = rp.parse_checkpoint(struct.pack(">II", 1 << 20, 4096))
+    assert (info.capacity, info.used, info.free) == (1 << 20, 4096, (1 << 20) - 4096)
+    assert str(info) == "4096/1048576 bytes used"
+
+
+def test_a_checkpoint_that_reports_more_used_than_it_has_has_no_room_left():
+    """Arithmetic, not a negative number: a full checkpoint has zero free."""
+    assert rp.parse_checkpoint(struct.pack(">II", 10, 99)).free == 0
+
+
+def test_a_readlink_answer_is_the_target_up_to_the_first_nul():
+    assert rp.parse_readlink(b"/store/real.root\x00\x00") == "/store/real.root"
+
+
+def test_a_readlink_answer_naming_nothing_is_a_protocol_error():
+    from xrd.errors import ProtocolError
+
+    with pytest.raises(ProtocolError, match="named no target"):
+        rp.parse_readlink(b"   \x00")

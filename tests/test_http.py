@@ -371,6 +371,9 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.removexattr("/d/a.root", "x"),
         lambda: fs.evict(["/d/a.root"]),
         lambda: fs.deep_locate("/d/a.root"),
+        lambda: fs.symlink("/d/a.root", "/d/latest"),
+        lambda: fs.link("/d/a.root", "/d/second"),
+        lambda: fs.readlink("/d/latest"),
     ):
         with pytest.raises(UnsupportedError):
             call()

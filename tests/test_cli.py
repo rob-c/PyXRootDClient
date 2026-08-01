@@ -83,7 +83,14 @@ def test_json_output_covers_the_types_the_library_returns():
 
 def test_the_command_line_carries_the_configuration():
     args = argparse.Namespace(
-        token="t", user="me", no_verify_tls=True, verbose=0, prompt=False, no_prompt=True
+        token="t",
+        user="me",
+        no_verify_tls=True,
+        verbose=0,
+        prompt=False,
+        no_prompt=True,
+        config=None,
+        alias=None,
     )
     config = config_from(args)
     assert (config.token, config.username, config.verify_tls) == ("t", "me", False)
@@ -486,3 +493,261 @@ def test_a_destination_the_server_will_not_discuss_is_not_a_directory():
             return Grumpy(), "/d"
 
     assert cp_cli._is_dir(parse("root://h//d"), Only()) is False
+
+
+# ---------------------------------------------------------------------------
+# xrd-fs: the rest of the namespace
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def lines(server):
+    """A file of numbered lines, and the URL of the server holding it."""
+    body = b"".join(b"line %d\n" % n for n in range(1, 21))
+    server.add_file("/data/log.txt", body)
+    return str(server.url)
+
+
+def test_tail_prints_the_last_ten_lines_by_default(lines, capsys):
+    code, out, _ = run(["tail", lines + "data/log.txt"], capsys)
+    assert code == 0
+    assert out.splitlines() == [f"line {n}" for n in range(11, 21)]
+
+
+def test_tail_takes_a_line_count(lines, capsys):
+    assert run(["tail", "-n", "2", lines + "data/log.txt"], capsys)[1].split() == [
+        "line", "19", "line", "20",
+    ]
+
+
+def test_tail_reading_only_the_end_drops_the_partial_line_it_landed_in(lines, capsys):
+    """A window that starts mid-line must not print half of one."""
+    _code, out, _ = run(["tail", "--bytes", "20", "-n", "5", lines + "data/log.txt"], capsys)
+    assert all(line.startswith("line ") for line in out.splitlines())
+
+
+def test_tail_follow_prints_what_is_appended(server, capsys):
+    server.add_file("/data/grow.txt", b"first\n")
+    filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/grow.txt")
+    out = io.BytesIO()
+    server.add_file("/data/grow.txt", b"first\nsecond\n")
+    fs_cli._follow(out, filesystem, path, 6, 0.01, deadline=_soon())
+    assert out.getvalue() == b"second\n"
+
+
+def test_tail_follow_stops_when_the_file_goes_away(server):
+    filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/a.root")
+    del server.files["/data/a.root"]
+    fs_cli._follow(io.BytesIO(), filesystem, path, 0, 0.01, deadline=_soon(10.0))
+
+
+def test_tail_follow_stops_when_the_file_shrinks(server):
+    """A shorter file is a different file; the next byte would not follow on."""
+    filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/a.root")
+    fs_cli._follow(io.BytesIO(), filesystem, path, 99, 0.01, deadline=_soon(10.0))
+
+
+def test_tail_follow_from_the_command_line_stops_on_an_interrupt(server, capsys, monkeypatch):
+    """Ctrl-C ends ``tail -f`` quietly - that is what a user presses to stop it."""
+
+    def interrupted(out, filesystem, path, size, interval, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(fs_cli, "_follow", interrupted)
+    argv = ["tail", "-f", "--interval", "0.01", str(server.url) + "data/a.root"]
+    code, out, _ = run(argv, capsys)
+    assert (code, out) == (0, BODY.decode())
+
+
+def _soon(seconds: float = 0.05) -> float:
+    import time
+
+    return time.monotonic() + seconds
+
+
+def test_du_totals_a_tree(url, capsys):
+    code, out, _ = run(["du", url + "data"], capsys)
+    fields = out.split()
+    assert (code, fields[0], fields[1]) == (0, str(len(BODY)), "1")
+
+
+def test_du_of_a_single_file_counts_one(url, capsys):
+    _code, payload, _ = run(["du", "--json", url + "data/a.root"], capsys)
+    assert list(json.loads(payload).values()) == [{"bytes": len(BODY), "files": 1}]
+
+
+def test_du_adds_up_what_the_listing_does_not_carry(server, capsys):
+    """A server that lists without sizes still gets counted, one stat each."""
+    from xrd.proto import constants as c
+
+    server.add_file("/data/sub/x.bin", b"12345")
+
+    def bare(conn, sid, params, body):
+        yield from _plain_listing(conn, sid, params, body)
+
+    server.handlers[c.kXR_dirlist] = bare
+    _code, out, _ = run(["du", str(server.url) + "data"], capsys)
+    assert out.split()[0] == str(len(BODY) + 5)
+
+
+def _plain_listing(conn, sid, params, body):
+    """A ``kXR_dirlist`` reply with names only - no stat lines attached."""
+    from xrd.proto import constants as c
+    from xrd.testing import frame
+
+    path = body.split(b"\x00", 1)[0].decode().partition("?")[0].rstrip("/") or "/"
+    names = conn._children(path)
+    yield frame(sid, c.kXR_ok, "\n".join(names).encode() + b"\x00")
+
+
+def test_chmod_changes_the_mode(url, server, capsys):
+    assert run(["chmod", "640", url + "data/a.root"], capsys)[0] == 0
+    assert server.modes["/data/a.root"] == 0o640
+
+
+def test_truncate_resizes_without_opening(url, server, capsys):
+    assert run(["truncate", "-s", "4", url + "data/a.root"], capsys)[0] == 0
+    assert server.contents("/data/a.root") == b"hell"
+
+
+def test_prepare_asks_for_a_stage_and_prints_the_handle(url, capsys):
+    code, out, _ = run(["prepare", url + "data/a.root"], capsys)
+    assert (code, bool(out.strip())) == (0, True)
+
+
+def test_prepare_can_evict_instead(url, server, capsys):
+    from xrd.proto import constants as c
+
+    code, out, _ = run(["prepare", "--evict", "--priority", "2", url + "data/a.root"], capsys)
+    assert (code, out) == (0, "")
+    assert c.kXR_prepare in server.seen
+
+
+def test_prepare_groups_paths_by_endpoint(url, capsys):
+    with FakeServer(files={"/other/b.bin": b"b"}) as second:
+        argv = ["prepare", "--json", url + "data/a.root", str(second.url) + "other/b.bin"]
+        code, out, _ = run(argv, capsys)
+    assert (code, len(json.loads(out))) == (0, 2)
+
+
+def test_ln_makes_a_symbolic_link_and_readlink_reads_it_back(url, capsys):
+    assert run(["ln", "-s", url + "data/a.root", url + "data/soft"], capsys)[0] == 0
+    _code, out, _ = run(["readlink", url + "data/soft"], capsys)
+    assert out.strip() == "/data/a.root"
+    _code, payload, _ = run(["readlink", "--json", url + "data/soft"], capsys)
+    assert list(json.loads(payload).values()) == ["/data/a.root"]
+
+
+def test_ln_without_s_makes_a_hard_link(url, server, capsys):
+    assert run(["ln", url + "data/a.root", url + "data/hard"], capsys)[0] == 0
+    assert server.contents("/data/hard") == BODY
+
+
+def test_a_link_cannot_cross_endpoints(url, capsys):
+    with FakeServer() as second:
+        code, _out, err = run(["ln", url + "data/a.root", str(second.url) + "elsewhere"], capsys)
+    assert (code, "one endpoint" in err) == (1, True)
+
+
+def test_what_webdav_has_no_link_for_is_reported(dav, capsys):
+    code, _out, err = run(["readlink", str(dav.url) + "d/a.root"], capsys)
+    assert (code, "readlink" in err) == (1, True)
+
+
+# ---------------------------------------------------------------------------
+# xrd-fs: the settings file
+# ---------------------------------------------------------------------------
+
+
+def test_a_named_settings_file_is_read(url, tmp_path, capsys):
+    config = tmp_path / "settings.ini"
+    config.write_text("[defaults]\nusername = fromfile\n")
+    args = fs_cli._parser().parse_args(["ls", "--config", str(config), url])
+    assert config_from(args).username == "fromfile"
+
+
+def test_an_alias_selects_a_section(url, tmp_path):
+    config = tmp_path / "settings.ini"
+    config.write_text("[defaults]\nusername = plain\n[alias eos]\nusername = special\n")
+    argv = ["ls", "--config", str(config), "--alias", "eos", url]
+    assert config_from(fs_cli._parser().parse_args(argv)).username == "special"
+
+
+def test_a_flag_beats_the_settings_file(url, tmp_path):
+    config = tmp_path / "settings.ini"
+    config.write_text("[defaults]\nusername = fromfile\n")
+    argv = ["ls", "--config", str(config), "--user", "fromflag", url]
+    assert config_from(fs_cli._parser().parse_args(argv)).username == "fromflag"
+
+
+# ---------------------------------------------------------------------------
+# xrd-cp: selection and synchronisation
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def local_tree(tmp_path):
+    root = tmp_path / "tree"
+    (root / "sub").mkdir(parents=True)
+    (root / "keep.root").write_bytes(b"keep")
+    (root / "skip.log").write_bytes(b"skip")
+    (root / "sub" / "deep.root").write_bytes(b"deep")
+    return root
+
+
+def test_a_dry_run_says_what_it_would_do_and_does_nothing(local_tree, url, server, capsys):
+    code = cp_cli.main(["-r", "--dry-run", str(local_tree), url + "dry"])
+    out = capsys.readouterr().out
+    assert (code, out.count("->")) == (0, 3)
+    assert not any(path.startswith("/dry") for path in server.files)
+
+
+def test_exclude_and_include_choose_what_travels(local_tree, url, server, capsys):
+    assert cp_cli.main(["-r", "-q", "--exclude", "*.log", str(local_tree), url + "sel"]) == 0
+    assert sorted(p for p in server.files if p.startswith("/sel")) == [
+        "/sel/keep.root",
+        "/sel/sub/deep.root",
+    ]
+
+
+def test_sync_skips_what_is_already_there(local_tree, url, capsys):
+    """The trailing slash pins the target, so the second run has nothing to do."""
+    assert cp_cli.main(["-r", "-q", str(local_tree), url + "syn/"]) == 0
+    code = cp_cli.main(["-r", "--sync", "size", str(local_tree), url + "syn/"])
+    assert (code, capsys.readouterr().out) == (0, "")
+
+
+def test_delete_prunes_the_target(local_tree, url, server, capsys):
+    assert cp_cli.main(["-r", "-q", str(local_tree), url + "del/"]) == 0
+    (local_tree / "skip.log").unlink()
+    assert cp_cli.main(["-r", "-q", "--delete", str(local_tree), url + "del/"]) == 0
+    assert "/del/tree/skip.log" not in server.files
+    assert "/del/tree/keep.root" in server.files
+
+
+def test_remove_source_moves_the_file(url, tmp_path, server, capsys):
+    source = tmp_path / "moving.bin"
+    source.write_bytes(b"payload")
+    assert cp_cli.main(["-q", "--remove-source", str(source), url + "moved.bin"]) == 0
+    assert server.contents("/moved.bin") == b"payload"
+    assert not source.exists()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--exclude", "*.log"],
+        ["--include", "*.root"],
+        ["--sync", "size"],
+        ["--delete"],
+    ],
+)
+def test_the_tree_flags_need_a_tree(url, tmp_path, capsys, argv):
+    code = cp_cli.main([*argv, url + "data/a.root", str(tmp_path / "x")])
+    assert (code, "add -r" in capsys.readouterr().err) == (2, True)
+
+
+@pytest.mark.parametrize("flag", ["--dry-run", "--remove-source"])
+def test_a_third_party_copy_cannot_pretend(url, tmp_path, capsys, flag):
+    code = cp_cli.main(["--tpc", flag, url + "data/a.root", url + "b.root"])
+    assert (code, "--tpc" in capsys.readouterr().err) == (2, True)

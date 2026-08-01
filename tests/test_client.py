@@ -620,11 +620,14 @@ def test_a_checkpoint_commits_on_a_clean_exit(opened, server):
 def test_a_checkpoint_rolls_back_and_re_raises(opened, server):
     from xrd.proto import constants as c
 
+    opened.write(b"before")
     with pytest.raises(RuntimeError):
         with opened.checkpoint():
             opened.write(b"doomed")
             raise RuntimeError("boom")
-    assert server.seen.count(c.kXR_chkpoint) == 2
+    assert server.contents("/data/w.bin") == b"before"
+    # begin, the write that went through it, and the rollback.
+    assert server.seen.count(c.kXR_chkpoint) == 3
 
 
 def test_a_file_is_os_pathlike_and_reprs_its_state(fs):
@@ -884,3 +887,171 @@ def test_deep_locate_keeps_one_entry_per_address(config):
 def test_batching_an_empty_request_asks_for_nothing():
     assert list(_batches([])) == []
     assert list(_write_batches([])) == []
+
+
+# ---------------------------------------------------------------------------
+# Checkpoints
+# ---------------------------------------------------------------------------
+
+
+def test_a_write_inside_a_checkpoint_travels_as_one(opened, server):
+    """The point of a checkpoint: the server journals the write, so it can
+    undo it. A plain ``kXR_write`` alongside an open checkpoint would land on
+    the file with nothing recorded, and the rollback would restore nothing."""
+    opened.write(b"0123456789")
+    with opened.checkpoint():
+        opened.write(b"XX", 4)
+        assert server.contents("/data/w.bin") == b"0123XX6789"
+    assert server.contents("/data/w.bin") == b"0123XX6789"
+    assert server.seen.count(c.kXR_write) == 1  # the one outside; the other was wrapped
+
+
+def test_a_checkpoint_undoes_a_truncate_as_well_as_a_write(opened, server):
+    opened.write(b"0123456789")
+    with pytest.raises(RuntimeError):
+        with opened.checkpoint():
+            opened.truncate(2)
+            assert server.contents("/data/w.bin") == b"01"
+            raise RuntimeError("changed my mind")
+    assert server.contents("/data/w.bin") == b"0123456789"
+
+
+def test_a_checkpoint_reports_how_much_room_is_left(opened):
+    from xrd.testing.server import CHECKPOINT_CAPACITY
+
+    with opened.checkpoint() as checkpoint:
+        assert checkpoint.query().used == 0
+        opened.write(b"four")
+        info = checkpoint.query()
+    assert (info.capacity, info.used) == (CHECKPOINT_CAPACITY, 4)
+    assert info.free == CHECKPOINT_CAPACITY - 4
+    assert "4/" in str(info)
+
+
+def test_a_checkpoint_says_which_file_it_belongs_to(opened):
+    with opened.checkpoint() as checkpoint:
+        assert "/data/w.bin" in repr(checkpoint)
+
+
+def test_checkpoints_do_not_nest(opened):
+    from xrd.errors import UnsupportedError
+
+    with opened.checkpoint():
+        with pytest.raises(UnsupportedError, match="already has a checkpoint"):
+            with opened.checkpoint():
+                pass
+
+
+def test_a_writev_cannot_be_checkpointed_and_says_so(opened):
+    from xrd.errors import UnsupportedError
+
+    with opened.checkpoint():
+        with pytest.raises(UnsupportedError, match="write, pgwrite and truncate"):
+            opened.writev([WriteChunk(0, b"a")])
+
+
+def test_a_pgwrite_inside_a_checkpoint_is_wrapped_too(opened, server):
+    with opened.checkpoint():
+        opened.pgwrite(b"page", 0)
+    assert server.contents("/data/w.bin") == b"page"
+    assert server.seen.count(c.kXR_pgwrite) == 0
+
+
+def test_a_checkpoint_that_runs_out_of_room_raises(opened, monkeypatch):
+    from xrd.errors import NoSpaceError
+    from xrd.testing import server as fake
+
+    monkeypatch.setattr(fake, "CHECKPOINT_CAPACITY", 4)
+    with pytest.raises(NoSpaceError):
+        with opened.checkpoint():
+            opened.write(b"more than four bytes")
+
+
+def test_only_a_write_or_a_truncate_can_be_checkpointed():
+    from xrd.proto import requests as r
+
+    with pytest.raises(ProtocolError, match="kXR_read"):
+        r.ChkPoint.execute(b"HDL0", r.Read(b"HDL0", 0, 4))
+
+
+def test_a_server_asked_for_an_unknown_checkpoint_subcode_complains(opened):
+    from xrd.errors import InvalidArgumentError
+    from xrd.proto import requests as r
+
+    with opened.checkpoint():
+        with pytest.raises(InvalidArgumentError, match="unknown checkpoint subcode"):
+            opened._router.execute(r.ChkPoint(opened.handle, 99))
+
+
+def test_a_checkpoint_operation_with_no_checkpoint_open_is_refused(opened):
+    from xrd.errors import InvalidArgumentError
+    from xrd.flags import ChkPointCode
+    from xrd.proto import requests as r
+
+    with pytest.raises(InvalidArgumentError, match="no checkpoint is open"):
+        opened._router.execute(r.ChkPoint(opened.handle, int(ChkPointCode.QUERY)))
+
+
+def test_a_checkpoint_payload_that_is_not_a_request_header_is_refused(opened):
+    from xrd.errors import InvalidArgumentError
+    from xrd.flags import ChkPointCode
+    from xrd.proto import requests as r
+
+    with opened.checkpoint():
+        with pytest.raises(InvalidArgumentError, match="not one request header"):
+            opened._router.execute(r.ChkPoint(opened.handle, int(ChkPointCode.XEQ), b"short"))
+
+
+def test_a_server_refuses_to_checkpoint_an_operation_that_is_not_one(opened):
+    from xrd.errors import UnsupportedError
+    from xrd.flags import ChkPointCode
+    from xrd.proto import requests as r
+    from xrd.proto.frames import encode
+
+    header = encode(r.Read(opened.handle, 0, 4), 0)[: c.REQUEST_HDRLEN]
+    with opened.checkpoint():
+        with pytest.raises(UnsupportedError, match="not checkpointable"):
+            opened._router.execute(r.ChkPoint(opened.handle, int(ChkPointCode.XEQ), header))
+
+
+# ---------------------------------------------------------------------------
+# Links (vendor extension)
+# ---------------------------------------------------------------------------
+
+
+def test_a_symbolic_link_names_its_target(fs):
+    fs.symlink("/data/a.root", "/data/link.root")
+    assert fs.readlink("/data/link.root") == "/data/a.root"
+
+
+def test_a_hard_link_is_the_same_bytes_under_another_name(fs):
+    fs.link("/data/a.root", "/data/hard.root")
+    assert fs.read_bytes("/data/hard.root") == fs.read_bytes("/data/a.root")
+    fs.hardlink("/data/a.root", "/data/hard2.root")
+    assert fs.exists("/data/hard2.root")
+
+
+def test_linking_to_a_target_that_is_not_there_raises(fs):
+    from xrd.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        fs.symlink("/data/absent.root", "/data/dangling.root")
+
+
+def test_reading_a_link_that_is_not_one_raises(fs):
+    from xrd.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        fs.readlink("/data/a.root")
+
+
+def test_a_server_without_the_link_extension_says_it_is_unsupported(server, config):
+    from xrd.errors import UnsupportedError, kXR_Unsupported
+
+    def refuse(conn, sid, params, body):
+        yield error(sid, kXR_Unsupported, "kXR_symlink is not supported")
+
+    server.handlers[c.kXR_symlink] = refuse
+    with FileSystem(server.url, config) as filesystem:
+        with pytest.raises(UnsupportedError):
+            filesystem.symlink("/data/a.root", "/data/link.root")

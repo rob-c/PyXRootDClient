@@ -28,8 +28,8 @@ with FakeServer(files={"/store/f.root": b"payload"}, dirs=["/store/empty"]) as s
 
 A real server, in the sense that matters: it speaks the binary protocol,
 frames responses, handles `kXR_open`/`read`/`write`/`readv`/`pgread`, dirlist,
-stat, mkdir, rm, mv, truncate, chmod, xattrs, query, ping and the login and
-authentication handshake.
+stat, mkdir, rm, mv, truncate, chmod, xattrs, query, prepare, checkpoints, the
+link extensions, and ping, plus the login and authentication handshake.
 
 ### Making it behave badly
 
@@ -50,6 +50,7 @@ And for assertions:
 | `srv.opened` | the raw path of each `kXR_open`, CGI included |
 | `srv.arguments` | `(opcode, argument)` for every request that named a path |
 | `srv.files`, `srv.dirs`, `srv.xattrs` | the namespace, mutated live |
+| `srv.links`, `srv.modes` | what `kXR_symlink` and `kXR_chmod` did |
 | `srv.config_values` | what `kXR_query` config answers |
 
 ```python

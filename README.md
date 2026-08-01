@@ -52,7 +52,8 @@ with xrd.open("root://host//store/f.root", "rb") as fh:
 **Namespaces.** `xrd.FileSystem` covers `stat`, `statx`, `statvfs`,
 `scandir`, `walk`, `glob`, `mkdir`, `makedirs`, `rename`, `remove`,
 `rmtree`, `truncate`, `chmod`, `touch`, `checksum`, `locate`, `deep_locate`,
-`prepare`, `query_config`, and extended attributes.
+`prepare`, `query_config`, extended attributes, and - where a server has been
+taught the vendor opcodes - `symlink`, `link` and `readlink`.
 
 ```python
 fs = xrd.FileSystem("davs://dav.example.org")
@@ -71,7 +72,10 @@ sizes = {child.name: child.stat().st_size for child in p.iterdir()}
 
 **Copies.** `xrd.copy`, `xrd.copy_tree` and `xrd.third_party` move data
 between any two endpoints, local paths included, with checksum verification
-on by default and a `progress=` callback that takes `(done, total)`.
+on by default and a `progress=` callback that takes `(done, total)`. A tree
+can be filtered (`include=`, `exclude=`), brought up to date rather than
+recopied (`sync="size" | "mtime" | "checksum"`), pruned (`delete=True`),
+rehearsed (`dry_run=True`) or moved (`remove_source=True`).
 
 **Async.** `xrd.aio` mirrors the whole surface — same names, same arguments,
 `await` in front. `import xrd` does not import `asyncio`; the facade is
@@ -122,13 +126,17 @@ a test, not a convention.
 $ xrd-fs ls -l root://eos.example.org//store/user/me
 $ xrd-fs stat --json davs://dav.example.org/store/f.root
 $ xrd-fs checksum -a adler32 root://host//store/f.root
+$ xrd-fs tail -f root://host//store/running.log
+$ xrd-fs du root://host//store/run7
 $ xrd-cp -r /tmp/results davs://dav.example.org/store/results
+$ xrd-cp -r --sync size --delete /tmp/results root://host//store/results/
 $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
 ```
 
 Every subcommand takes whole URLs and understands `--json`, so a shell script
 never has to parse columns. Exit codes are the usual three: `0` success,
-`1` a runtime failure, `2` a usage error.
+`1` a runtime failure, `2` a usage error. Settings that never change can live
+in `~/.config/xrd/config.ini` and be selected with `--alias`.
 
 ## fsspec
 
@@ -160,7 +168,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-1924 tests, of which the great majority need no network, no KDC and no
+2035 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

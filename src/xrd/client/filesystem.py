@@ -390,6 +390,31 @@ class FileSystem:
     #: ``shutil``'s spelling.
     move = rename
 
+    def symlink(self, target: str, link: str) -> None:
+        """``os.symlink`` order: make ``link`` point at ``target``.
+
+        A vendor extension (``kXR_symlink``), not part of XProtocol - the same
+        opcode XRootD.jl and XrdRust use. A server that has not been taught it
+        answers :class:`~xrd.errors.UnsupportedError`, which is the honest
+        answer for a namespace that has no links.
+        """
+        source, destination = self._abs(target), self._abs(link)
+        self._router.execute(r.Symlink(source, destination), path=destination)
+
+    def link(self, src: str, dst: str) -> None:
+        """``os.link`` order: hard-link ``dst`` to ``src``. Vendor extension."""
+        source, destination = self._abs(src), self._abs(dst)
+        self._router.execute(r.Link(source, destination), path=destination)
+
+    #: ``os``'s spelling of the same call.
+    hardlink = link
+
+    def readlink(self, path: str) -> str:
+        """What a symbolic link points at. Vendor extension."""
+        target = self._abs(path)
+        result = self._router.execute(r.Readlink(target), path=target)
+        return rp.parse_readlink(result.data)
+
     def chmod(self, path: str, mode: int) -> None:
         target = self._abs(path)
         self._router.execute(r.Chmod(target, int(mode) & 0o777), path=target)

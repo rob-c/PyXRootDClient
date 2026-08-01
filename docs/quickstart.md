@@ -106,7 +106,14 @@ with xrd.override(chunk_size=1 << 20):   # for this block only
 ```
 
 Every setting reads its default from the same environment variable the C
-client uses. See [Configuration](config.md).
+client uses, and settings you always want can live in
+`~/.config/xrd/config.ini`:
+
+```python
+cfg = xrd.Config.from_file(alias="eos")     # [defaults], then [alias eos]
+```
+
+See [Configuration](config.md).
 
 ## From the shell
 
@@ -114,6 +121,8 @@ client uses. See [Configuration](config.md).
 $ xrd-fs ls -l root://eos.example.org//store/user/me
 $ xrd-fs stat --json davs://dav.example.org/store/f.root
 $ xrd-cp -r /tmp/results davs://dav.example.org/store/results
+$ xrd-cp -r --sync size /tmp/results root://host//store/results/
+$ xrd-fs du --alias eos root://eos.example.org//store/user/me
 ```
 
 ## Without a storage element

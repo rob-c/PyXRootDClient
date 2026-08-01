@@ -13,12 +13,22 @@ import argparse
 import dataclasses
 import json
 import sys
-from typing import Any
+from typing import IO, Any, cast
 
 from ..config import Config
 from ..url import XRootDURL, parse
 
-__all__ = ["OK", "ERROR", "USAGE", "Endpoints", "dumps", "fail", "size_arg", "common_flags"]
+__all__ = [
+    "OK",
+    "ERROR",
+    "USAGE",
+    "Endpoints",
+    "dumps",
+    "fail",
+    "size_arg",
+    "common_flags",
+    "stdout_bytes",
+]
 
 OK, ERROR, USAGE = 0, 1, 2
 
@@ -42,6 +52,16 @@ def _plain(obj: Any) -> Any:
 def dumps(payload: object) -> str:
     """``--json`` output: stable key order, one document per invocation."""
     return json.dumps(payload, default=_plain, indent=2, sort_keys=False)
+
+
+def stdout_bytes() -> IO[bytes]:
+    """Standard output as a byte stream, whatever it has been replaced with.
+
+    File contents go out unchanged - a ``cat`` that decodes and re-encodes is
+    a ``cat`` that corrupts a ROOT file - and a test capturing stdout puts an
+    object there that has no ``buffer``, so this asks rather than assumes.
+    """
+    return cast("IO[bytes]", getattr(sys.stdout, "buffer", sys.stdout))
 
 
 def fail(program: str, exc: BaseException) -> int:
@@ -79,6 +99,12 @@ def common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--token", metavar="TOKEN", help="bearer token to present")
     parser.add_argument("--user", metavar="NAME", help="username to authenticate as")
     parser.add_argument(
+        "--config", metavar="FILE", help="settings file to read instead of the default"
+    )
+    parser.add_argument(
+        "--alias", metavar="NAME", help="apply the [alias NAME] section of the settings file"
+    )
+    parser.add_argument(
         "--no-verify-tls", action="store_true", help="do not verify the server certificate"
     )
     asking = parser.add_mutually_exclusive_group()
@@ -103,8 +129,13 @@ def configure_logging(verbosity: int) -> None:
 
 
 def config_from(args: argparse.Namespace) -> Config:
-    """A :class:`~xrd.Config` carrying whatever the command line asked for."""
+    """A :class:`~xrd.Config` carrying whatever the command line asked for.
+
+    The settings file underneath is read first, so a flag always wins over a
+    dotfile - which is the order somebody typing the flag expects.
+    """
     configure_logging(args.verbose)
+    base = Config.from_file(args.config, alias=args.alias)
     settings: dict[str, object] = {}
     if args.token:
         settings["token"] = args.token
@@ -114,7 +145,7 @@ def config_from(args: argparse.Namespace) -> Config:
         settings["verify_tls"] = False
     if args.prompt or args.no_prompt:
         settings["prompt"] = bool(args.prompt)
-    return Config(**settings)  # type: ignore[arg-type]
+    return base.evolve(**settings)
 
 
 # ---------------------------------------------------------------------------

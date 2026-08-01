@@ -15,7 +15,13 @@ from contextlib import contextmanager
 from .._log import get_logger
 from ..config import Config
 from ..crypto.crc32c import pack_pages, unpack_pages
-from ..errors import ChecksumMismatchError, ProtocolError, TransientError
+from ..errors import (
+    ChecksumMismatchError,
+    ProtocolError,
+    TransientError,
+    UnsupportedError,
+    kXR_Unsupported,
+)
 from ..flags import Access, ChkPointCode, OpenFlags
 from ..proto import constants as c
 from ..proto import requests as r
@@ -23,10 +29,17 @@ from ..proto import responses as rp
 from ..proto.frames import Request
 from ..session.router import Router
 from ..session.sync import Result
-from ..types import ChecksumInfo, PageResult, ReadRange, StatInfo, WriteChunk
+from ..types import (
+    CheckpointInfo,
+    ChecksumInfo,
+    PageResult,
+    ReadRange,
+    StatInfo,
+    WriteChunk,
+)
 from ..url import XRootDURL, parse
 
-__all__ = ["File"]
+__all__ = ["File", "Checkpoint"]
 
 _log = get_logger(__name__)
 
@@ -60,6 +73,7 @@ class File:
         self._size_hint = 0
         self._flags = OpenFlags.NONE
         self._mode = 0
+        self._checkpoint = False
         #: How many times this handle has been re-opened after losing its
         #: server. Zero on a healthy connection; useful in a log line when a
         #: long read survived a restart nobody noticed.
@@ -324,6 +338,18 @@ class File:
     # Writing
     # ------------------------------------------------------------------
 
+    def _submit(self, request: Request) -> Result:
+        """Send a write-side request, through the open checkpoint if there is one.
+
+        A plain ``kXR_write`` inside a checkpoint is not part of it: the
+        server only journals what it was handed as ``kXR_ckpXeq``. Routing
+        every write through here is what makes :meth:`checkpoint` mean
+        something.
+        """
+        if self._checkpoint:
+            request = r.ChkPoint.execute(self.handle, request)
+        return self._router.execute(request, path=self.url.path)
+
     def write(self, data: bytes, offset: int = 0) -> int:
         """``kXR_write``. Returns the number of bytes accepted."""
         view = memoryview(data).cast("B")
@@ -331,9 +357,7 @@ class File:
         written = 0
         while written < len(view):
             piece = view[written : written + limit]
-            self._router.execute(
-                r.Write(self.handle, offset + written, piece.tobytes()), path=self.url.path
-            )
+            self._submit(r.Write(self.handle, offset + written, piece.tobytes()))
             written += len(piece)
         self._invalidate(offset + written)
         return written
@@ -351,6 +375,11 @@ class File:
         ]
         if not items:
             return 0
+        if self._checkpoint:
+            raise UnsupportedError(
+                kXR_Unsupported,
+                "kXR_writev cannot be checkpointed; write, pgwrite and truncate can",
+            )
         total = 0
         high = 0
         for batch in _write_batches(items):
@@ -373,15 +402,13 @@ class File:
         if not data:
             return 0
         payload = pack_pages(data, offset)
-        self._router.execute(
-            r.PgWrite(self.handle, offset, payload), path=self.url.path
-        )
+        self._submit(r.PgWrite(self.handle, offset, payload))
         self._invalidate(offset + len(data))
         return len(data)
 
     def truncate(self, size: int = 0) -> int:
         """``kXR_truncate`` on the open handle."""
-        self._router.execute(r.Truncate(size=size, fhandle=self.handle), path=self.url.path)
+        self._submit(r.Truncate(size=size, fhandle=self.handle))
         self._invalidate(size, exact=True)
         return size
 
@@ -426,23 +453,38 @@ class File:
     # ------------------------------------------------------------------
 
     @contextmanager
-    def checkpoint(self) -> Iterator[File]:
+    def checkpoint(self) -> Iterator[Checkpoint]:
         """Transactional writes: commit on clean exit, roll back on error.
 
-            >>> with fh.checkpoint():
+            >>> with fh.checkpoint() as cp:
             ...     fh.write(payload, offset)
+            ...     cp.query().free
+            65536
 
-        Requires server-side ``kXR_chkpoint`` support; a server without it
-        raises :class:`~xrd.errors.UnsupportedError` on entry, before any
-        write has happened.
+        Every :meth:`write`, :meth:`pgwrite` and :meth:`truncate` inside the
+        block goes to the server as ``kXR_ckpXeq`` and so is undone by the
+        rollback; :meth:`writev` is not one of the three the server can undo
+        and refuses. Requires server-side ``kXR_chkpoint`` support; a server
+        without it raises :class:`~xrd.errors.UnsupportedError` on entry,
+        before any write has happened.
+
+        Checkpoints do not nest - the server keeps one per handle.
         """
+        if self._checkpoint:
+            raise UnsupportedError(
+                kXR_Unsupported, f"{self.url} already has a checkpoint open"
+            )
         self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.BEGIN)))
+        self._checkpoint = True
         try:
-            yield self
+            yield Checkpoint(self)
         except BaseException:
+            self._checkpoint = False
             self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.ROLLBACK)))
+            self._stat = None  # the file is back to a size this handle never saw
             raise
         else:
+            self._checkpoint = False
             self._router.execute(r.ChkPoint(self.handle, int(ChkPointCode.COMMIT)))
 
     # ------------------------------------------------------------------
@@ -454,6 +496,31 @@ class File:
         actual = self.checksum(algorithm)
         if actual.value.lower() != expected.lower():
             raise ChecksumMismatchError(algorithm, expected.lower(), actual.value.lower())
+
+
+class Checkpoint:
+    """The checkpoint a :meth:`File.checkpoint` block is writing into.
+
+    There is nothing to do with it in the common case - the writes go through
+    the file as usual - but the server will only journal so much, and this is
+    where you ask how much of that is left.
+    """
+
+    __slots__ = ("file",)
+
+    def __init__(self, file: File) -> None:
+        self.file = file
+
+    def query(self) -> CheckpointInfo:
+        """``kXR_ckpQuery`` - how much room the journal has left."""
+        result = self.file._router.execute(
+            r.ChkPoint(self.file.handle, int(ChkPointCode.QUERY)),
+            path=self.file.url.path,
+        )
+        return rp.parse_checkpoint(result.data)
+
+    def __repr__(self) -> str:
+        return f"Checkpoint({str(self.file.url)!r})"
 
 
 def _readv_for(batch: Sequence[ReadRange]) -> Callable[[bytes], Request]:

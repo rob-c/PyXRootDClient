@@ -18,6 +18,7 @@ __all__ = [
     "LocationInfo",
     "ProtocolInfo",
     "ChecksumInfo",
+    "CheckpointInfo",
     "ReadRange",
     "WriteChunk",
     "PageResult",
@@ -197,6 +198,22 @@ class ChecksumInfo:
 
     def __str__(self) -> str:
         return f"{self.algorithm}:{self.value}"
+
+
+@dataclass(frozen=True, slots=True)
+class CheckpointInfo:
+    """How much room the open checkpoint has left, in bytes."""
+
+    capacity: int
+    used: int
+
+    @property
+    def free(self) -> int:
+        """What is left before the server refuses further checkpointed writes."""
+        return max(0, self.capacity - self.used)
+
+    def __str__(self) -> str:
+        return f"{self.used}/{self.capacity} bytes used"
 
 
 @dataclass(frozen=True, slots=True)

@@ -28,9 +28,10 @@ import struct
 import threading
 import zlib
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass, field
 from typing import cast
 
-from ..errors import kXR_ArgInvalid
+from ..errors import kXR_ArgInvalid, kXR_FileNotOpen, kXR_NoSpace, kXR_Unsupported
 from ..proto import constants as c
 from ..proto.buffer import Reader, Writer
 from ..url import XRootDURL, parse
@@ -83,6 +84,15 @@ def _endpoint(server: socketserver.BaseServer) -> tuple[str, int]:
     return host, port
 
 
+@dataclass
+class _Checkpoint:
+    """One open checkpoint: what to put back, and how much has been journaled."""
+
+    path: str
+    snapshot: bytearray = field(default_factory=bytearray)
+    used: int = 0
+
+
 class _NotFound(Exception):
     """Raised inside a handler to produce a ``kXR_NotFound``."""
 
@@ -111,8 +121,12 @@ class FakeServer:
         self.files: dict[str, bytearray] = {}
         #: Directories that exist, including the parents of every file.
         self.dirs: set[str] = {"/"}
+        #: Symbolic links: link path to the target it names.
+        self.links: dict[str, str] = {}
         #: Extended attributes, per path.
         self.xattrs: dict[str, dict[str, bytes]] = {}
+        #: Modes set by ``kXR_chmod``, per path.
+        self.modes: dict[str, int] = {}
         #: Values ``kXR_query`` config lookups answer with.
         self.config_values: dict[str, str] = {"version": "v5.6.0", "role": "server"}
         #: Opcodes seen, in order - what a test asserts round trips on.
@@ -279,6 +293,7 @@ class _Connection:
         self.sock = sock
         self.rfile = sock.makefile("rb")  # type: ignore[attr-defined]
         self.handles: dict[bytes, str] = {}
+        self.checkpoints: dict[bytes, _Checkpoint] = {}
         self.next_handle = 1
         self.auth_seen = 0
 
@@ -487,9 +502,7 @@ def _h_rmdir(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
 
 
 def _h_mv(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
-    split = struct.unpack(">H", params[14:16])[0]
-    text = body.split(b"\x00", 1)[0].decode()
-    src, dst = _clean(text[:split]), _clean(text[split + 1 :])
+    src, dst = _two_paths(params, body)
     conn.s.files[dst] = conn._file(src)
     del conn.s.files[src]
     conn.s.add_dir(posixpath.dirname(dst))
@@ -500,6 +513,7 @@ def _h_chmod(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
     path = _clean(body.split(b"\x00", 1)[0].decode())
     if path not in conn.s.files and path not in conn.s.dirs:
         raise _NotFound(path)
+    conn.s.modes[path] = struct.unpack(">H", params[14:16])[0]
     yield _frame(sid, c.kXR_ok)
 
 
@@ -555,6 +569,7 @@ def _h_open(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator
 
 
 def _h_close(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    conn.checkpoints.pop(params[:4], None)
     if conn.handles.pop(params[:4], None) is None:
         yield _error(sid, 3004, "file is not open")
         return
@@ -644,8 +659,96 @@ def _h_pgwrite(conn: _Connection, sid: int, params: bytes, body: bytes) -> Itera
     yield _frame(sid, c.kXR_ok)
 
 
+#: What a checkpoint on this server may journal, in bytes. Small enough that a
+#: test can fill it, large enough that no ordinary one does.
+CHECKPOINT_CAPACITY = 1 << 20
+
+
 def _h_chkpoint(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    handle, subcode = params[:4], params[15]
+    open_checkpoint = conn.checkpoints.get(handle)
+
+    if subcode == c.kXR_ckpBegin:
+        path = conn._path(params, b"", at=slice(0, 4))
+        conn.checkpoints[handle] = _Checkpoint(path, bytearray(conn._file(path)))
+        yield _frame(sid, c.kXR_ok)
+        return
+
+    if open_checkpoint is None:
+        yield _error(sid, kXR_FileNotOpen, "no checkpoint is open on this handle")
+        return
+    if subcode == c.kXR_ckpQuery:
+        yield _frame(sid, c.kXR_ok, struct.pack(">II", CHECKPOINT_CAPACITY, open_checkpoint.used))
+    elif subcode == c.kXR_ckpCommit:
+        del conn.checkpoints[handle]
+        yield _frame(sid, c.kXR_ok)
+    elif subcode == c.kXR_ckpRollback:
+        del conn.checkpoints[handle]
+        conn._file(open_checkpoint.path)[:] = open_checkpoint.snapshot
+        yield _frame(sid, c.kXR_ok)
+    elif subcode == c.kXR_ckpXeq:
+        yield from _checkpoint_exec(conn, sid, body, open_checkpoint)
+    else:
+        yield _error(sid, kXR_ArgInvalid, f"unknown checkpoint subcode {subcode}")
+
+
+def _checkpoint_exec(
+    conn: _Connection, sid: int, body: bytes, state: _Checkpoint
+) -> Iterator[bytes]:
+    """Run the request embedded in a ``kXR_ckpXeq``.
+
+    Its 24-byte header is the body; whatever data it carries follows the frame
+    uncounted, the way ``kXR_writev`` streams its own, so the handler for the
+    embedded opcode reads it off the socket itself.
+    """
+    if len(body) != c.REQUEST_HDRLEN:
+        yield _error(sid, kXR_ArgInvalid, "checkpoint payload is not one request header")
+        return
+    _, opcode, inner, dlen = _REQ.unpack(body)
+    # Drain the embedded request's data first, whatever happens next: leaving
+    # it on the socket would make the following request read this one's bytes.
+    data = conn.rfile.read(dlen)
+    if opcode not in (c.kXR_write, c.kXR_pgwrite, c.kXR_truncate):
+        yield _error(sid, kXR_Unsupported, f"{c.request_name(opcode)} is not checkpointable")
+        return
+    state.used += dlen
+    if state.used > CHECKPOINT_CAPACITY:
+        yield _error(sid, kXR_NoSpace, "checkpoint is full")
+        return
+    yield from _HANDLERS[opcode](conn, sid, inner, data)
+
+
+def _h_symlink(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    target, link = _two_paths(params, body)
+    if target not in conn.s.files and target not in conn.s.dirs:
+        raise _NotFound(target)
+    conn.s.links[link] = target
     yield _frame(sid, c.kXR_ok)
+
+
+def _h_link(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    src, dst = _two_paths(params, body)
+    # A hard link is the same bytes under a second name, and a bytearray is
+    # shared by reference - which is exactly the semantics wanted.
+    conn.s.files[dst] = conn._file(src)
+    conn.s.add_dir(posixpath.dirname(dst))
+    yield _frame(sid, c.kXR_ok)
+
+
+def _h_readlink(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    path = _clean(body.split(b"\x00", 1)[0].decode())
+    try:
+        target = conn.s.links[path]
+    except KeyError:
+        raise _NotFound(path, 3011, "not a symbolic link") from None
+    yield _frame(sid, c.kXR_ok, target.encode() + b"\x00")
+
+
+def _two_paths(params: bytes, body: bytes) -> tuple[str, str]:
+    """``"<first> <second>"``, split at the ``arg1len`` the params carry."""
+    split = struct.unpack(">H", params[14:16])[0]
+    text = body.split(b"\x00", 1)[0].decode()
+    return _clean(text[:split]), _clean(text[split + 1 :])
 
 
 def _h_query(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
@@ -750,6 +853,9 @@ _HANDLERS = {
     c.kXR_locate: _h_locate,
     c.kXR_prepare: _h_prepare,
     c.kXR_fattr: _h_fattr,
+    c.kXR_symlink: _h_symlink,
+    c.kXR_link: _h_link,
+    c.kXR_readlink: _h_readlink,
 }
 
 

@@ -547,6 +547,15 @@ class HTTPFileSystem(FileSystem):
     def truncate(self, path: str, size: int) -> None:
         raise self._unsupported("truncate by path")
 
+    def symlink(self, target: str, link: str) -> None:
+        raise self._unsupported("symlink")
+
+    def link(self, src: str, dst: str) -> None:
+        raise self._unsupported("link")
+
+    def readlink(self, path: str) -> str:
+        raise self._unsupported("readlink")
+
     def locate(
         self, path: str, *, flags: LocateFlags = LocateFlags.NONE
     ) -> list[LocationInfo]:

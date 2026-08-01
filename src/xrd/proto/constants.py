@@ -44,6 +44,14 @@ kXR_clone = 3032
 
 kXR_1stRequest = 3000
 
+# ---- vendor extensions ----
+# Not in XProtocol.hh: the 3500 block is what XRootD.jl and XrdRust agreed on
+# for the link operations a POSIX namespace has and XRootD never grew. A stock
+# server answers kXR_Unsupported, which is what the client reports.
+kXR_symlink = 3501
+kXR_readlink = 3502
+kXR_link = 3503
+
 # ---- response status (ServerResponseHdr.status) ----
 kXR_ok = 0
 kXR_oksofar = 4000
@@ -222,7 +230,9 @@ MAX_FRAME_PAYLOAD = 0x7FFFFFFF
 MAX_RESPONSE_BODY = 1 << 30
 
 _REQUEST_NAMES: dict[int, str] = {
-    v: k for k, v in list(globals().items()) if k.startswith("kXR_") and 3000 <= v <= 3032
+    v: k
+    for k, v in list(globals().items())
+    if k.startswith("kXR_") and (3000 <= v <= 3032 or 3501 <= v <= 3503)
 }
 _STATUS_NAMES: dict[int, str] = {
     kXR_ok: "kXR_ok",

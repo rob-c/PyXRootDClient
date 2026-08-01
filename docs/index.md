@@ -60,7 +60,7 @@ can only honestly be tested against a live KDC.
 The wire protocol, the session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested -
-1924 tests, the great majority of which need no network, no KDC and no
+2035 tests, the great majority of which need no network, no KDC and no
 `openssl`, plus [interoperability and parity suites](interop.md) that run
 against a real `xrootd` daemon and the official bindings side by side.
 Coverage is 100% of statements and branches across the package, and `proto/`,

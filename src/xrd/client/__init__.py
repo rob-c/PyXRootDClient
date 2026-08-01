@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .file import File
+from .file import Checkpoint, File
 from .filesystem import FileSystem
 
-__all__ = ["FileSystem", "File"]
+__all__ = ["FileSystem", "File", "Checkpoint"]

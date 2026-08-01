@@ -115,6 +115,32 @@ if result.corrupt_pages:
     raise IOError(f"corrupt pages at {result.corrupt_pages}")
 ```
 
+### Checkpointed writes
+
+A checkpoint is a transaction over one handle: the server journals what you
+write, and either keeps it or puts the file back the way it was.
+
+```python
+with xrd.File("root://host//store/f.root") as handle:
+    handle.open(OpenFlags.UPDATE)
+    with handle.checkpoint() as cp:
+        handle.write(header, 0)
+        handle.truncate(new_length)
+        print(cp.query().free)      # bytes the journal still has room for
+    # left cleanly -> committed; raised -> rolled back, and the error re-raised
+```
+
+Every `write`, `pgwrite` and `truncate` inside the block travels as
+`kXR_ckpXeq` wrapping the real request, which is what makes it undoable.
+`writev` is not one of the three a server can undo and is refused with
+`UnsupportedError` rather than being let through unjournaled. Checkpoints do
+not nest - the server keeps one per handle - and a server without
+`kXR_chkpoint` raises on entry, before anything has been written.
+
+`cp.query()` returns a `CheckpointInfo` with `capacity`, `used` and `free`.
+A journal that fills up fails the write with `NoSpaceError`; the block still
+rolls back on the way out.
+
 ### Recovery
 
 With `Config(recover_handles=True)` - the default - a read-only handle whose

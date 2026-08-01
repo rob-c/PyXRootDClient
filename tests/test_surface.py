@@ -86,6 +86,11 @@ def _fs_xattr(fs):
     return fs.getxattr("f.root", "user.k")
 
 
+def _fs_readlink(fs):
+    fs.symlink("f.root", "pointer.root")
+    return fs.readlink("pointer.root")
+
+
 def _fs_removexattr(fs):
     fs.setxattr("f.root", "user.k", b"v")
     return fs.removexattr("f.root", "user.k")
@@ -106,6 +111,8 @@ FILESYSTEM = {
     "isfile": lambda fs: fs.isfile("f.root"),
     "iterdir": lambda fs: list(fs.iterdir(".")),
     "listdir": lambda fs: fs.listdir("."),
+    "hardlink": lambda fs: fs.hardlink("f.root", "hard.root"),
+    "link": lambda fs: fs.link("f.root", "linked.root"),
     "listxattr": lambda fs: fs.listxattr("f.root"),
     "locate": lambda fs: fs.locate("f.root"),
     "makedirs": lambda fs: fs.makedirs("deep/deeper"),
@@ -118,6 +125,7 @@ FILESYSTEM = {
     "query": lambda fs: fs.query(QueryCode.CONFIG, "version"),
     "query_config": lambda fs: fs.query_config("version"),
     "read_bytes": lambda fs: fs.read_bytes("f.root"),
+    "readlink": _fs_readlink,
     "read_text": lambda fs: fs.read_text("f.root"),
     "remove": lambda fs: fs.remove("f.root"),
     "removexattr": _fs_removexattr,
@@ -126,6 +134,7 @@ FILESYSTEM = {
     "rmtree": lambda fs: fs.rmtree("sub"),
     "scandir": lambda fs: fs.scandir("."),
     "setxattr": lambda fs: fs.setxattr("f.root", "user.k", b"v"),
+    "symlink": lambda fs: fs.symlink("f.root", "soft.root"),
     "stat": lambda fs: fs.stat("f.root"),
     "statvfs": lambda fs: fs.statvfs("."),
     "statx": lambda fs: fs.statx(["f.root", "sub"]),
@@ -329,6 +338,17 @@ def _use_file(srv, tmp_path):
         return fh.read()
 
 
+def _use_checkpoint(srv, tmp_path):
+    fh = xrd.File(srv.url.with_path("/store/f.root"), CONFIG)
+    fh.open(OpenFlags.UPDATE)
+    try:
+        with fh.checkpoint() as checkpoint:
+            fh.write(b"C", 0)
+            return checkpoint.query()
+    finally:
+        fh.close()
+
+
 def _use_aio(srv, tmp_path):
     import asyncio
 
@@ -341,6 +361,8 @@ def _use_aio(srv, tmp_path):
 
 NAMES = {
     "Access": lambda srv, tmp: int(Access.OWNER_READ | Access.OWNER_WRITE) > 0,
+    "Checkpoint": _use_checkpoint,
+    "CheckpointInfo": lambda srv, tmp: xrd.CheckpointInfo(capacity=8, used=2).free,
     "ChecksumInfo": lambda srv, tmp: xrd.ChecksumInfo("adler32", "00010203").value,
     "Config": lambda srv, tmp: CONFIG.evolve(username="someone").username,
     "CopyResult": lambda srv, tmp: _use_copy(srv, tmp).size,
@@ -357,6 +379,7 @@ NAMES = {
     "QueryCode": lambda srv, tmp: int(QueryCode.CHECKSUM),
     "ReadRange": lambda srv, tmp: xrd.ReadRange(0, 4).length,
     "StatInfo": lambda srv, tmp: xrd.StatInfo(st_size=1).st_size,
+    "SyncMode": lambda srv, tmp: xrd.copy_tree.__doc__ and "size" in str(xrd.SyncMode),
     "StatInfoFlags": lambda srv, tmp: StatInfoFlags.IS_READABLE | StatInfoFlags.NONE,
     "VFSInfo": lambda srv, tmp: xrd.VFSInfo(nodes_rw=1).nodes_rw,
     "WriteChunk": lambda srv, tmp: xrd.WriteChunk(0, b"x").data,
@@ -368,6 +391,7 @@ NAMES = {
     "copy": _use_copy,
     "copy_tree": _use_copy_tree,
     "current": lambda srv, tmp: xrd.current().username,
+    "find_config_file": lambda srv, tmp: xrd.find_config_file(),
     "open": lambda srv, tmp: xrd.open(srv.url.with_path("/store/f.root"), config=CONFIG).read(),
     "override": _use_config,
     "parse": lambda srv, tmp: xrd.parse("root://host:1094//store/f.root").path,

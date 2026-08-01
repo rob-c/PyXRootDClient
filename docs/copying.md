@@ -2,7 +2,8 @@
 
 ```python
 xrd.copy(source, target, *, chunk_size=None, verify=None, algorithm=None,
-         overwrite=True, progress=None, config=None) -> CopyResult
+         overwrite=True, progress=None, config=None, dry_run=False,
+         remove_source=False) -> CopyResult
 ```
 
 Either side may be a URL, a local path, an `xrd.Path`, or an already-open
@@ -56,6 +57,18 @@ xrd.copy(src, dst, progress=bar)
 `total` is the size the source reported, which for a stream source may be
 zero.
 
+## Moving, and rehearsing
+
+```python
+xrd.copy(src, dst, dry_run=True)        # what it would be: size, nothing sent
+xrd.copy(src, dst, remove_source=True)  # a move: the source goes after verify
+```
+
+`remove_source` deletes only once the copy has finished *and* verification has
+passed, so a failed digest leaves the original where it was. `dry_run` returns
+a `CopyResult` with the size the source reported and `seconds` of zero, which
+is why its `str` leaves the rate off.
+
 ## Recursive copies
 
 ```python
@@ -66,6 +79,41 @@ print(sum(r.size for r in results))
 Local destination directories are created as needed; remote ones come for
 free, because a remote write asks for `kXR_mkpath`. Extra keyword arguments
 are handed to `copy()` for each file.
+
+### Choosing what travels
+
+```python
+xrd.copy_tree(src, dst, exclude=("*.log", "tmp/*"))
+xrd.copy_tree(src, dst, include=("*.root",), exclude=("bad/*",))
+```
+
+`fnmatch` patterns, matched against each path relative to the source root.
+`include` is a whitelist - given one, nothing else travels - and `exclude`
+wins over it.
+
+### Only what has changed
+
+```python
+xrd.copy_tree(src, dst, sync="size")       # stat both sides
+xrd.copy_tree(src, dst, sync="mtime")      # size, and no newer than the target
+xrd.copy_tree(src, dst, sync="checksum")   # ask both endpoints for a digest
+```
+
+`sync` (a `SyncMode`) skips a file already at the target. Length is checked
+first in every mode, because a different size settles it without a second
+question. `checksum` is exact and costs a digest on both sides; `size` is one
+stat each.
+
+### Pruning the target
+
+```python
+xrd.copy_tree(src, dst, delete=True)
+xrd.copy_tree(src, dst, delete=True, dry_run=True)   # says what it would remove
+```
+
+`delete` removes files under the target that the source does not have. What
+an `include`/`exclude` hid was never a candidate, so it is never deleted
+either - filtering the source does not mean emptying the target.
 
 Server-supplied names are validated before they are joined onto your
 destination - a listing entry containing `/` or equal to `..` is refused
@@ -153,4 +201,10 @@ $ xrd-cp -r /tmp/results davs://dav.example.org/store/results
 $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
 $ xrd-cp --tpc davs://a/store/f.root davs://b/store/f.root
 $ xrd-cp --no-verify --progress root://host//store/big.root /scratch/
+$ xrd-cp -r --sync size --delete /tmp/results root://host//store/results/
+$ xrd-cp -r --dry-run --exclude '*.log' /tmp/results root://host//store/results/
+$ xrd-cp --remove-source /tmp/f.root root://host//store/f.root
 ```
+
+See [the command line](cli.md#xrd-cp) for the flag table, including why a
+trailing slash on the destination is what makes a repeated `-r` idempotent.

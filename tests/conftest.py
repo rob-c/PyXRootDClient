@@ -55,6 +55,20 @@ def stat_line(size: int = 1024, flags: int = 0, mtime: int = 1_700_000_000) -> b
     return f"id0 {size} {flags} {mtime}".encode() + b"\x00"
 
 
+@pytest.fixture(autouse=True)
+def _no_dotfile(tmp_path_factory, monkeypatch):
+    """Keep whoever is running the tests out of them.
+
+    ``Config.from_file`` reads ``~/.xrdrc`` when nothing says otherwise, so a
+    developer with one would get different results from CI. Pointing
+    ``$XRD_CONFIG`` at an empty file is the same as having no file at all,
+    and a test about the search order just sets the variable itself.
+    """
+    empty = tmp_path_factory.mktemp("dotfile") / "config.ini"
+    empty.write_text("")
+    monkeypatch.setenv("XRD_CONFIG", str(empty))
+
+
 @pytest.fixture
 def config() -> Config:
     """A config that never reaches the network or the local filesystem."""

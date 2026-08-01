@@ -10,14 +10,16 @@ from __future__ import annotations
 import os
 from collections.abc import Sequence
 
+from ..errors import ProtocolError
 from . import constants as c
 from .buffer import Writer
-from .frames import Request
+from .frames import Request, encode
 
 __all__ = [
     "Protocol", "Login", "Auth", "Ping", "EndSession", "Bind",
     "Stat", "StatVFS", "Statx", "Dirlist", "Locate", "Query", "Prepare",
-    "Mkdir", "Rm", "Rmdir", "Mv", "Chmod", "Truncate", "Set",
+    "Mkdir", "Rm", "Rmdir", "Mv", "Symlink", "Link", "Readlink",
+    "Chmod", "Truncate", "Set",
     "Open", "Close", "Read", "Write", "Sync",
     "ReadV", "WriteV", "PgRead", "PgWrite", "ChkPoint", "Fattr", "Sigver",
 ]
@@ -347,7 +349,39 @@ class Mv(Request):
         return f"{self.src} {self.dst}".encode()
 
     def __repr__(self) -> str:
-        return f"Mv(src={self.src!r}, dst={self.dst!r})"
+        return f"{type(self).__name__}(src={self.src!r}, dst={self.dst!r})"
+
+
+class Symlink(Mv):
+    """``kXR_symlink`` (vendor extension) - point ``dst`` at ``src``.
+
+    Framed like ``kXR_mv``: ``"<target> <link>"`` split by ``arg1len``.
+    """
+
+    opcode = c.kXR_symlink
+
+
+class Link(Mv):
+    """``kXR_link`` (vendor extension) - hard-link ``dst`` to ``src``."""
+
+    opcode = c.kXR_link
+
+
+class Readlink(Request):
+    """``kXR_readlink`` (vendor extension) - what a symbolic link points at."""
+
+    __slots__ = ("path",)
+    opcode = c.kXR_readlink
+    signed = True
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def payload(self) -> bytes:
+        return _encode_path(self.path)
+
+    def __repr__(self) -> str:
+        return f"Readlink(path={self.path!r})"
 
 
 class Chmod(Request):
@@ -628,21 +662,48 @@ class PgWrite(Request):
 class ChkPoint(Request):
     """``kXR_chkpoint`` - transactional write checkpointing."""
 
-    __slots__ = ("fhandle", "subcode", "data")
+    __slots__ = ("fhandle", "subcode", "data", "tail")
     opcode = c.kXR_chkpoint
     signed = True
     idempotent = False
 
-    def __init__(self, fhandle: bytes, subcode: int, data: bytes = b"") -> None:
+    #: The three the server knows how to undo, and so the three it will run.
+    EXECUTABLE = frozenset({c.kXR_write, c.kXR_pgwrite, c.kXR_truncate})
+
+    def __init__(
+        self, fhandle: bytes, subcode: int, data: bytes = b"", tail: bytes = b""
+    ) -> None:
         self.fhandle = fhandle
         self.subcode = subcode
         self.data = data
+        self.tail = tail
+
+    @classmethod
+    def execute(cls, fhandle: bytes, inner: Request) -> ChkPoint:
+        """``kXR_ckpXeq`` - run ``inner`` as part of the open checkpoint.
+
+        The embedded request is split the way the wire wants it: its 24-byte
+        header is the payload ``dlen`` counts, and its data follows the frame
+        uncounted, exactly as ``kXR_writev`` streams its own. The embedded
+        header carries stream id 0 - the answer comes back on the outer
+        frame's.
+        """
+        if inner.opcode not in cls.EXECUTABLE:
+            raise ProtocolError(
+                f"a checkpoint can execute a write or a truncate, "
+                f"not {c.request_name(inner.opcode)}"
+            )
+        frame = encode(inner, 0)
+        return cls(fhandle, c.kXR_ckpXeq, frame[:c.REQUEST_HDRLEN], frame[c.REQUEST_HDRLEN:])
 
     def params(self, w: Writer) -> None:
         w.padded(self.fhandle, 4).zeros(11).u8(self.subcode)
 
     def payload(self) -> bytes:
         return self.data
+
+    def trailer(self) -> bytes:
+        return self.tail
 
     def __repr__(self) -> str:
         return f"ChkPoint(subcode={self.subcode})"

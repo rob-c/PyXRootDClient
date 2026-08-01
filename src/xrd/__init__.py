@@ -21,9 +21,9 @@ The four levels of the API, from most to least convenient:
 
 from __future__ import annotations
 
-from .client import File, FileSystem
-from .config import Config, configure, current, override
-from .copy import CopyResult, copy, copy_tree, third_party
+from .client import Checkpoint, File, FileSystem
+from .config import Config, configure, current, find_config_file, override
+from .copy import CopyResult, SyncMode, copy, copy_tree, third_party
 from .errors import (
     AttrNotFoundError,
     AuthenticationError,
@@ -52,6 +52,7 @@ from .io import open_url as open
 from .path import XRootDPath
 from .path import XRootDPath as Path  # ``xrd.Path`` reads the way pathlib does
 from .types import (
+    CheckpointInfo,
     ChecksumInfo,
     DirEntry,
     LocationInfo,
@@ -91,21 +92,25 @@ __all__ = [
     "configure",
     "current",
     "override",
+    "find_config_file",
     # copying
     "copy",
     "copy_tree",
     "third_party",
     "CopyResult",
+    "SyncMode",
     # files and paths
     "open",
     "XRootDPath",
     "Path",
     "FileSystem",
     "File",
+    "Checkpoint",
     # urls
     "XRootDURL",
     "parse",
     # values
+    "CheckpointInfo",
     "ChecksumInfo",
     "DirEntry",
     "LocationInfo",

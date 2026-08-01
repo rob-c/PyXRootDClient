@@ -14,14 +14,13 @@ from __future__ import annotations
 
 import argparse
 import stat as _stat
-import sys
 import time
 from collections.abc import Callable, Sequence
 from typing import Any
 
 from ..errors import XRootDError
 from ..types import DirEntry, StatInfo
-from . import OK, Endpoints, common_flags, config_from, dumps, fail
+from . import OK, Endpoints, common_flags, config_from, dumps, fail, size_arg, stdout_bytes
 
 __all__ = ["main"]
 
@@ -113,12 +112,160 @@ def _stat_cmd(args: argparse.Namespace, endpoints: Endpoints) -> int:
 
 
 def _cat(args: argparse.Namespace, endpoints: Endpoints) -> int:
-    out = getattr(sys.stdout, "buffer", sys.stdout)
+    out = stdout_bytes()
     for url in args.url:
         filesystem, path = endpoints.at(url)
         with filesystem.open(path, "rb") as handle:
             while chunk := handle.read(1 << 20):
                 out.write(chunk)
+    return OK
+
+
+def _tail(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """The end of a file, and optionally whatever is appended to it next."""
+    filesystem, path = endpoints.at(args.url)
+    out = stdout_bytes()
+    size = filesystem.getsize(path)
+    start = max(0, size - args.bytes)
+    with filesystem.open(path, "rb") as handle:
+        handle.seek(start)
+        tail = handle.read()
+    if start:  # a partial first line is noise, not data
+        tail = tail.partition(b"\n")[2]
+    lines = tail.splitlines(keepends=True)
+    out.write(b"".join(lines[max(0, len(lines) - args.lines) :]))
+    out.flush()
+    if not args.follow:
+        return OK
+    try:
+        _follow(out, filesystem, path, size, args.interval)
+    except KeyboardInterrupt:
+        pass
+    return OK
+
+
+def _follow(
+    out: Any,
+    filesystem: Any,
+    path: str,
+    offset: int,
+    interval: float,
+    deadline: float | None = None,
+) -> None:
+    """Print what is appended to ``path`` until it stops existing.
+
+    ``deadline`` is what a test uses to get out; a person uses ``^C``, and a
+    file that is removed or replaced by a shorter one ends the follow too -
+    the next byte at that offset would belong to a different file.
+    """
+    while deadline is None or time.monotonic() < deadline:
+        time.sleep(interval)
+        try:
+            size = filesystem.getsize(path)
+        except (XRootDError, OSError):
+            return
+        if size < offset:
+            return
+        if size > offset:
+            with filesystem.open(path, "rb") as handle:
+                handle.seek(offset)
+                out.write(handle.read())
+            out.flush()
+            offset = size
+
+
+def _du_tree(filesystem: Any, path: str) -> tuple[int, int]:
+    """Bytes and files under ``path``, counted from the listing itself.
+
+    A directory listing already carries the sizes, so a tree costs one request
+    per directory rather than one per file. A server that lists without them
+    costs one stat per entry instead, which is the price of its terseness.
+    """
+    size = count = 0
+    for entry in filesystem.scandir(path):
+        info = entry.stat or filesystem.stat(entry.path)
+        if info.is_dir():
+            below = _du_tree(filesystem, entry.path)
+            size, count = size + below[0], count + below[1]
+        else:
+            size += info.st_size
+            count += 1
+    return size, count
+
+
+def _du(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """What a tree costs, in bytes and in files."""
+    totals: dict[str, tuple[int, int]] = {}
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        totals[url] = (
+            _du_tree(filesystem, path)
+            if filesystem.isdir(path)
+            else (filesystem.getsize(path), 1)
+        )
+    if args.json:
+        print(dumps({url: {"bytes": s, "files": n} for url, (s, n) in totals.items()}))
+        return OK
+    for url, (size, count) in totals.items():
+        print(f"{size:>15} {count:>9} {url}")
+    return OK
+
+
+def _chmod(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.chmod(path, args.mode)
+    return OK
+
+
+def _truncate(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.truncate(path, args.size)
+    return OK
+
+
+def _prepare(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """Stage files onto disk, or let the server forget them again."""
+    by_endpoint: dict[int, tuple[Any, list[str]]] = {}
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        by_endpoint.setdefault(id(filesystem), (filesystem, []))[1].append(path)
+    handles = []
+    for filesystem, paths in by_endpoint.values():
+        if args.evict:
+            filesystem.evict(paths)
+        else:
+            handles.append(filesystem.prepare(paths, priority=args.priority))
+    if args.json:
+        print(dumps(handles))
+    elif handles and not args.quiet:
+        print("\n".join(handles))
+    return OK
+
+
+def _ln(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    filesystem, target = endpoints.at(args.target)
+    other, link = endpoints.at(args.link)
+    if other is not filesystem:
+        raise ValueError("a link and its target live on one endpoint")
+    if args.symbolic:
+        filesystem.symlink(target, link)
+    else:
+        filesystem.link(target, link)
+    return OK
+
+
+def _readlink(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    targets = {}
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        targets[url] = filesystem.readlink(path)
+    if args.json:
+        print(dumps(targets))
+        return OK
+    for target in targets.values():
+        print(target)
     return OK
 
 
@@ -272,6 +419,45 @@ def _parser() -> argparse.ArgumentParser:
 
     cat = command("cat", _cat, "write a file to standard output")
     cat.add_argument("url", nargs="+")
+
+    tail = command("tail", _tail, "the end of a file, optionally as it grows")
+    tail.add_argument("url")
+    tail.add_argument("-n", "--lines", type=int, default=10, help="how many lines (default 10)")
+    tail.add_argument("-f", "--follow", action="store_true", help="keep printing what is appended")
+    tail.add_argument(
+        "--interval", type=float, default=1.0, metavar="SECONDS", help="how often to look"
+    )
+    tail.add_argument(
+        "--bytes",
+        type=size_arg,
+        default=1 << 16,
+        metavar="N",
+        help="how much of the end to fetch looking for those lines",
+    )
+
+    du = command("du", _du, "how much space a tree uses")
+    du.add_argument("url", nargs="+")
+
+    chmod = command("chmod", _chmod, "change the mode of a path")
+    chmod.add_argument("mode", type=lambda text: int(text, 8), help="octal, e.g. 750")
+    chmod.add_argument("url", nargs="+")
+
+    truncate = command("truncate", _truncate, "resize a file without opening it")
+    truncate.add_argument("-s", "--size", type=int, required=True, help="new length in bytes")
+    truncate.add_argument("url", nargs="+")
+
+    prepare = command("prepare", _prepare, "stage files onto disk, or evict them")
+    prepare.add_argument("url", nargs="+")
+    prepare.add_argument("--evict", action="store_true", help="drop cached copies instead")
+    prepare.add_argument("--priority", type=int, default=0, help="0 to 3, higher is sooner")
+
+    ln = command("ln", _ln, "link one path to another (vendor extension)")
+    ln.add_argument("target")
+    ln.add_argument("link")
+    ln.add_argument("-s", "--symbolic", action="store_true", help="symbolic rather than hard")
+
+    readlink = command("readlink", _readlink, "what a symbolic link points at")
+    readlink.add_argument("url", nargs="+")
 
     cks = command("checksum", _checksum, "ask the server for a checksum")
     cks.add_argument("url", nargs="+")

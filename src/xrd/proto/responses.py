@@ -11,7 +11,15 @@ from dataclasses import dataclass, field
 
 from ..errors import ProtocolError
 from ..flags import StatInfoFlags
-from ..types import ChecksumInfo, DirEntry, LocationInfo, ProtocolInfo, StatInfo, VFSInfo
+from ..types import (
+    CheckpointInfo,
+    ChecksumInfo,
+    DirEntry,
+    LocationInfo,
+    ProtocolInfo,
+    StatInfo,
+    VFSInfo,
+)
 from . import constants as c
 from .buffer import Reader
 
@@ -20,6 +28,7 @@ __all__ = [
     "LoginInfo", "ReadVSegment", "FattrItem", "FattrResult",
     "parse_protocol", "parse_login", "parse_stat", "parse_statvfs", "parse_statx",
     "parse_dirlist", "parse_locate", "parse_open", "parse_checksum",
+    "parse_checkpoint", "parse_readlink",
     "parse_error", "parse_redirect", "parse_wait", "parse_waitresp", "parse_attn",
     "parse_status", "parse_readv", "parse_fattr",
 ]
@@ -270,10 +279,15 @@ def parse_dirlist(data: bytes, path: str = "", with_stat: bool = True) -> list[D
     Plain mode is one name per line. With ``kXR_dstat`` the server emits a
     leading ``".\\n<stat>"`` entry followed by ``name\\n<stat>`` pairs; the
     dot entry describes the directory itself and is dropped.
+
+    The dot entry is also how a server says it honoured the request: one that
+    ignores ``kXR_dstat`` answers with plain names, and reading those in pairs
+    would pass every second name off as a stat line. So the reply decides,
+    not the flag we sent.
     """
     text = data.split(b"\x00", 1)[0].decode("utf-8", "replace")
     lines = [ln for ln in text.split("\n") if ln]
-    if not with_stat:
+    if not with_stat or lines[:1] != ["."]:
         return [DirEntry(name=_checked(n, path), parent=path) for n in lines]
 
     entries: list[DirEntry] = []
@@ -324,6 +338,20 @@ def parse_checksum(data: bytes) -> ChecksumInfo:
     if not value:
         raise ProtocolError(f"malformed checksum response: {text!r}")
     return ChecksumInfo(algorithm=name.lower(), value=value.strip().lower())
+
+
+def parse_checkpoint(data: bytes) -> CheckpointInfo:
+    """``kXR_chkpoint`` with ``kXR_ckpQuery`` - capacity then bytes used."""
+    r = Reader(data, "kXR_ckpQuery")
+    return CheckpointInfo(capacity=r.u32(), used=r.u32())
+
+
+def parse_readlink(data: bytes) -> str:
+    """``kXR_readlink`` (vendor extension) - the target, NUL-padded."""
+    target = data.split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
+    if not target:
+        raise ProtocolError("kXR_readlink named no target")
+    return target
 
 
 # --------------------------------------------------------------------------

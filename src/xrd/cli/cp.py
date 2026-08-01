@@ -65,6 +65,38 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-progress", dest="progress", action="store_false", help="never show progress"
     )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="report the transfers without making them"
+    )
+    parser.add_argument(
+        "--remove-source",
+        action="store_true",
+        help="delete each source once its copy is verified, making this a move",
+    )
+    parser.add_argument(
+        "--include",
+        metavar="PATTERN",
+        action="append",
+        default=[],
+        help="with -r, copy only what matches (repeatable)",
+    )
+    parser.add_argument(
+        "--exclude",
+        metavar="PATTERN",
+        action="append",
+        default=[],
+        help="with -r, skip what matches (repeatable, and it wins over --include)",
+    )
+    parser.add_argument(
+        "--sync",
+        choices=("size", "mtime", "checksum"),
+        help="with -r, skip files the target already has, compared this way",
+    )
+    parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="with -r, remove files under DEST that SOURCE does not have",
+    )
     common_flags(parser)
     return parser
 
@@ -110,6 +142,8 @@ class _CopyOptions(TypedDict, total=False):
     verify: bool
     algorithm: str
     chunk_size: int
+    dry_run: bool
+    remove_source: bool
 
 
 def _human(size: int) -> str:
@@ -153,8 +187,21 @@ def _destination(source: XRootDURL, dest: XRootDURL, *, into: bool) -> XRootDURL
 # ---------------------------------------------------------------------------
 
 
+def _misuse(args: argparse.Namespace) -> str | None:
+    """The flag combinations that cannot mean anything, in words."""
+    if not args.recursive and (args.include or args.exclude or args.sync or args.delete):
+        return "--include, --exclude, --sync and --delete describe a tree; add -r"
+    if args.tpc and (args.dry_run or args.remove_source):
+        return "--tpc hands the transfer to the servers; --dry-run and --remove-source cannot"
+    return None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    complaint = _misuse(args)
+    if complaint is not None:
+        print(f"{PROGRAM}: {complaint}", file=sys.stderr)
+        return USAGE
     config = config_from(args)
     sources = [parse(s) for s in args.source]
     dest = parse(args.dest)
@@ -195,6 +242,10 @@ def _run(
         options["algorithm"] = args.algorithm
     if args.chunk_size:
         options["chunk_size"] = args.chunk_size
+    if args.dry_run:
+        options["dry_run"] = True
+    if args.remove_source:
+        options["remove_source"] = True
 
     results: list[CopyResult] = []
     for source in sources:
@@ -207,7 +258,17 @@ def _run(
                 )
             elif args.recursive:
                 results.extend(
-                    copy_tree(source, target, config=config, progress=bar, **options)
+                    copy_tree(
+                        source,
+                        target,
+                        config=config,
+                        progress=bar,
+                        include=args.include,
+                        exclude=args.exclude,
+                        sync=args.sync,
+                        delete=args.delete,
+                        **options,
+                    )
                 )
             else:
                 results.append(copy(source, target, config=config, progress=bar, **options))

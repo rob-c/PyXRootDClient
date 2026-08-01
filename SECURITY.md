@@ -63,6 +63,14 @@ build a local destination - so `parse_dirlist()` refuses any entry containing
 `/` or equal to `..`. Without that check a hostile server could answer
 `../../.ssh/authorized_keys` to a recursive download.
 
+**A settings file cannot hold a bearer token.** `Config.from_file` accepts
+`token_file` and refuses `token`: a literal token in a dotfile is a secret in
+every backup, every `scp -r` of a home directory and every screenshot of it,
+and it outlives the reason it was written down. The refusal names
+`token_file` as the way to say the same thing. `prompter` is refused too,
+because it is a callable and an INI file that could name one would be an
+arbitrary-import hole.
+
 **Bounded work per response.** Frames are sized from the declared `dlen`,
 redirects are capped by `config.redirect_limit`, `kXR_wait` intervals by
 `config.wait_cap`, and every socket operation by `config.request_timeout`. A

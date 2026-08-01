@@ -11,6 +11,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.File
 
+::: xrd.Checkpoint
+
 ::: xrd.XRootDPath
 
 ## Copying
@@ -23,9 +25,13 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.CopyResult
 
+::: xrd.SyncMode
+
 ## Configuration
 
 ::: xrd.Config
+
+::: xrd.find_config_file
 
 ::: xrd.configure
 
@@ -46,6 +52,8 @@ Generated from the source. Everything below is importable from the top-level
 ::: xrd.DirEntry
 
 ::: xrd.ChecksumInfo
+
+::: xrd.CheckpointInfo
 
 ::: xrd.LocationInfo
 

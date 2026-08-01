@@ -36,11 +36,13 @@ imports nothing the synchronous package does not already provide.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import io
 from collections.abc import AsyncIterator, Callable, Coroutine, Generator, Iterable, Sequence
 from typing import Any, TypeVar
 
+from .client import Checkpoint as _Checkpoint
 from .client import File as _File
 from .client import FileSystem as _FileSystem
 from .config import Config
@@ -52,6 +54,7 @@ from .errors import UnsupportedError, kXR_Unsupported
 from .flags import DirListFlags, LocateFlags, PrepareFlags, QueryCode
 from .io import open_url as _open_url
 from .types import (
+    CheckpointInfo,
     ChecksumInfo,
     DirEntry,
     LocationInfo,
@@ -64,7 +67,16 @@ from .types import (
 )
 from .url import XRootDURL
 
-__all__ = ["AsyncFile", "AsyncFileSystem", "FileSystem", "copy", "copy_tree", "open", "third_party"]
+__all__ = [
+    "AsyncCheckpoint",
+    "AsyncFile",
+    "AsyncFileSystem",
+    "FileSystem",
+    "copy",
+    "copy_tree",
+    "open",
+    "third_party",
+]
 
 T = TypeVar("T")
 
@@ -267,6 +279,30 @@ class AsyncFile:
         """The server's checksum for this file. ``root://`` only."""
         return await _run(self._native("checksum").checksum, algorithm)
 
+    @contextlib.asynccontextmanager
+    async def checkpoint(self) -> AsyncIterator[AsyncCheckpoint]:
+        """Transactional writes: committed on a clean exit, rolled back on one.
+
+            >>> async with fh.checkpoint() as cp:      # doctest: +SKIP
+            ...     await fh.write(payload)
+            ...     await fh.flush()
+            ...     (await cp.query()).free
+
+        The journal only sees what has reached the server, so flush inside the
+        block - a buffered write still sitting in the buffer is written after
+        the commit, not inside it. ``root://`` only, and only where the server
+        implements ``kXR_chkpoint``.
+        """
+        block = self._native("checkpoint").checkpoint()
+        started = await _run(block.__enter__)
+        try:
+            yield AsyncCheckpoint(started)
+        except BaseException as exc:
+            await _run(block.__exit__, type(exc), exc, exc.__traceback__)
+            raise
+        else:
+            await _run(block.__exit__, None, None, None)
+
     # -- lifetime ------------------------------------------------------
 
     async def close(self) -> None:
@@ -297,6 +333,22 @@ class AsyncFile:
 
     def __repr__(self) -> str:
         return f"AsyncFile({self._sync!r})"
+
+
+class AsyncCheckpoint:
+    """The checkpoint an :meth:`AsyncFile.checkpoint` block is writing into."""
+
+    __slots__ = ("_sync",)
+
+    def __init__(self, checkpoint: _Checkpoint) -> None:
+        self._sync = checkpoint
+
+    async def query(self) -> CheckpointInfo:
+        """``kXR_ckpQuery`` - how much room the journal has left."""
+        return await _run(self._sync.query)
+
+    def __repr__(self) -> str:
+        return f"AsyncCheckpoint({str(self._sync.file.url)!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -458,6 +510,21 @@ class AsyncFileSystem:
 
     async def truncate(self, path: str, size: int) -> None:
         await _run(self._sync.truncate, path, size)
+
+    async def symlink(self, target: str, link: str) -> None:
+        """``os.symlink`` order. A vendor extension - see the sync method."""
+        await _run(self._sync.symlink, target, link)
+
+    async def link(self, src: str, dst: str) -> None:
+        """``os.link`` order. A vendor extension - see the sync method."""
+        await _run(self._sync.link, src, dst)
+
+    #: ``os``'s spelling of the same call.
+    hardlink = link
+
+    async def readlink(self, path: str) -> str:
+        """What a symbolic link points at. A vendor extension."""
+        return str(await _run(self._sync.readlink, path))
 
     async def touch(self, path: str, *, exist_ok: bool = True) -> None:
         await _run(functools.partial(self._sync.touch, path, exist_ok=exist_ok))

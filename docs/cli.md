@@ -16,6 +16,10 @@ Common options on every subcommand:
 | `--no-verify-tls` | do not verify the server certificate |
 | `--prompt` | ask for missing credentials even when this is not a terminal |
 | `--no-prompt` | never ask for credentials; fail instead |
+| `--config FILE` | settings file to read instead of the usual places |
+| `--alias NAME` | the `[alias NAME]` section of that file to overlay |
+
+See [Configuration](config.md#the-settings-file) for the file itself.
 
 ## `xrd-fs`
 
@@ -34,7 +38,23 @@ $ xrd-fs locate --deep root://host//store/f.root
 $ xrd-fs ping root://host
 $ xrd-fs query root://host version role sitename
 $ xrd-fs xattr --set user.experiment=atlas root://host//store/f.root
+$ xrd-fs tail -n 20 root://host//store/log.txt
+$ xrd-fs tail -f root://host//store/running.log        # keep printing appends
+$ xrd-fs du root://host//store/run7
+$ xrd-fs chmod 640 root://host//store/f.root
+$ xrd-fs truncate -s 0 root://host//store/scratch.bin
+$ xrd-fs prepare root://host//store/f.root             # stage it onto disk
+$ xrd-fs prepare --evict root://host//store/f.root     # drop the cached copy
+$ xrd-fs ln -s root://host//store/f.root root://host//store/latest
+$ xrd-fs readlink root://host//store/latest
 ```
+
+`tail -f` polls the size every `--interval` seconds and prints what appeared;
+a file that shrinks is a different file, and it stops. `du` counts from the
+listing, one request per directory, and falls back to one stat per entry when
+the server lists without sizes. `ln`, `ln -s` and `readlink` are a **vendor
+extension** - stock XRootD answers `kXR_Unsupported`, and HTTP has no verb for
+them at all; see [Interoperability](interop.md).
 
 ## `xrd-cp`
 
@@ -46,11 +66,38 @@ $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
 $ xrd-cp -n /tmp/f.root root://host//store/f.root      # never overwrite
 $ xrd-cp --verify -a crc32c /tmp/f.root root://host//store/f.root
 $ xrd-cp --chunk-size 8M --progress root://host//store/big.root /scratch/
+$ xrd-cp -r --exclude '*.log' /tmp/results root://host//store/results
+$ xrd-cp -r --include '*.root' --sync size /tmp/results root://host//store/results
+$ xrd-cp -r --delete /tmp/results root://host//store/results
+$ xrd-cp -r --dry-run /tmp/results root://host//store/results
+$ xrd-cp --remove-source /tmp/f.root root://host//store/f.root   # a move
 ```
 
 Several sources are allowed when the destination is a directory. Progress is
 shown on a tty and suppressed otherwise; `--progress` and `--no-progress`
 override that either way.
+
+For a tree:
+
+| Option | Meaning |
+| --- | --- |
+| `--include PATTERN` | only paths matching one of these travel (repeatable) |
+| `--exclude PATTERN` | paths matching one of these do not (wins over include) |
+| `--sync {size,mtime,checksum}` | skip what is already there, judged that way |
+| `--delete` | remove what is in the target but not in the source |
+| `--dry-run` | print what would happen, transfer nothing |
+| `--remove-source` | delete the source once the copy is verified - a move |
+
+Patterns are `fnmatch` patterns matched against the path relative to the
+source root, so `sub/*.root` means what it looks like. `--sync checksum` asks
+both endpoints for a digest, which is exact and not free; `--sync size` is one
+stat each. `--delete` never removes anything an `--exclude` hid, because it
+was never a candidate in the first place.
+
+`cp` semantics decide the destination: a target that already exists as a
+directory is copied *into*, so a second run of `cp -r tree /dest` writes
+`/dest/tree/tree`. Give the target a trailing slash to say "into this" every
+time, which is what makes `--sync` and `--delete` idempotent.
 
 ## Scripting with `--json`
 

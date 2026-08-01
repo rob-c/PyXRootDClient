@@ -58,7 +58,18 @@ know which client its users are running.
 | X.509 delegation | same |
 | `kXR_bind` split data sockets | one multiplexed stream is enough, and simpler |
 
-Each raises an exception that names the feature. A server insisting on one of
+Each raises an exception that names the feature.
+
+## Beyond the specification
+
+`symlink`, `link` and `readlink` are not in XProtocol at all. They are sent as
+`kXR_symlink` (3501), `kXR_readlink` (3502) and `kXR_link` (3503), framed like
+`kXR_mv` - the same numbers and framing XRootD.jl and XrdRust chose, so the
+three clients agree with each other and a server taught one of them
+understands all three. A stock daemon answers `kXR_Unsupported`, which is the
+honest answer for a namespace with no links, and this client turns it into
+`UnsupportedError` rather than pretending. The HTTP and WebDAV backends raise
+the same exception without a round trip, because there is no verb to try. A server insisting on one of
 them says so at the handshake, not three operations later.
 
 ## Version coverage

@@ -66,6 +66,23 @@ fs.truncate("/store/f.root", 4096)
 fs.chmod("/store/f.root", 0o640)
 ```
 
+### Links
+
+```python
+fs.symlink("/store/f.root", "/store/latest")    # os.symlink order: target, link
+fs.readlink("/store/latest")                    # '/store/f.root'
+fs.link("/store/f.root", "/store/second")       # os.link order; also fs.hardlink
+```
+
+!!! warning "A vendor extension, not XProtocol"
+    XProtocol has no link opcodes. These use `kXR_symlink` (3501),
+    `kXR_readlink` (3502) and `kXR_link` (3503) - the numbers XRootD.jl and
+    XrdRust settled on - framed like `kXR_mv`. A stock daemon answers
+    `kXR_Unsupported`, which surfaces as `UnsupportedError`; HTTP and WebDAV
+    have no verb for them and raise the same thing without a round trip. The
+    argument order is `os`'s in both cases, so the calls read the way a Python
+    programmer already expects.
+
 !!! note "`touch` is not `open(..., "a")`"
     A stock server refuses to create a file for `kXR_open_updt` alone, so
     `touch` asks for `kXR_new | kXR_open_updt | kXR_mkpath` and treats

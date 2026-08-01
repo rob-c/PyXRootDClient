@@ -55,8 +55,26 @@ Everything: `FileSystem` and all of its methods, `File`, `open`, `copy`,
 
 ```python
 result = await xrd.aio.copy("root://a//store/f.root", "/scratch/f.root")
-results = await xrd.aio.copy_tree("root://a//store/run7", "/scratch/run7")
+results = await xrd.aio.copy_tree("root://a//store/run7", "/scratch/run7",
+                                  exclude=("*.log",), sync="size", delete=True)
 ```
+
+Checkpoints are an `async with`, and the link family is there too:
+
+```python
+async with xrd.aio.open(url, "r+b") as fh:
+    async with fh.checkpoint() as cp:
+        await fh.write(header)
+        await fh.flush()           # the journal only sees what was sent
+        print((await cp.query()).free)
+
+await fs.symlink("/store/f.root", "/store/latest")
+await fs.readlink("/store/latest")
+```
+
+Flushing inside the block is the one difference worth remembering: a buffered
+write still sitting in the buffer reaches the server *after* the commit, and
+so is not part of the transaction.
 
 ## An idiom worth stealing
 

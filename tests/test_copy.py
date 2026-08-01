@@ -12,7 +12,7 @@ from xrd.copy import engine
 from xrd.copy import tpc as engine_tpc
 from xrd.errors import ChecksumMismatchError, UnsupportedError, kXR_Unsupported
 from xrd.proto import constants as c
-from xrd.testing import FakeDAVServer, FakeServer, error
+from xrd.testing import FakeDAVServer, FakeServer, error, frame
 
 PAYLOAD = bytes(range(256)) * 40  # 10 240 bytes, compresses nothing
 
@@ -203,6 +203,137 @@ def test_copy_tree_passes_options_through(tmp_path, server):
     results = xrd.copy_tree(tmp_path, server.url / "opts", chunk_size=8, verify=False)
     assert results[0].checksum is None
     assert server.contents("/opts/one.bin") == PAYLOAD
+
+
+# ---------------------------------------------------------------------------
+# Selection, synchronisation and moves
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def tree(tmp_path):
+    """A small local tree: two ``.root`` files and one log, one level deep."""
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "one.root").write_bytes(b"one")
+    (tmp_path / "notes.log").write_bytes(b"log")
+    (tmp_path / "sub" / "two.root").write_bytes(b"two")
+    return tmp_path
+
+
+def copied(server, prefix):
+    """The names the server holds under ``prefix``, relative to it."""
+    return sorted(p[len(prefix) :].lstrip("/") for p in server.files if p.startswith(prefix))
+
+
+def test_exclude_skips_what_matches_it(tree, server):
+    xrd.copy_tree(tree, server.url / "sel", exclude=["*.log"])
+    assert copied(server, "/sel") == ["one.root", "sub/two.root"]
+
+
+def test_include_is_a_whitelist_and_exclude_beats_it(tree, server):
+    xrd.copy_tree(tree, server.url / "inc", include=["*.root", "*.log"], exclude=["sub/*"])
+    assert copied(server, "/inc") == ["notes.log", "one.root"]
+
+
+def test_what_no_include_pattern_names_stays_behind(tree, server):
+    """An include list nothing matches is an empty transfer, not a full one."""
+    assert xrd.copy_tree(tree, server.url / "none", include=["*.parquet"]) == []
+    assert copied(server, "/none") == []
+
+
+def test_a_dry_run_reports_the_transfers_it_did_not_make(tree, server):
+    results = xrd.copy_tree(tree, server.url / "dry", dry_run=True)
+    assert sorted(r.size for r in results) == [3, 3, 3]
+    assert copied(server, "/dry") == []
+    assert "MB/s" not in str(results[0])
+
+
+def test_sync_by_size_skips_what_is_already_there(tree, server):
+    first = xrd.copy_tree(tree, server.url / "syn", sync="size")
+    again = xrd.copy_tree(tree, server.url / "syn", sync="size")
+    assert len(first) == 3 and again == []
+    (tree / "one.root").write_bytes(b"longer than before")
+    assert [r.size for r in xrd.copy_tree(tree, server.url / "syn", sync="size")] == [18]
+
+
+def test_sync_by_checksum_notices_a_change_of_the_same_length(tree, server):
+    xrd.copy_tree(tree, server.url / "cks", sync="checksum")
+    assert xrd.copy_tree(tree, server.url / "cks", sync="checksum") == []
+    (tree / "one.root").write_bytes(b"ONE")
+    assert len(xrd.copy_tree(tree, server.url / "cks", sync="checksum")) == 1
+
+
+def test_sync_by_mtime_copies_again_when_the_source_is_newer(tree, tmp_path_factory):
+    """Local both sides: a copy carries no mtime, so the test sets them."""
+    mirror = tmp_path_factory.mktemp("mirror")
+    assert len(xrd.copy_tree(tree, mirror, sync="mtime")) == 3
+    for path in mirror.rglob("*.*"):
+        os.utime(path, (2_000_000_000, 2_000_000_000))
+    assert xrd.copy_tree(tree, mirror, sync="mtime") == []
+    os.utime(tree / "one.root", (2_100_000_000, 2_100_000_000))
+    assert len(xrd.copy_tree(tree, mirror, sync="mtime")) == 1
+
+
+def test_sync_copies_a_file_the_target_does_not_have_at_all(tree, server):
+    assert len(xrd.copy_tree(tree, server.url / "fresh", sync="size")) == 3
+
+
+def test_delete_removes_what_the_source_no_longer_has(tree, server):
+    xrd.copy_tree(tree, server.url / "del")
+    (tree / "notes.log").unlink()
+    xrd.copy_tree(tree, server.url / "del", delete=True)
+    assert copied(server, "/del") == ["one.root", "sub/two.root"]
+
+
+def test_a_dry_run_deletes_nothing(tree, server):
+    xrd.copy_tree(tree, server.url / "dd")
+    (tree / "notes.log").unlink()
+    xrd.copy_tree(tree, server.url / "dd", delete=True, dry_run=True)
+    assert "notes.log" in copied(server, "/dd")
+
+
+def test_delete_takes_an_exclusion_at_its_word(tree, server):
+    """After the call the target holds the selection, and nothing else."""
+    xrd.copy_tree(tree, server.url / "sel2")
+    xrd.copy_tree(tree, server.url / "sel2", exclude=["*.log"], delete=True)
+    assert copied(server, "/sel2") == ["one.root", "sub/two.root"]
+
+
+def test_remove_source_makes_the_copy_a_move(src, server):
+    result = xrd.copy(src, server.url / "moved.bin", remove_source=True)
+    assert server.contents("/moved.bin") == PAYLOAD
+    assert not src.exists()
+    assert result.size == len(PAYLOAD)
+
+
+def test_a_move_that_fails_verification_keeps_the_original(src, server):
+    def wrong(conn, sid, params, body):
+        yield frame(sid, c.kXR_ok, b"adler32 00000000\x00")
+
+    server.handlers[c.kXR_query] = wrong
+    with pytest.raises(ChecksumMismatchError):
+        xrd.copy(src, server.url / "kept.bin", verify=True, remove_source=True)
+    assert src.exists()
+
+
+def test_a_remote_source_is_removed_too(server, tmp_path):
+    xrd.copy(server.url / "data/a.root", tmp_path / "here.root", remove_source=True)
+    assert (tmp_path / "here.root").read_bytes() == b"hello world"
+    assert "/data/a.root" not in server.files
+
+
+def test_a_dry_run_of_a_stream_has_nothing_to_measure(server):
+    result = xrd.copy(io.BytesIO(b"data"), server.url / "never.bin", dry_run=True)
+    assert result.size == 0
+    assert "never.bin" in result.target
+
+
+def test_a_probe_of_something_that_is_not_there_is_not_a_size(server, tmp_path):
+    """The engine has to tell "absent" from "empty" to decide about syncing."""
+    cfg = xrd.Config()
+    assert engine._probe(xrd.parse(str(tmp_path / "absent")), cfg) is None
+    assert engine._probe(server.url / "data/gone.root", cfg) is None
+    assert engine._probe(server.url / "data/a.root", cfg)[0] == 11
 
 
 # ---------------------------------------------------------------------------
