@@ -73,12 +73,16 @@ ranges; `pgread` gets per-page CRC32C from the server for free.
 cfg = xrd.Config(
     chunk_size=8 << 20,        # bigger writes, fewer round trips
     readahead=4 << 20,         # buffered reads pull more per request
-    parallel_chunks=8,         # concurrent chunks in a copy
+    parallel_chunks=8,         # spans of a copy moved at once, one connection each
 )
 ```
 
 Defaults are 4 MiB, 1 MiB and 4. On a high-latency WAN link raise all three;
-on loopback they make no difference.
+on loopback they make no difference. `parallel_chunks` is what a single large
+transfer is spread over, so it is the one that turns a WAN copy from
+round-trip-bound into bandwidth-bound - at the cost of one login per span, and
+of a verification that reads both files instead of digesting the stream
+([Several connections at once](copying.md#several-connections-at-once)).
 
 For many ranges from one file, ask once:
 

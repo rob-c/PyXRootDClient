@@ -823,8 +823,14 @@ xrd.http.third_party(src, dst, *, mode="pull", delegate=False, verify=None, ...)
 - Resumption is `copy(..., resume=True)`: the target is probed, the reader and
   writer are positioned at its length, and verification compares both files
   because the in-flight digest would only cover the tail.
+- Parallelism inside one transfer is `config.parallel_chunks` spans, one
+  session each because a session serialises its own requests: the target is
+  created, then written at offsets by workers reading spans of the source.
+  Gated on a target that takes an offset (never an HTTP `PUT`), a source that
+  will state its length, and a file long enough to give every worker a whole
+  `chunk_size`. Verification compares both ends, as resumption does.
 - Not implemented yet: parallel file workers in `copy_tree`, and the adaptive
-  in-flight window (the pump is sequential with a fixed `chunk_size`).
+  in-flight window (each span's pump is sequential with a fixed `chunk_size`).
 
 ---
 

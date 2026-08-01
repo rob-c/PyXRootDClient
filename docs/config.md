@@ -37,6 +37,10 @@ production. `evolve` returns a new one.
 | `readahead` | 1 MiB | `XRD_READAHEAD` |
 | `parallel_chunks` | `4` | `XRD_CPPARALLELCHUNKS` |
 
+`parallel_chunks` is how many connections one large copy is spread over, a
+span of the file each; `1` keeps the single stream. See
+[Copying](copying.md#several-connections-at-once) for when it applies.
+
 ## Pooling
 
 | Field | Default | Environment |

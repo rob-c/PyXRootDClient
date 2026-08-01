@@ -10,8 +10,10 @@ transfer logic.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections.abc import Callable, Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import dataclass
 from fnmatch import fnmatch
@@ -145,12 +147,26 @@ def _resumer(url: XRootDURL, config: Config, stack: ExitStack, offset: int) -> I
 
 
 @dataclass(frozen=True, slots=True)
-class _Resume:
+class _Ends:
+    """The two files a transfer that cannot digest its stream must compare."""
+
+    source: XRootDURL
+    target: XRootDURL
+
+
+@dataclass(frozen=True, slots=True)
+class _Resume(_Ends):
     """A transfer that picks up where an interrupted one stopped."""
 
     offset: int
-    source: XRootDURL
-    target: XRootDURL
+
+
+@dataclass(frozen=True, slots=True)
+class _Spread(_Ends):
+    """A transfer moved as several spans at once, one connection each."""
+
+    workers: int
+    size: int
 
 
 def _continue_from(
@@ -167,7 +183,79 @@ def _continue_from(
     here = _probe(source, config)
     if here is not None and there[0] > here[0]:
         raise ValueError(f"{target} is longer than {source}, so it is not a partial copy of it")
-    return _Resume(there[0], source, target)
+    return _Resume(source, target, there[0])
+
+
+def _spread(
+    source: XRootDURL | None, target: XRootDURL | None, config: Config, chunk: int
+) -> _Spread | None:
+    """How to split this transfer across connections, or ``None`` for one stream.
+
+    A session serialises its own calls, so several requests are only in flight
+    at once if there are several sessions: one span each. That needs a pair
+    :func:`_divisible` accepts and a source that will say how long it is, and
+    it is not worth the connections unless every worker gets a whole chunk to
+    move.
+    """
+    if source is None or target is None or not _divisible(source, target):
+        return None
+    known = _probe(source, config)
+    if known is None:
+        return None
+    workers = min(config.parallel_chunks, known[0] // chunk)
+    return _Spread(source, target, workers, known[0]) if workers > 1 else None
+
+
+def _divisible(source: XRootDURL, target: XRootDURL) -> bool:
+    """Can this pair be moved as spans at all?
+
+    The target is written at an offset, which rules out an HTTP ``PUT`` and
+    any scheme the writer would refuse anyway; the source is read at one, and
+    is asked how long it is first, which a scheme nothing here speaks would
+    turn into a connection attempt to nowhere.
+    """
+    return (target.is_local or target.is_root) and (
+        source.is_local or source.is_root or source.is_http
+    )
+
+
+def _spans(size: int, workers: int) -> list[tuple[int, int]]:
+    """``size`` divided into ``workers`` contiguous ``(offset, length)`` pieces."""
+    step = -(-size // workers)  # rounded up, so the last piece is the short one
+    return [(offset, min(step, size - offset)) for offset in range(0, size, step)]
+
+
+def _in_parallel(
+    plan: _Spread, config: Config, chunk: int, progress: Progress | None, *, overwrite: bool
+) -> int:
+    """Move every byte, one span per worker, and report the total as it goes."""
+    with ExitStack() as stack:
+        _writer(plan.target, config, stack, overwrite=overwrite)  # create it, then fill it in
+    reported = 0
+    lock = threading.Lock()
+
+    def move(span: tuple[int, int]) -> int:
+        nonlocal reported
+        offset, length = span
+        moved = 0
+        with ExitStack() as stack:
+            reader, _ = _reader(plan.source, config, stack)
+            reader.seek(offset)
+            writer = _resumer(plan.target, config, stack, offset)
+            while moved < length:
+                data = reader.read(min(chunk, length - moved))
+                if not data:
+                    break
+                writer.write(data)
+                moved += len(data)
+                if progress is not None:
+                    with lock:
+                        reported += len(data)
+                        progress(reported, plan.size)
+        return moved
+
+    with ThreadPoolExecutor(plan.workers, thread_name_prefix="xrd-copy") as pool:
+        return sum(pool.map(move, _spans(plan.size, plan.workers)))
 
 
 def _shifted(progress: Progress | None, offset: int) -> Progress | None:
@@ -302,6 +390,12 @@ def copy(
     switches from digesting the stream to comparing the two files afterwards -
     which costs a read of whichever end is local. An HTTP target cannot be
     resumed at all, because a ``PUT`` replaces the whole resource.
+
+    A file long enough to give every worker a whole chunk is moved by
+    ``config.parallel_chunks`` connections at once, each carrying one span of
+    it. That too is a transfer nobody read in order, so it verifies the same
+    way; ``parallel_chunks=1`` keeps the single stream and its cheaper
+    in-flight digest.
     """
     cfg = config or Config()
     chunk = chunk_size or cfg.chunk_size
@@ -318,33 +412,37 @@ def copy(
         )
 
     resuming = _continue_from(src_url, dst_url, cfg, overwrite=overwrite) if resume else None
+    spread = None if resuming is not None else _spread(src_url, dst_url, cfg, chunk)
+    # Only a transfer that reads the file from the beginning, in order, can
+    # digest it on the way past; the other two ask both ends afterwards.
+    ends: _Ends | None = resuming if resuming is not None else spread
     wanted = cfg.verify_checksums if verify is None else verify
-    # A digest of the bytes in flight is only worth taking if some server can
-    # be asked to compare it with what it holds - and if they are all the
-    # bytes, which for a continued transfer they are not.
+    # And a digest is only worth taking at all if some server can be asked to
+    # compare it with what it holds.
     checkable = next((u for u in (dst_url, src_url) if u is not None and not u.is_local), None)
-    digest = new_checksum(algo) if wanted and checkable is not None and not resuming else None
+    digest = new_checksum(algo) if wanted and checkable is not None and ends is None else None
 
     started = time.monotonic()
-    with ExitStack() as stack:
-        reader, total = (source, None) if src_url is None else _reader(src_url, cfg, stack)
-        if resuming is not None:
-            reader.seek(resuming.offset)
-            writer = _resumer(resuming.target, cfg, stack, resuming.offset)
-        elif dst_url is None:
-            writer = target
-        else:
-            writer = _writer(dst_url, cfg, stack, overwrite=overwrite)
-        report = progress if resuming is None else _shifted(progress, resuming.offset)
-        size = _pump(reader, writer, total, chunk, report, digest)
+    if spread is not None:
+        size = _in_parallel(spread, cfg, chunk, progress, overwrite=overwrite)
+    else:
+        with ExitStack() as stack:
+            reader, total = (source, None) if src_url is None else _reader(src_url, cfg, stack)
+            if resuming is not None:
+                reader.seek(resuming.offset)
+                writer = _resumer(resuming.target, cfg, stack, resuming.offset)
+            elif dst_url is None:
+                writer = target
+            else:
+                writer = _writer(dst_url, cfg, stack, overwrite=overwrite)
+            report = progress if resuming is None else _shifted(progress, resuming.offset)
+            size = _pump(reader, writer, total, chunk, report, digest)
     elapsed = time.monotonic() - started
 
     checksum = None
-    if resuming is not None:
+    if ends is not None:
         if wanted:
-            checksum = _compare_ends(
-                resuming.source, resuming.target, cfg, algo, strict=verify is True
-            )
+            checksum = _compare_ends(ends.source, ends.target, cfg, algo, strict=verify is True)
     elif digest is not None and checkable is not None:
         checksum = _compare(checkable, cfg, algo, digest.hexdigest(), strict=verify is True)
 

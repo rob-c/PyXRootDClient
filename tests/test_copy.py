@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import os
+import threading
 
 import pytest
 
@@ -13,6 +14,7 @@ from xrd.copy import tpc as engine_tpc
 from xrd.errors import ChecksumMismatchError, UnsupportedError, kXR_Unsupported
 from xrd.proto import constants as c
 from xrd.testing import FakeDAVServer, FakeServer, error, frame
+from xrd.url import parse
 
 PAYLOAD = bytes(range(256)) * 40  # 10 240 bytes, compresses nothing
 
@@ -80,8 +82,10 @@ def test_a_path_object_works_on_either_side(server, tmp_path):
 
 
 def test_progress_reports_every_chunk_and_ends_at_the_size(src, server):
+    """One stream, so the steps are the chunk size - see the parallel case below."""
     seen: list[tuple[int, int | None]] = []
-    xrd.copy(src, server.url / "p.bin", chunk_size=1024, progress=lambda d, t: seen.append((d, t)))
+    xrd.copy(src, server.url / "p.bin", chunk_size=1024, config=xrd.Config(parallel_chunks=1),
+             progress=lambda d, t: seen.append((d, t)))
     assert [d for d, _ in seen] == list(range(1024, len(PAYLOAD) + 1, 1024))
     assert {t for _, t in seen} == {len(PAYLOAD)}
 
@@ -459,6 +463,99 @@ def test_a_resumed_tree_carries_on_file_by_file(tmp_path, server):
         assert dst.contents("/t/a.bin") == PAYLOAD
         assert dst.contents("/t/b.bin") == PAYLOAD
     assert sorted(r.resumed_at for r in results) == [0, 2048]
+
+
+# ---------------------------------------------------------------------------
+# Several connections at once
+# ---------------------------------------------------------------------------
+
+
+def test_a_long_file_is_moved_by_several_connections_at_once(src, server, monkeypatch):
+    """``parallel_chunks`` is sessions, because one session serialises itself."""
+    threads = set()
+    positioned = engine._resumer
+
+    def spy(*args, **kwargs):
+        threads.add(threading.get_ident())
+        return positioned(*args, **kwargs)
+
+    monkeypatch.setattr(engine, "_resumer", spy)
+    result = xrd.copy(src, server.url / "wide.bin", chunk_size=1024)
+    assert server.contents("/wide.bin") == PAYLOAD
+    assert (result.size, len(threads)) == (len(PAYLOAD), 4)
+
+
+def test_a_parallel_download_reassembles_in_order(server, tmp_path):
+    with FakeServer(files={"/big.bin": PAYLOAD}) as srv:
+        result = xrd.copy(srv.url / "big.bin", tmp_path / "big.bin", chunk_size=512)
+    assert (tmp_path / "big.bin").read_bytes() == PAYLOAD
+    assert result.size == len(PAYLOAD)
+
+
+def test_a_parallel_transfer_verifies_by_comparing_the_two_files(src, server):
+    result = xrd.copy(src, server.url / "checked.bin", chunk_size=1024)
+    assert result.verified
+    assert result.checksum.value == xrd.crypto.checksum_bytes("adler32", PAYLOAD)
+
+
+def test_one_stream_is_what_a_single_chunk_asks_for(src, server):
+    config = xrd.Config(parallel_chunks=1)
+    assert engine._spread(parse(src), server.url / "x.bin", config, 1024) is None
+
+
+def test_a_file_too_short_to_share_out_stays_in_one_stream(src, server):
+    """Splitting is only worth a connection if every worker gets a whole chunk."""
+    plan = engine._spread(parse(src), server.url / "x.bin", xrd.Config(), len(PAYLOAD))
+    assert plan is None
+
+
+def test_an_http_target_is_never_divided(tmp_path):
+    """A PUT is the whole resource, so there is no offset to write a span at."""
+    source = tmp_path / "s.bin"
+    source.write_bytes(PAYLOAD)
+    with FakeDAVServer(dirs=["/d"]) as dav:
+        assert engine._spread(parse(source), dav.url / "d/x.bin", xrd.Config(), 1024) is None
+        xrd.copy(source, dav.url / "d/x.bin", chunk_size=1024)
+        assert dav.contents("/d/x.bin") == PAYLOAD
+
+
+def test_the_spans_cover_the_file_exactly():
+    assert engine._spans(1000, 4) == [(0, 250), (250, 250), (500, 250), (750, 250)]
+    assert engine._spans(10, 4) == [(0, 3), (3, 3), (6, 3), (9, 1)]
+    assert sum(length for _, length in engine._spans(9973, 7)) == 9973
+
+
+def test_progress_on_a_parallel_transfer_counts_the_whole_file(src, server):
+    seen = []
+    xrd.copy(src, server.url / "pp.bin", chunk_size=1024,
+             progress=lambda done, total: seen.append((done, total)))
+    assert seen[-1] == (len(PAYLOAD), len(PAYLOAD))
+    assert [done for done, _ in seen] == sorted(done for done, _ in seen)
+    assert {total for _, total in seen} == {len(PAYLOAD)}
+
+
+def test_a_parallel_transfer_still_refuses_to_clobber(src, server):
+    with FakeServer(files={"/taken.bin": b"x"}) as dst:
+        with pytest.raises(FileExistsError):
+            xrd.copy(src, dst.url / "taken.bin", chunk_size=1024, overwrite=False)
+
+
+def test_a_source_shorter_than_it_claimed_stops_at_its_end(src, server, monkeypatch):
+    """A span past the end of the file writes nothing rather than looping."""
+    monkeypatch.setattr(engine, "_probe", lambda url, config: (len(PAYLOAD) * 2, 0))
+    result = xrd.copy(src, server.url / "short.bin", chunk_size=1024, verify=False)
+    assert server.contents("/short.bin") == PAYLOAD
+    assert result.size == len(PAYLOAD)
+
+
+def test_a_resumed_transfer_is_not_also_a_divided_one(server, tmp_path):
+    """Two ways of not reading the file in order do not compose; resume wins."""
+    with FakeServer(files={"/big.bin": PAYLOAD}) as srv:
+        target = tmp_path / "half.bin"
+        target.write_bytes(PAYLOAD[:4096])
+        result = xrd.copy(srv.url / "big.bin", target, chunk_size=512, resume=True)
+    assert target.read_bytes() == PAYLOAD
+    assert (result.resumed_at, result.size) == (4096, len(PAYLOAD) - 4096)
 
 
 # ---------------------------------------------------------------------------

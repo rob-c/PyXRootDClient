@@ -99,6 +99,31 @@ forbidden to exist.
 finishes an interrupted tree rather than recopying it - `sync=` skips files
 that are already complete, `resume=` finishes the one that was in flight.
 
+## Several connections at once
+
+A copy big enough to be worth it is moved by more than one connection: the
+file is cut into `config.parallel_chunks` contiguous spans and each span is
+carried by a worker of its own. It is *connections* rather than requests
+because a session serialises its own calls - two spans are only ever in flight
+together if there are two sessions to put them on.
+
+```python
+xrd.copy(src, dst, config=xrd.Config(parallel_chunks=8))   # eight spans
+xrd.copy(src, dst, config=xrd.Config(parallel_chunks=1))   # one stream
+```
+
+It happens by itself, and only where it can pay. The target must be one that
+takes a write at an offset, so a local path or `root://` but never an HTTP
+`PUT`; the source must answer how long it is; and the file must be long enough
+to give every worker a whole `chunk_size`, or the spans cost more in
+connections than they save in round trips. Anything that fails those falls
+back to the single stream, which is also what `parallel_chunks=1` asks for.
+
+Spans arrive out of order, so - exactly as with `resume=` above - there is no
+in-flight digest to verify against and the two files are compared instead.
+`progress=` still counts the whole file: `done` is bytes moved across all the
+workers, not a position in any one span.
+
 ## Recursive copies
 
 ```python
@@ -219,7 +244,7 @@ simpler and, on a fast network, not obviously slower - see
 | Setting | Effect |
 | --- | --- |
 | `config.chunk_size` | bytes per request, default 4 MiB (`XRD_CPCHUNKSIZE`) |
-| `config.parallel_chunks` | requests in flight (`XRD_CPPARALLELCHUNKS`) |
+| `config.parallel_chunks` | connections a long copy is spread over, `1` to disable (`XRD_CPPARALLELCHUNKS`) |
 | `config.verify_checksums` | default for `verify` |
 | `config.preferred_checksum` | default for `algorithm` |
 
