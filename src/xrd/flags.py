@@ -82,6 +82,7 @@ class QueryCode(IntEnum):
     VISA = 8
     OPAQUE = 16
     OPAQUE_FILE = 32
+    OPAQUE_GROUP = 64
 
 
 class StatInfoFlags(IntFlag):
