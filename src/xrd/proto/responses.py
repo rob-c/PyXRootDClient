@@ -289,12 +289,29 @@ def _checked(name: str, path: str) -> str:
     return name
 
 
+def _cksum_token(line: str) -> tuple[str, ChecksumInfo | None]:
+    """Split a ``kXR_dcksm`` stat line into the stat and the digest.
+
+    The digest rides at the end as ``" [ algo:hexdigest ]"``, with the value
+    ``none`` for an entry the server had none for - a directory, or a file it
+    could not read. That is no digest, so it arrives here as ``None``.
+    """
+    head, bracket, rest = line.rpartition("[")
+    if not bracket or not rest.rstrip().endswith("]"):
+        return line, None
+    algorithm, colon, value = rest.rstrip().rstrip("]").strip().partition(":")
+    if not colon or not algorithm:
+        return line, None
+    return head, None if value in ("", "none") else ChecksumInfo(algorithm.lower(), value)
+
+
 def parse_dirlist(data: bytes, path: str = "", with_stat: bool = True) -> list[DirEntry]:
     """``kXR_dirlist``.
 
     Plain mode is one name per line. With ``kXR_dstat`` the server emits a
     leading ``".\\n<stat>"`` entry followed by ``name\\n<stat>`` pairs; the
-    dot entry describes the directory itself and is dropped.
+    dot entry describes the directory itself and is dropped. ``kXR_dcksm``
+    rides in the same body, appending a digest to each stat line.
 
     The dot entry is also how a server says it honoured the request: one that
     ignores ``kXR_dstat`` answers with plain names, and reading those in pairs
@@ -311,11 +328,13 @@ def parse_dirlist(data: bytes, path: str = "", with_stat: bool = True) -> list[D
         if name == ".":
             continue
         _checked(name, path)
+        statline, checksum = _cksum_token(statline)
         entries.append(
             DirEntry(
                 name=name,
                 parent=path,
                 stat=_stat_fields(statline, f"{path.rstrip('/')}/{name}" if path else name),
+                checksum=checksum,
             )
         )
     return entries

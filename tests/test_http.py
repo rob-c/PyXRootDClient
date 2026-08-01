@@ -463,6 +463,13 @@ def test_a_server_that_offers_no_digest_says_so(dav, fs):
         fs.checksum("/d/a.root")
 
 
+def test_a_digest_per_listing_entry_is_a_binary_protocol_luxury(fs):
+    """WebDAV lists and digests in separate requests, so it says so rather
+    than quietly issuing one request per entry."""
+    with pytest.raises(UnsupportedError, match="checksum per listing entry"):
+        fs.scandir("/d", algorithm="adler32")
+
+
 def test_an_unrelated_digest_in_the_header_is_not_mistaken_for_ours():
     assert _pick_digest("md5=aGk=,adler32=00010203", "adler32") == "00010203"
     assert _pick_digest("sha-256=aGk=", "adler32") == ""

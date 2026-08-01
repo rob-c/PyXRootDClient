@@ -425,8 +425,21 @@ class HTTPFileSystem(FileSystem):
     def getsize(self, path: str) -> int:
         return self.stat(path).st_size
 
-    def scandir(self, path: str = "", *, flags: DirListFlags = DirListFlags.STAT) -> list[DirEntry]:
-        """``PROPFIND`` with ``Depth: 1``. The collection itself is dropped."""
+    def scandir(
+        self,
+        path: str = "",
+        *,
+        flags: DirListFlags = DirListFlags.STAT,
+        algorithm: str = "",
+    ) -> list[DirEntry]:
+        """``PROPFIND`` with ``Depth: 1``. The collection itself is dropped.
+
+        ``algorithm`` is refused rather than dropped: a `PROPFIND` carries no
+        digest, and a listing whose checksums are all ``None`` looks exactly
+        like a listing that was never asked for them.
+        """
+        if algorithm:
+            raise self._unsupported("a checksum per listing entry")
         target = self._url(path or "/", collection=True)
         here = target.path.rstrip("/") or "/"
         entries = []

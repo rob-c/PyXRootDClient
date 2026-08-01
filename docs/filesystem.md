@@ -31,6 +31,19 @@ for entry in fs.scandir("/store"):
 
 `DirEntry` is `os.PathLike`, so `open(entry)` and `os.fspath(entry)` work.
 
+A server can also digest every file as it lists, which turns a directory's
+worth of `checksum` calls into one round trip:
+
+```python
+for entry in fs.scandir("/store", algorithm="adler32"):
+    print(entry.name, entry.checksum)       # ChecksumInfo, or None
+```
+
+`entry.checksum` is `None` for anything the server had no digest for - a
+directory, or a file it could not read. An algorithm the server does not
+compute fails the whole listing rather than some of its entries, so ask for
+one `checksum()` names.
+
 ### glob
 
 The pattern language is `pathlib.Path.glob`'s, not `fnmatch`'s: `*` and `?`

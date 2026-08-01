@@ -523,9 +523,11 @@ class AsyncFileSystem:
     # -- listing -------------------------------------------------------
 
     async def scandir(
-        self, path: str = "", *, flags: DirListFlags = DirListFlags.STAT
+        self, path: str = "", *, flags: DirListFlags = DirListFlags.STAT, algorithm: str = ""
     ) -> list[DirEntry]:
-        return await _run(functools.partial(self._sync.scandir, path, flags=flags))
+        return await _run(
+            functools.partial(self._sync.scandir, path, flags=flags, algorithm=algorithm)
+        )
 
     async def listdir(self, path: str = "") -> list[str]:
         return await _run(self._sync.listdir, path)

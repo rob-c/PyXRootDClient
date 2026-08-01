@@ -86,7 +86,8 @@ class DirEntry:
     name: str
     parent: str = ""
     stat: StatInfo | None = None
-    checksum: str | None = None
+    #: What ``kXR_dcksm`` said, for a listing that asked for digests.
+    checksum: ChecksumInfo | None = None
 
     @property
     def path(self) -> str:

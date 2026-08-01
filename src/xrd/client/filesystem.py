@@ -291,9 +291,32 @@ class FileSystem:
     # Listing
     # ------------------------------------------------------------------
 
-    def scandir(self, path: str = "", *, flags: DirListFlags = DirListFlags.STAT) -> list[DirEntry]:
-        """Directory entries with stat information attached."""
+    def scandir(
+        self,
+        path: str = "",
+        *,
+        flags: DirListFlags = DirListFlags.STAT,
+        algorithm: str = "",
+    ) -> list[DirEntry]:
+        """Directory entries with stat information attached.
+
+        ``algorithm`` asks the server to digest every entry as it lists it
+        (``kXR_dcksm``), which is one round trip where a checksum per entry is
+        one each::
+
+            for entry in fs.scandir("/store/run7", algorithm="adler32"):
+                print(entry.name, entry.checksum)
+
+        The digest lands on :attr:`DirEntry.checksum`, and is ``None`` for an
+        entry the server had none for - a directory, or a file it could not
+        read. A server that ignores the option answers an ordinary listing, so
+        every entry comes back with ``None``; an algorithm it does not have is
+        an error on the listing rather than a listing without digests.
+        """
         target = self._abs(path or "/")
+        if algorithm:
+            flags |= DirListFlags.STAT | DirListFlags.CKSUM
+            target += ("&" if "?" in target else "?") + f"cks.type={algorithm}"
         with_stat = bool(flags & DirListFlags.STAT)
         res = self._router.execute(
             r.Dirlist(target, int(flags) & ~int(DirListFlags.RECURSIVE)), path=target

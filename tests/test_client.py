@@ -134,6 +134,24 @@ def test_scandir_without_stat_still_lists(fs):
     assert all(e.stat is None for e in entries)
 
 
+def test_a_listing_can_digest_every_entry_as_it_goes(fs):
+    """``kXR_dcksm``: one round trip where a checksum per entry would be one
+    round trip each."""
+    from xrd.crypto import checksum_bytes
+
+    entries = {e.name: e for e in fs.scandir("/data", algorithm="crc32c")}
+    assert entries["a.root"].checksum is not None
+    assert entries["a.root"].checksum.algorithm == "crc32c"
+    assert entries["a.root"].checksum.value == checksum_bytes("crc32c", b"hello world")
+    assert entries["a.root"].stat.st_size == 11  # kXR_dcksm implies kXR_dstat
+    # A directory has nothing to digest and the server says so in the token.
+    assert entries["empty"].checksum is None
+
+
+def test_a_listing_that_asked_for_no_digests_has_none(fs):
+    assert all(e.checksum is None for e in fs.scandir("/data"))
+
+
 def test_a_dir_entry_is_os_pathlike(fs):
     import os
 

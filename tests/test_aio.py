@@ -248,6 +248,19 @@ def test_the_namespace_surface(server):
     run(main())
 
 
+def test_a_listing_can_digest_every_entry(server):
+    """The digest keyword survives the trip through the executor."""
+
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            listed = {e.name: e.checksum for e in await fs.scandir("/data", algorithm="adler32")}
+            assert listed["a.root"].algorithm == "adler32"
+            assert listed["a.root"].value == "1a0b045d"
+            assert listed["empty"] is None  # a directory has nothing to digest
+
+    run(main())
+
+
 def test_the_server_side_bookkeeping_is_mirrored(server):
     """The calls that ask a server to stop doing something, or to label who is
     asking, are as much part of the surface as the ones that move bytes."""

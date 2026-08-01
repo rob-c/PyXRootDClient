@@ -8,6 +8,7 @@ from xrd.errors import ProtocolError
 from xrd.flags import StatInfoFlags
 from xrd.proto import constants as c
 from xrd.proto import responses as rp
+from xrd.types import ChecksumInfo
 
 
 def test_parse_error():
@@ -195,6 +196,33 @@ def test_parse_dirlist_without_stat():
     entries = rp.parse_dirlist(b"a\nb\n\x00", "/d", with_stat=False)
     assert [e.path for e in entries] == ["/d/a", "/d/b"]
     assert entries[0].stat is None
+
+
+def test_parse_dirlist_reads_the_digest_appended_to_each_stat_line():
+    body = (
+        b".\nid 0 19 0\n"
+        b"file.root\nid 42 0 1700000000 0 0 33188 0 0 [ adler32:1a0b045d ]\n"
+        b"sub\nid 0 2 0 0 0 16877 0 0 [ adler32:none ]\x00"
+    )
+    entries = rp.parse_dirlist(body, "/d")
+    assert entries[0].checksum == ChecksumInfo("adler32", "1a0b045d")
+    assert entries[0].stat.st_size == 42  # the token does not disturb the stat
+    assert entries[1].checksum is None  # "none" is no digest, not a digest of none
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "id 42 0 1700000000",  # no token at all
+        "id 42 0 1700000000 [ adler32 ]",  # a bracket, but nothing to split
+        "id 42 0 1700000000 [ :1a0b045d ]",  # a value with no algorithm
+        "id 42 0 1700000000 [ adler32:1a0b045d",  # never closed
+    ],
+)
+def test_a_stat_line_without_a_usable_token_keeps_its_fields(line):
+    entries = rp.parse_dirlist(f".\nid 0 19 0\nf\n{line}\n".encode(), "/d")
+    assert entries[0].checksum is None
+    assert entries[0].stat.st_size == 42
 
 
 def test_a_server_that_ignored_the_stat_flag_still_lists():

@@ -34,6 +34,10 @@ Schemes: `http`, `https`, `dav`, `davs`, `webdav`. Nothing here needs a wheel
 | `prepare`, `query_prepare`, `cancel_prepare` | the WLCG tape API, `/api/v1/stage` |
 | `archive_info` | `POST /api/v1/archiveinfo` |
 
+`scandir(algorithm=...)` is the one keyword with no WebDAV spelling: a
+`PROPFIND` lists and a `Want-Digest` digests, and nothing asks for both at
+once, so it refuses rather than quietly issuing a request per entry.
+
 Operations with no HTTP equivalent - `locate`, `evict`,
 `query_config`, `query_stats`, `query_space`, `checksum_cancel`,
 `set_property`, `appid`, `statvfs` - raise `UnsupportedError` naming the

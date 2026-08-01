@@ -124,7 +124,8 @@ See [Configuration](config.md).
 exist with the same members, for the cases where you want the raw protocol.
 Most code should not need them: mode
 strings cover opening, `makedirs(exist_ok=True)` covers `MAKEPATH`, and
-`scandir` always asks for stat information.
+`scandir` always asks for stat information, and
+`scandir(algorithm=...)` covers `kXR_dcksm`.
 
 ## What you gain
 

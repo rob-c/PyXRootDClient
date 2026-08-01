@@ -32,6 +32,7 @@ import zlib
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from typing import cast
+from urllib.parse import parse_qs
 
 from ..errors import kXR_ArgInvalid, kXR_FileNotOpen, kXR_NoSpace, kXR_Unsupported
 from ..proto import constants as c
@@ -581,15 +582,30 @@ def _h_statx(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
 
 
 def _h_dirlist(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
-    path = _clean(body.split(b"\x00", 1)[0].decode())
+    args = body.split(b"\x00", 1)[0].decode()
+    path = _clean(args)
     names = conn._children(path)
     if not params[15] & c.kXR_dstat:
         yield _frame(sid, c.kXR_ok, "\n".join(names).encode() + b"\x00")
         return
+    algorithm = ""
+    if params[15] & c.kXR_dcksm:
+        query = parse_qs(args.partition("?")[2])
+        algorithm = query.get("cks.type", ["adler32"])[0]
     out = bytearray(b".\n" + conn._stat_line(path) + b"\n")
     for name in names:
         full = posixpath.join(path, name)
-        out += name.encode() + b"\n" + conn._stat_line(full) + b"\n"
+        line = conn._stat_line(full)
+        if algorithm:
+            # A directory has nothing to digest, and the server says so in the
+            # token rather than leaving it out.
+            value = (
+                _checksum(algorithm, bytes(conn.s.files[full]))
+                if full in conn.s.files
+                else "none"
+            )
+            line += f" [ {algorithm}:{value} ]".encode()
+        out += name.encode() + b"\n" + line + b"\n"
     yield _frame(sid, c.kXR_ok, bytes(out) + b"\x00")
 
 
