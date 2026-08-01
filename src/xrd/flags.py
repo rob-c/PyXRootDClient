@@ -97,6 +97,16 @@ class StatInfoFlags(IntFlag):
 
 
 class PrepareFlags(IntFlag):
+    """``kXR_prepare`` options.
+
+    Everything up to ``USE_TCP`` is a bit of the options byte. ``EVICT``
+    arrived later and lives in ``optionX``, the extended half-word, so it is
+    spelled here one byte up and :class:`~xrd.proto.requests.Prepare` puts it
+    where the protocol wants it. Combining the two still works::
+
+        fs.prepare(paths, flags=PrepareFlags.EVICT | PrepareFlags.NOTIFY)
+    """
+
     NONE = 0
     CANCEL = 1
     NOTIFY = 2
@@ -105,7 +115,8 @@ class PrepareFlags(IntFlag):
     WRITE_MODE = 16
     COLOCATE = 32
     FRESH = 64
-    EVICT = 128
+    USE_TCP = 128
+    EVICT = 1 << 8
 
 
 class LocateFlags(IntFlag):

@@ -254,21 +254,28 @@ class Query(Request):
 class Prepare(Request):
     """``kXR_prepare`` - stage or evict files."""
 
-    __slots__ = ("paths", "options", "priority", "port")
+    __slots__ = ("paths", "options", "priority", "port", "extended")
     opcode = c.kXR_prepare
     signed = True
     idempotent = False
 
     def __init__(
-        self, paths: Sequence[str], options: int = 0, priority: int = 0, port: int = 0
+        self,
+        paths: Sequence[str],
+        options: int = 0,
+        priority: int = 0,
+        port: int = 0,
+        extended: int = 0,
     ) -> None:
         self.paths = list(paths)
         self.options = options
         self.priority = priority
         self.port = port
+        #: ``optionX``, the half-word the later options live in - ``kXR_evict``.
+        self.extended = extended
 
     def params(self, w: Writer) -> None:
-        w.u8(self.options).u8(self.priority).u16(self.port).zeros(12)
+        w.u8(self.options).u8(self.priority).u16(self.port).u16(self.extended).zeros(10)
 
     def payload(self) -> bytes:
         return "\n".join(self.paths).encode("utf-8")

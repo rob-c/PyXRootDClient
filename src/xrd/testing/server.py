@@ -149,6 +149,10 @@ class FakeServer:
         self.cancelled_checksums: list[str] = []
         #: Staging requests withdrawn by handle.
         self.cancelled_prepares: list[str] = []
+        #: Paths a ``kXR_prepare`` asked to drop from disk, in order.
+        self.evicted: list[str] = []
+        #: ``(options byte, optionX)`` of every ``kXR_prepare``, in order.
+        self.prepare_options: list[tuple[int, int]] = []
         #: Opcodes seen, in order - what a test asserts round trips on.
         self.seen: list[int] = []
         #: Raw path argument of every ``kXR_open``, CGI included. The opaque
@@ -933,12 +937,16 @@ def _h_locate(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterat
 
 
 def _h_prepare(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    conn.s.prepare_options.append((params[0], int.from_bytes(params[4:6], "big")))
     if params[0] & c.kXR_cancel:
         conn.s.cancelled_prepares.append(body.split(b"\x00", 1)[0].decode().strip())
         yield _frame(sid, c.kXR_ok)
         return
     handle = "prep-0001"
-    conn.s.prepared[handle] = [_clean(p) for p in body.decode().split("\n") if p.strip()]
+    paths = [_clean(p) for p in body.decode().split("\n") if p.strip()]
+    conn.s.prepared[handle] = paths
+    if conn.s.prepare_options[-1][1] & c.kXR_evict:  # optionX, not the options byte
+        conn.s.evicted.extend(paths)
     yield _frame(sid, c.kXR_ok, handle.encode() + b"\x00")
 
 

@@ -616,7 +616,10 @@ class FileSystem:
     ) -> str:
         """Stage, evict or co-locate files. Returns the request handle."""
         targets = [self._abs(p) for p in paths]
-        res = self._router.execute(r.Prepare(targets, int(flags), priority))
+        # The options byte, then the extended half-word above it: see
+        # PrepareFlags, where EVICT is the one that lives up there.
+        request = r.Prepare(targets, int(flags) & 0xFF, priority, extended=int(flags) >> 8)
+        res = self._router.execute(request)
         return res.data.split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
 
     def evict(self, paths: Sequence[str]) -> str:

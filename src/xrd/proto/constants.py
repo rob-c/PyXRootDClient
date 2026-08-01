@@ -159,7 +159,13 @@ kXR_stage = 8
 kXR_wmode = 16
 kXR_coloc = 32
 kXR_fresh = 64
-kXR_evict = 128
+kXR_usetcp = 128
+
+# ``kXR_evict`` is not one of those: it lives in ``optionX``, the extended
+# half-word that came later, and 128 in the options byte is ``kXR_usetcp``.
+# Sending it as a byte flag asks a server to stage over TCP, which is not
+# what anyone means by "evict".
+kXR_evict = 0x0001
 
 # ---- kXR_locate options ----
 kXR_addPeers = 0x0001

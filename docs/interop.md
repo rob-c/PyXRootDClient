@@ -79,6 +79,20 @@ honest answer for a namespace with no links, and this client turns it into
 `UnsupportedError` rather than pretending. The HTTP and WebDAV backends raise
 the same exception without a round trip, because there is no verb to try.
 
+Two option bits are vendor extensions of standard requests rather than new
+requests. `kXR_statNoFollow` (`0x40` of the `kXR_stat` options byte, the value
+nginx-xrootd reads) is what `lstat` and `stat(follow_symlinks=False)` set;
+XProtocol's stat options stop at `kXR_vfs`, and XRootD.jl picked `0x02` for the
+same idea, which no server implements. `kXR_clone` (3032) is one past
+`kXR_REQFENCE` - see [Files](files.md#copying-ranges-without-moving-them).
+
+`kXR_evict` is the opposite case: a real protocol flag that is easy to send
+wrongly. It is `0x0001` of `optionX`, the extended half-word four bytes into a
+`kXR_prepare` parameter area, not `128` of the options byte - `128` there is
+`kXR_usetcp`, so a client that packs `evict` as a byte flag quietly asks for a
+TCP stage-in and never evicts anything. `PrepareFlags.EVICT` is spelled `1 << 8`
+for that reason and `Prepare` puts it where the server looks.
+
 ## Version coverage
 
 Tested against XRootD 5.x. The client announces protocol `0x520` (v5.2) in

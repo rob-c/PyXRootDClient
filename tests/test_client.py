@@ -396,6 +396,22 @@ def test_evict_is_a_prepare(fs, server):
 
     fs.evict(["/data/a.root"])
     assert c.kXR_prepare in server.seen
+    assert server.evicted == ["/data/a.root"]
+
+
+def test_a_plain_prepare_evicts_nothing(fs, server):
+    fs.prepare(["/data/a.root"])
+    assert server.evicted == []
+
+
+def test_prepare_flags_split_across_the_two_option_fields(fs, server):
+    """``EVICT`` is an ``optionX`` bit and ``NOTIFY`` an options-byte one, and
+    asking for both has to reach the server as both."""
+    from xrd.flags import PrepareFlags
+
+    fs.prepare(["/data/a.root"], flags=PrepareFlags.EVICT | PrepareFlags.NOTIFY)
+    assert server.evicted == ["/data/a.root"]
+    assert server.prepare_options == [(c.kXR_notify, c.kXR_evict)]
 
 
 def test_query_prepare_reports_on_each_file_of_the_request(fs):

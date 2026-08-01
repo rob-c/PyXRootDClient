@@ -224,6 +224,15 @@ def test_prepare_joins_paths_with_newlines():
     assert body_of(r.Prepare(["/a", "/b"], options=c.kXR_stage)) == b"/a\n/b"
 
 
+def test_prepare_puts_the_later_options_in_the_extended_half_word():
+    """``kXR_evict`` is 0x0001 of ``optionX``, four bytes into the parameter
+    area; 128 of the options byte is ``kXR_usetcp``, which means the opposite
+    of nothing at all."""
+    p = params_of(r.Prepare(["/a"], options=c.kXR_stage, priority=3, extended=c.kXR_evict))
+    assert struct.unpack(">BBHH", p[:6]) == (c.kXR_stage, 3, 0, c.kXR_evict)
+    assert p[6:] == bytes(10)
+
+
 def test_fattr_builders_produce_matching_subcodes():
     assert r.Fattr.get("/p", "a").subcode == c.kXR_fattrGet
     assert r.Fattr.set("/p", "a", b"1").subcode == c.kXR_fattrSet
