@@ -46,7 +46,7 @@ against the stdlib alone. Coverage on `proto/`, `crypto/` and `client/` is
 | 5 Pythonic surface | done | `io/raw.py` · `io/__init__.open_url` · `path.py` · `config.py` · `xrd/__init__.py` · `aio.py` (607) |
 | 6 HTTP / WebDAV | done, **stdlib only** | `http/{client,file,dav}.py` (1.2k) · `testing/http.py` (386) — scheme dispatch in `FileSystem.__new__` and `open_url` |
 | 7 GSI / Kerberos | done, **no `[gsi]` extra** | `crypto/{der,aes,rsa,x509}.py` (949) · `auth/gsi.py` (397) · `auth/krb5.py` (299) — X.509 proxies, unsigned-DH GSI, ccache reader, mTLS on both schemes |
-| 8 Copy engine | done, **no resume/parallelism** | `copy/engine.py` (277) · `copy/tpc.py` (161) · `http/tpc.py` (230) — `copy` · `copy_tree` · `third_party`, which dispatches on the URLs: the `XrdOucTPC` rendezvous for a `root://` pair, the WLCG `COPY` dialect for an HTTP one |
+| 8 Copy engine | done, **no parallelism** | `copy/engine.py` (277) · `copy/tpc.py` (161) · `http/tpc.py` (230) — `copy` · `copy_tree` · `third_party`, which dispatches on the URLs: the `XrdOucTPC` rendezvous for a `root://` pair, the WLCG `COPY` dialect for an HTTP one |
 | 9 Ecosystem (fsspec, CLI) | done | `fsspec_impl.py` (290) · `cli/{__init__,fs,cp}.py` (701) — `xrd-fs` (16 subcommands) · `xrd-cp` · six registered URL schemes |
 | 10 Hardening / 1.0 | done | `tests/test_parity.py` · `tests/test_interop.py` · `tests/test_faults.py` · `testing/faults.py` · `benchmarks/bench.py` · `SECURITY.md` · `docs/` (19 pages, MkDocs Material) · `.github/workflows/ci.yml` · `tests/test_typing.py` |
 
@@ -448,7 +448,9 @@ a simulated server; none of that is the same as a live SE. **v0.4.**
 `copy_tree`, `CopyResult`) moves any endpoint to any other (`root://`, HTTP,
 local path, open file object) and verifies with a digest taken while
 streaming; `copy/tpc.py` implements the stock `root://` rendezvous dialect,
-asserted wire-exactly in `tests/test_copy.py`. Not done: resumption, parallel
+asserted wire-exactly in `tests/test_copy.py`. `resume=True` continues an
+interrupted transfer from what is already at the target, verifying by
+comparing the two ends rather than the tail it streamed. Not done: parallel
 file workers, the adaptive in-flight window, and HTTP `COPY` TPC.
 
 **Deliverable:** `xrd.copy` / `xrd.copytree`, any backend to any backend.

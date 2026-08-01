@@ -337,6 +337,131 @@ def test_a_probe_of_something_that_is_not_there_is_not_a_size(server, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Resuming an interrupted transfer
+# ---------------------------------------------------------------------------
+
+
+def test_a_resumed_download_keeps_what_is_already_there(server, tmp_path):
+    """The bytes on disk are not read again, and the file ends up whole."""
+    target = tmp_path / "half.root"
+    target.write_bytes(b"hello ")
+    result = xrd.copy(server.url / "data/a.root", target, resume=True)
+    assert target.read_bytes() == b"hello world"
+    assert (result.resumed_at, result.size, result.resumed) == (6, 5, True)
+    assert "resumed at 6" in str(result)
+
+
+def test_a_resumed_upload_keeps_what_the_server_already_has(src, server):
+    with FakeServer(files={"/part.bin": PAYLOAD[:4096]}) as dst:
+        result = xrd.copy(src, dst.url / "part.bin", resume=True)
+        assert dst.contents("/part.bin") == PAYLOAD
+    assert (result.resumed_at, result.size) == (4096, len(PAYLOAD) - 4096)
+
+
+def test_resume_copies_the_whole_file_when_there_is_nothing_to_carry_on_from(server, tmp_path):
+    """Safe to set on a retry: a target that is not there is copied entire."""
+    result = xrd.copy(server.url / "data/a.root", tmp_path / "fresh.root", resume=True)
+    assert (tmp_path / "fresh.root").read_bytes() == b"hello world"
+    assert (result.resumed_at, result.size, result.resumed) == (0, 11, False)
+
+
+def test_an_empty_target_is_not_a_partial_one(server, tmp_path):
+    target = tmp_path / "empty.root"
+    target.write_bytes(b"")
+    assert xrd.copy(server.url / "data/a.root", target, resume=True).resumed_at == 0
+    assert target.read_bytes() == b"hello world"
+
+
+def test_a_target_that_is_already_complete_moves_nothing(server, tmp_path):
+    target = tmp_path / "done.root"
+    target.write_bytes(b"hello world")
+    result = xrd.copy(server.url / "data/a.root", target, resume=True)
+    assert (result.resumed_at, result.size) == (11, 0)
+
+
+def test_a_target_longer_than_its_source_is_not_a_partial_copy(server, tmp_path):
+    target = tmp_path / "long.root"
+    target.write_bytes(b"hello world and then some")
+    with pytest.raises(ValueError, match="not a partial copy"):
+        xrd.copy(server.url / "data/a.root", target, resume=True)
+    assert target.read_bytes() == b"hello world and then some"
+
+
+def test_resume_and_an_exclusive_target_contradict_each_other(server, tmp_path):
+    with pytest.raises(ValueError, match="overwrite=False"):
+        xrd.copy(server.url / "data/a.root", tmp_path / "x", resume=True, overwrite=False)
+
+
+def test_resume_needs_a_url_on_both_sides(server):
+    with pytest.raises(ValueError, match="already-open stream"):
+        xrd.copy(server.url / "data/a.root", io.BytesIO(), resume=True)
+
+
+def test_an_http_target_cannot_be_resumed(tmp_path):
+    """A PUT replaces the whole resource, so a partial one can only be redone."""
+    src_file = tmp_path / "s.bin"
+    src_file.write_bytes(PAYLOAD)
+    with FakeDAVServer(files={"/d/part.bin": PAYLOAD[:512]}) as dav:
+        with pytest.raises(UnsupportedError, match="cannot resume a copy into http"):
+            xrd.copy(src_file, dav.url / "d/part.bin", resume=True)
+
+
+def test_progress_on_a_resumed_copy_counts_from_the_start_of_the_file(server, tmp_path):
+    target = tmp_path / "p.root"
+    target.write_bytes(b"hello ")
+    seen = []
+    xrd.copy(server.url / "data/a.root", target, resume=True, chunk_size=2,
+             progress=lambda done, total: seen.append((done, total)))
+    assert seen[-1] == (11, 11)
+    assert all(done > 6 for done, _ in seen)
+
+
+def test_a_resumed_copy_verifies_by_comparing_the_two_files(server, tmp_path):
+    """The digest in flight covers a tail, so both ends are asked instead."""
+    target = tmp_path / "v.root"
+    target.write_bytes(b"hello ")
+    result = xrd.copy(server.url / "data/a.root", target, resume=True)
+    assert result.verified
+    assert result.checksum.value == xrd.crypto.checksum_bytes("adler32", b"hello world")
+
+
+def test_a_resumed_copy_that_carried_on_from_the_wrong_bytes_is_caught(server, tmp_path):
+    target = tmp_path / "wrong.root"
+    target.write_bytes(b"HELLO ")
+    with pytest.raises(ChecksumMismatchError):
+        xrd.copy(server.url / "data/a.root", target, resume=True)
+
+
+def test_a_resumed_copy_can_skip_verification(server, tmp_path):
+    target = tmp_path / "quick.root"
+    target.write_bytes(b"HELLO ")
+    assert xrd.copy(server.url / "data/a.root", target, resume=True, verify=False).checksum is None
+
+
+def test_a_resumed_copy_degrades_when_an_end_cannot_checksum(server, tmp_path, monkeypatch):
+    def refuse(*args, **kwargs):
+        raise UnsupportedError(kXR_Unsupported, "this server cannot checksum")
+
+    monkeypatch.setattr(engine, "_server_checksum", refuse)
+    target = tmp_path / "u.root"
+    target.write_bytes(b"hello ")
+    assert xrd.copy(server.url / "data/a.root", target, resume=True).checksum is None
+    target.write_bytes(b"hello ")
+    with pytest.raises(UnsupportedError):
+        xrd.copy(server.url / "data/a.root", target, resume=True, verify=True)
+
+
+def test_a_resumed_tree_carries_on_file_by_file(tmp_path, server):
+    (tmp_path / "a.bin").write_bytes(PAYLOAD)
+    (tmp_path / "b.bin").write_bytes(PAYLOAD)
+    with FakeServer(files={"/t/a.bin": PAYLOAD[:2048]}, dirs=["/t"]) as dst:
+        results = xrd.copy_tree(tmp_path, dst.url / "t", resume=True)
+        assert dst.contents("/t/a.bin") == PAYLOAD
+        assert dst.contents("/t/b.bin") == PAYLOAD
+    assert sorted(r.resumed_at for r in results) == [0, 2048]
+
+
+# ---------------------------------------------------------------------------
 # Third-party copy
 # ---------------------------------------------------------------------------
 

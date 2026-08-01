@@ -69,6 +69,36 @@ passed, so a failed digest leaves the original where it was. `dry_run` returns
 a `CopyResult` with the size the source reported and `seconds` of zero, which
 is why its `str` leaves the rate off.
 
+## Resuming
+
+A transfer that died half way through does not have to start again:
+
+```python
+xrd.copy(src, dst, resume=True)     # keep what is at dst, carry on from there
+```
+
+Whatever is already at the target is kept and the copy begins at the end of
+it. `CopyResult.resumed_at` is the offset it started from and `size` is what
+this call moved, so `resumed_at + size` is the finished length either way. A
+target that is not there yet - or is empty - is copied whole, which is what
+makes the flag safe to set unconditionally on a retry.
+
+Two things follow from having skipped the beginning of the file. Verification
+can no longer digest the bytes in flight, because they are only the tail, so a
+resumed copy compares the two files afterwards instead: one digest from each
+end, which costs a read of whichever end is local. And an HTTP target cannot
+be resumed at all - a `PUT` replaces the whole resource - so that raises
+`UnsupportedError` rather than quietly re-uploading.
+
+A target *longer* than its source is not a partial copy of it, and says so
+with a `ValueError` instead of appending to something unrelated. So does
+`resume=True` with `overwrite=False`, which asks to continue a file that is
+forbidden to exist.
+
+`copy_tree(..., resume=True)` passes the flag down to every file, which
+finishes an interrupted tree rather than recopying it - `sync=` skips files
+that are already complete, `resume=` finishes the one that was in flight.
+
 ## Recursive copies
 
 ```python
@@ -204,6 +234,7 @@ $ xrd-cp --no-verify --progress root://host//store/big.root /scratch/
 $ xrd-cp -r --sync size --delete /tmp/results root://host//store/results/
 $ xrd-cp -r --dry-run --exclude '*.log' /tmp/results root://host//store/results/
 $ xrd-cp --remove-source /tmp/f.root root://host//store/f.root
+$ xrd-cp -c root://host//store/big.root /scratch/big.root   # carry on
 ```
 
 See [the command line](cli.md#xrd-cp) for the flag table, including why a

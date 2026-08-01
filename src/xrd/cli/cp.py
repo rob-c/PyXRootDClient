@@ -44,6 +44,13 @@ def _parser() -> argparse.ArgumentParser:
         help="fail rather than overwrite an existing destination",
     )
     parser.add_argument(
+        "-c",
+        "--continue",
+        dest="resume",
+        action="store_true",
+        help="carry on from what is already at DEST instead of copying it again",
+    )
+    parser.add_argument(
         "--tpc", action="store_true", help="third-party copy: let the servers move the data"
     )
     parser.add_argument(
@@ -144,6 +151,7 @@ class _CopyOptions(TypedDict, total=False):
     chunk_size: int
     dry_run: bool
     remove_source: bool
+    resume: bool
 
 
 def _human(size: int) -> str:
@@ -193,6 +201,8 @@ def _misuse(args: argparse.Namespace) -> str | None:
         return "--include, --exclude, --sync and --delete describe a tree; add -r"
     if args.tpc and (args.dry_run or args.remove_source):
         return "--tpc hands the transfer to the servers; --dry-run and --remove-source cannot"
+    if args.resume and (args.tpc or args.no_clobber):
+        return "--continue needs a partial DEST to carry on from; --tpc and -n forbid one"
     return None
 
 
@@ -246,6 +256,8 @@ def _run(
         options["dry_run"] = True
     if args.remove_source:
         options["remove_source"] = True
+    if args.resume:
+        options["resume"] = True
 
     results: list[CopyResult] = []
     for source in sources:
@@ -286,6 +298,7 @@ def _record(result: CopyResult) -> dict[str, object]:
         "size": result.size,
         "seconds": round(result.seconds, 6),
         "rate": round(result.rate, 3) if result.seconds > 0 else None,
+        "resumed_at": result.resumed_at,
         "verified": result.verified,
         "checksum": None if result.checksum is None else str(result.checksum),
     }

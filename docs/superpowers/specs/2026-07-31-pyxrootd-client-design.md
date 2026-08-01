@@ -820,9 +820,11 @@ xrd.http.third_party(src, dst, *, mode="pull", delegate=False, verify=None, ...)
   `failure:` line before returning, because the outcome is in the body: a
   transfer that failed still answers `202 Accepted`, and a client that trusts
   the status line reports a copy that did not happen.
-- Not implemented yet: resumption of a partial transfer, parallel file workers
-  in `copy_tree`, and the adaptive in-flight window (the pump is sequential
-  with a fixed `chunk_size`).
+- Resumption is `copy(..., resume=True)`: the target is probed, the reader and
+  writer are positioned at its length, and verification compares both files
+  because the in-flight digest would only cover the tail.
+- Not implemented yet: parallel file workers in `copy_tree`, and the adaptive
+  in-flight window (the pump is sequential with a fixed `chunk_size`).
 
 ---
 

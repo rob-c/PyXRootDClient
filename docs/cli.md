@@ -71,11 +71,18 @@ $ xrd-cp -r --include '*.root' --sync size /tmp/results root://host//store/resul
 $ xrd-cp -r --delete /tmp/results root://host//store/results
 $ xrd-cp -r --dry-run /tmp/results root://host//store/results
 $ xrd-cp --remove-source /tmp/f.root root://host//store/f.root   # a move
+$ xrd-cp -c root://host//store/big.root /scratch/big.root   # carry on, do not restart
 ```
 
 Several sources are allowed when the destination is a directory. Progress is
 shown on a tty and suppressed otherwise; `--progress` and `--no-progress`
 override that either way.
+
+`-c`, `--continue` keeps whatever is already at the destination and starts
+from the end of it; the JSON record carries `resumed_at` so a script can see
+how much was skipped. It works on a tree too, and refuses to combine with
+`--tpc` or `-n`, which each forbid the partial destination it needs. See
+[Resuming](copying.md#resuming) for what it does to verification.
 
 For a tree:
 

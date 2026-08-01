@@ -46,14 +46,23 @@ class CopyResult:
 
     source: str
     target: str
+    #: Bytes this call moved - which is not the size of the file when the
+    #: transfer resumed part way through it. See :attr:`resumed_at`.
     size: int
     seconds: float
     checksum: ChecksumInfo | None = None
+    #: The offset a resumed transfer started from, and 0 for a whole copy, so
+    #: ``resumed_at + size`` is the length of the finished file either way.
+    resumed_at: int = 0
 
     @property
     def rate(self) -> float:
         """Bytes per second; ``inf`` if the copy took no measurable time."""
         return self.size / self.seconds if self.seconds > 0 else float("inf")
+
+    @property
+    def resumed(self) -> bool:
+        return self.resumed_at > 0
 
     @property
     def verified(self) -> bool:
@@ -62,7 +71,8 @@ class CopyResult:
     def __str__(self) -> str:
         # A dry run, or a copy too quick for the clock, has no rate to quote.
         rate = f", {self.rate / 1e6:.1f} MB/s" if self.seconds > 0 else ""
-        return f"{self.source} -> {self.target} ({self.size} bytes{rate})"
+        resumed = f", resumed at {self.resumed_at}" if self.resumed_at else ""
+        return f"{self.source} -> {self.target} ({self.size} bytes{resumed}{rate})"
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +123,59 @@ def _writer(url: XRootDURL, config: Config, stack: ExitStack, *, overwrite: bool
 
         return stack.enter_context(open_http(url, mode, config=config))
     raise UnsupportedError(kXR_Unsupported, f"cannot write to {url.scheme}://")
+
+
+def _resumer(url: XRootDURL, config: Config, stack: ExitStack, offset: int) -> IO[bytes]:
+    """A writer for ``url`` positioned at ``offset``, keeping what is there.
+
+    An HTTP target has no such thing: a ``PUT`` replaces the whole resource,
+    so a partial upload can only be repeated, never continued.
+    """
+    if url.is_local:
+        handle = stack.enter_context(open(url.path, "r+b"))
+        handle.seek(offset)
+        return handle
+    if url.is_root:
+        from ..io import open_url
+
+        raw = stack.enter_context(open_url(url, "r+b", buffering=0, config=config))
+        raw.seek(offset)
+        return cast("IO[bytes]", raw)
+    raise UnsupportedError(kXR_Unsupported, f"cannot resume a copy into {url.scheme}://")
+
+
+@dataclass(frozen=True, slots=True)
+class _Resume:
+    """A transfer that picks up where an interrupted one stopped."""
+
+    offset: int
+    source: XRootDURL
+    target: XRootDURL
+
+
+def _continue_from(
+    source: XRootDURL | None, target: XRootDURL | None, config: Config, *, overwrite: bool
+) -> _Resume | None:
+    """Where to continue ``target`` from, or ``None`` if there is nothing to."""
+    if not overwrite:
+        raise ValueError("resume continues a partial target, which overwrite=False forbids")
+    if source is None or target is None:
+        raise ValueError("resume needs a URL on both sides, not an already-open stream")
+    there = _probe(target, config)
+    if there is None or there[0] == 0:
+        return None  # nothing there yet, so this is an ordinary copy
+    here = _probe(source, config)
+    if here is not None and there[0] > here[0]:
+        raise ValueError(f"{target} is longer than {source}, so it is not a partial copy of it")
+    return _Resume(there[0], source, target)
+
+
+def _shifted(progress: Progress | None, offset: int) -> Progress | None:
+    """``progress`` reporting where in the *file* it is, not where in the tail."""
+    if progress is None:
+        return None
+    report = progress
+    return lambda done, total: report(done + offset, total)
 
 
 def _probe(url: XRootDURL, config: Config) -> tuple[int, int] | None:
@@ -205,6 +268,7 @@ def copy(
     config: Config | None = None,
     dry_run: bool = False,
     remove_source: bool = False,
+    resume: bool = False,
 ) -> CopyResult:
     """Copy ``source`` to ``target`` and report what happened.
 
@@ -229,6 +293,15 @@ def copy(
     ``dry_run`` reports the transfer it would have made without moving a byte;
     ``remove_source`` deletes the source once the copy is on disk and has
     passed whatever verification was asked for, which together make a move.
+
+    ``resume`` continues an interrupted transfer: whatever is already at the
+    target is kept and the copy starts at the end of it, which
+    :attr:`CopyResult.resumed_at` reports. A target that is not there yet is
+    copied whole, so the flag is safe to set unconditionally on a retry. Since
+    a continued transfer never reads the bytes it did not move, verification
+    switches from digesting the stream to comparing the two files afterwards -
+    which costs a read of whichever end is local. An HTTP target cannot be
+    resumed at all, because a ``PUT`` replaces the whole resource.
     """
     cfg = config or Config()
     chunk = chunk_size or cfg.chunk_size
@@ -244,21 +317,35 @@ def copy(
             seconds=0.0,
         )
 
+    resuming = _continue_from(src_url, dst_url, cfg, overwrite=overwrite) if resume else None
     wanted = cfg.verify_checksums if verify is None else verify
     # A digest of the bytes in flight is only worth taking if some server can
-    # be asked to compare it with what it holds.
+    # be asked to compare it with what it holds - and if they are all the
+    # bytes, which for a continued transfer they are not.
     checkable = next((u for u in (dst_url, src_url) if u is not None and not u.is_local), None)
-    digest = new_checksum(algo) if wanted and checkable is not None else None
+    digest = new_checksum(algo) if wanted and checkable is not None and not resuming else None
 
     started = time.monotonic()
     with ExitStack() as stack:
         reader, total = (source, None) if src_url is None else _reader(src_url, cfg, stack)
-        writer = target if dst_url is None else _writer(dst_url, cfg, stack, overwrite=overwrite)
-        size = _pump(reader, writer, total, chunk, progress, digest)
+        if resuming is not None:
+            reader.seek(resuming.offset)
+            writer = _resumer(resuming.target, cfg, stack, resuming.offset)
+        elif dst_url is None:
+            writer = target
+        else:
+            writer = _writer(dst_url, cfg, stack, overwrite=overwrite)
+        report = progress if resuming is None else _shifted(progress, resuming.offset)
+        size = _pump(reader, writer, total, chunk, report, digest)
     elapsed = time.monotonic() - started
 
     checksum = None
-    if digest is not None and checkable is not None:
+    if resuming is not None:
+        if wanted:
+            checksum = _compare_ends(
+                resuming.source, resuming.target, cfg, algo, strict=verify is True
+            )
+    elif digest is not None and checkable is not None:
         checksum = _compare(checkable, cfg, algo, digest.hexdigest(), strict=verify is True)
 
     if remove_source and src_url is not None:
@@ -270,6 +357,7 @@ def copy(
         size=size,
         seconds=elapsed,
         checksum=checksum,
+        resumed_at=resuming.offset if resuming is not None else 0,
     )
 
 
@@ -286,6 +374,27 @@ def _compare(
     if theirs.value.lower() != ours.lower():
         raise ChecksumMismatchError(algorithm, theirs.value, ours)
     return theirs
+
+
+def _compare_ends(
+    source: XRootDURL, target: XRootDURL, config: Config, algorithm: str, *, strict: bool
+) -> ChecksumInfo | None:
+    """Verify a resumed copy by comparing the two files rather than the stream.
+
+    A transfer that started part way through never saw the beginning of the
+    file, so the digest taken in flight covers a tail and proves nothing. The
+    only honest check left is to ask both ends what they hold.
+    """
+    try:
+        ours = _digest_of(source, config, algorithm)
+        theirs = _digest_of(target, config, algorithm)
+    except OSError:
+        if strict:
+            raise
+        return None  # an end that cannot checksum; the copy still happened
+    if ours != theirs:
+        raise ChecksumMismatchError(algorithm, theirs, ours)
+    return ChecksumInfo(algorithm, theirs)
 
 
 # ---------------------------------------------------------------------------

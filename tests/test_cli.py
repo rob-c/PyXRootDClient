@@ -747,6 +747,21 @@ def test_the_tree_flags_need_a_tree(url, tmp_path, capsys, argv):
     assert (code, "add -r" in capsys.readouterr().err) == (2, True)
 
 
+def test_continue_carries_on_from_a_partial_download(url, tmp_path, capsys):
+    target = tmp_path / "partial.root"
+    target.write_bytes(b"hello ")
+    assert cp_cli.main(["-c", "--json", url + "data/a.root", str(target)]) == 0
+    assert target.read_bytes() == b"hello world"
+    record = json.loads(capsys.readouterr().out)[0]
+    assert (record["resumed_at"], record["size"]) == (6, 5)
+
+
+@pytest.mark.parametrize("flag", ["--tpc", "-n"])
+def test_continue_needs_a_target_it_is_allowed_to_extend(url, tmp_path, capsys, flag):
+    code = cp_cli.main(["-c", flag, url + "data/a.root", str(tmp_path / "x")])
+    assert (code, "--continue" in capsys.readouterr().err) == (2, True)
+
+
 @pytest.mark.parametrize("flag", ["--dry-run", "--remove-source"])
 def test_a_third_party_copy_cannot_pretend(url, tmp_path, capsys, flag):
     code = cp_cli.main(["--tpc", flag, url + "data/a.root", url + "b.root"])
