@@ -45,7 +45,8 @@ Exception
         ├── QuotaError                + OSError             EDQUOT
         ├── AttrNotFoundError         + OSError             ENODATA
         ├── BusyError                 + OSError             EBUSY
-        └── InvalidArgumentError      + OSError             EINVAL
+        ├── InvalidArgumentError      + OSError             EINVAL
+        └── ServerTimeoutError        + TimeoutError        ETIMEDOUT
 ```
 
 Catch broadly with `xrd.XRootDError`, or narrowly with the builtin you already

@@ -175,6 +175,30 @@ AttrNotFoundError = _oserror("AttrNotFoundError", OSError, _errno.ENODATA)
 BusyError = _oserror("BusyError", OSError, _errno.EBUSY)
 InvalidArgumentError = _oserror("InvalidArgumentError", OSError, _errno.EINVAL)
 
+
+class ServerTimeoutError(ServerError, TimeoutError):
+    """A server saying "that took too long".
+
+    The other :class:`TimeoutError` is this client giving up on a socket; this
+    one is an answer that arrived, saying the request ran out of time at the
+    far end. One ``except TimeoutError`` covers both, and both are transient:
+    the next attempt may well be the one that fits.
+    """
+
+    errno = _errno.ETIMEDOUT
+
+    def __init__(self, code: int, message: str, *, path: str | None = None) -> None:
+        self.code = code
+        self.message = message
+        self.path = path
+        TransientError.__init__(self, message)
+        self.filename = path
+        self.args = (_errno.ETIMEDOUT, message)
+
+    def __str__(self) -> str:
+        return self._describe()
+
+
 # kXR_* server error codes (src/protocols/root/protocol/opcodes.h).
 kXR_ArgInvalid = 3000
 kXR_ArgMissing = 3001
@@ -198,14 +222,20 @@ kXR_ItExists = 3018
 kXR_ChkSumErr = 3019
 kXR_inProgress = 3020
 kXR_overQuota = 3021
+kXR_SigVerErr = 3022
+kXR_DecryptErr = 3023
 kXR_Overloaded = 3024
 kXR_fsReadOnly = 3025
+kXR_BadPayload = 3026
 kXR_AttrNotFound = 3027
 kXR_TLSRequired = 3028
+kXR_noReplicas = 3029
 kXR_AuthFailed = 3030
 kXR_Impossible = 3031
 kXR_Conflict = 3032
 kXR_TooManyErrs = 3033
+kXR_ReqTimedOut = 3034
+kXR_TimerExpired = 3035
 
 _CODE_NAMES = {v: k for k, v in list(globals().items()) if k.startswith("kXR_")}
 
@@ -230,8 +260,14 @@ _CODE_CLASSES: dict[int, type[ServerError]] = {
     kXR_NotAuthorized: PermissionError_,
     kXR_AuthFailed: PermissionError_,
     kXR_TLSRequired: PermissionError_,
+    kXR_SigVerErr: PermissionError_,
+    kXR_DecryptErr: PermissionError_,
+    kXR_BadPayload: InvalidArgumentError,
     kXR_NotFound: NotFoundError,
     kXR_noserver: NotFoundError,
+    kXR_noReplicas: NotFoundError,
+    kXR_ReqTimedOut: ServerTimeoutError,
+    kXR_TimerExpired: ServerTimeoutError,
     kXR_Unsupported: UnsupportedError,
     kXR_NotFile: NotADirectoryError_,
     kXR_isDirectory: IsADirectoryError_,

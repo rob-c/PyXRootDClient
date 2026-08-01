@@ -40,6 +40,7 @@ from .errors import (
     ReadOnlyError,
     RedirectLimitError,
     ServerError,
+    ServerTimeoutError,
     TimeoutError,
     TokenExpiredError,
     TransientError,
@@ -155,4 +156,5 @@ __all__ = [
     "AttrNotFoundError",
     "BusyError",
     "InvalidArgumentError",
+    "ServerTimeoutError",
 ]

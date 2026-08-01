@@ -18,6 +18,12 @@ from xrd import errors as e
         (e.kXR_FSError, e.IOError_, OSError),
         (e.kXR_Unsupported, e.UnsupportedError, OSError),
         (e.kXR_InvalidRequest, e.InvalidArgumentError, OSError),
+        (e.kXR_SigVerErr, e.PermissionError_, PermissionError),
+        (e.kXR_DecryptErr, e.PermissionError_, PermissionError),
+        (e.kXR_BadPayload, e.InvalidArgumentError, OSError),
+        (e.kXR_noReplicas, e.NotFoundError, FileNotFoundError),
+        (e.kXR_ReqTimedOut, e.ServerTimeoutError, TimeoutError),
+        (e.kXR_TimerExpired, e.ServerTimeoutError, TimeoutError),
     ],
 )
 def test_server_codes_map_to_builtin_oserrors(code, cls, builtin):
@@ -111,3 +117,23 @@ def test_pickled_server_error_keeps_code_and_path():
     back = pickle.loads(pickle.dumps(e.NotFoundError(e.kXR_NotFound, "gone", path="/p")))
     assert isinstance(back, FileNotFoundError)
     assert (back.code, back.path, back.errno) == (e.kXR_NotFound, "/p", errno.ENOENT)
+
+
+def test_a_server_timeout_is_caught_by_the_same_except_as_a_client_one():
+    """"It was slow" reads the same to a caller whichever end gave up first,
+    and both are worth retrying."""
+    with pytest.raises(e.TimeoutError) as info:
+        e.raise_for_status(e.kXR_ReqTimedOut, "took too long", path="/a")
+    assert isinstance(info.value, e.TransientError)
+    assert info.value.errno == errno.ETIMEDOUT
+    assert info.value.filename == "/a"
+    # And it names the code, as every other server error does, rather than
+    # falling back to OSError's "[Errno 110] took too long".
+    assert str(info.value) == "kXR_ReqTimedOut: took too long [/a]"
+
+
+def test_every_error_code_the_protocol_defines_has_a_name():
+    """``kXR_ArgInvalid`` (3000) through ``kXR_TimerExpired`` (3035), the last
+    before XProtocol.hh's kXR_ERRFENCE - a gap here prints as a number."""
+    for code in range(3000, 3036):
+        assert not e._CODE_NAMES[code].startswith("kXR_unknown")
