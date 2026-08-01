@@ -27,7 +27,7 @@ from .buffer import Reader
 __all__ = [
     "ErrorInfo", "RedirectInfo", "WaitInfo", "AttnInfo", "StatusInfo",
     "LoginInfo", "ReadVSegment", "FattrItem", "FattrResult",
-    "parse_protocol", "parse_login", "parse_stat", "parse_statvfs", "parse_statx",
+    "parse_protocol", "parse_login", "parse_bind", "parse_stat", "parse_statvfs", "parse_statx",
     "parse_dirlist", "parse_locate", "parse_open", "parse_checksum",
     "parse_checkpoint", "parse_readlink", "parse_space",
     "parse_error", "parse_redirect", "parse_wait", "parse_waitresp", "parse_attn",
@@ -211,6 +211,19 @@ def parse_login(data: bytes) -> LoginInfo:
     r = Reader(data, "kXR_login")
     sessid = r.bytes(min(c.SESSION_ID_LEN, r.remaining))
     return LoginInfo(sessid, r.rest().split(b"\x00", 1)[0].decode("utf-8", "replace"))
+
+
+def parse_bind(data: bytes) -> int:
+    """``kXR_bind`` - the path id the server assigned to this connection.
+
+    Zero is not a path: it is how every request spells "the control link", so
+    a server that answers with it has told us nothing usable.
+    """
+    r = Reader(data, "kXR_bind")
+    pathid = r.u8()
+    if pathid == 0:
+        raise ProtocolError("kXR_bind returned path id 0, which is the control link")
+    return pathid
 
 
 # --------------------------------------------------------------------------

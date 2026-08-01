@@ -37,6 +37,14 @@ class Request:
     signed: bool = False
     #: Whether replaying this request after a reconnect is safe.
     idempotent: bool = True
+    #: The ``kXR_bind`` data path this request uses, or 0 for the control
+    #: link. Requests that can name one shadow this with a real attribute.
+    pathid: int = 0
+    #: Whether the *response* comes back over :attr:`pathid` rather than over
+    #: the link the request was sent on. True for the reading opcodes, false
+    #: for the writing ones - a write puts its data on the path and is
+    #: answered on the control link.
+    reply_on_path: bool = False
 
     def params(self, w: Writer) -> None:
         """Write the 16 parameter bytes. Default: all zero."""
@@ -44,6 +52,15 @@ class Request:
 
     def payload(self) -> bytes:
         """Bytes after the header, counted in ``dlen``."""
+        return b""
+
+    def path_data(self) -> bytes:
+        """Bytes that travel on :attr:`pathid` instead of on this link.
+
+        ``dlen`` still counts them - the server sizes the read from the
+        header it got on the control link and then takes the bytes off the
+        bound socket - so they are declared here and sent elsewhere.
+        """
         return b""
 
     def trailer(self) -> bytes:
@@ -70,9 +87,10 @@ def encode(req: Request, streamid: int) -> bytes:
             f"{type(req).__name__}.params wrote {len(params)} bytes, expected 16"
         )
     body = req.payload()
-    if len(body) > c.MAX_FRAME_PAYLOAD:
-        raise ProtocolError(f"payload of {len(body)} bytes exceeds the protocol maximum")
-    return _HDR.pack(streamid & 0xFFFF, req.opcode, params, len(body)) + body + req.trailer()
+    dlen = len(body) + len(req.path_data())
+    if dlen > c.MAX_FRAME_PAYLOAD:
+        raise ProtocolError(f"payload of {dlen} bytes exceeds the protocol maximum")
+    return _HDR.pack(streamid & 0xFFFF, req.opcode, params, dlen) + body + req.trailer()
 
 
 @dataclass(frozen=True, slots=True)

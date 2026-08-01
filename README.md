@@ -168,7 +168,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2035 tests, of which the great majority need no network, no KDC and no
+2115 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official
@@ -189,9 +189,14 @@ person, so a script that constructs one per file logs in once rather than a
 thousand times. Reuse is keyed on the credentials as well as the endpoint, and
 a connection that failed is discarded rather than passed on.
 
+A file being streamed can put its bytes on a connection of their own:
+`bind_data_path()` binds a second socket to the same session with `kXR_bind`,
+and from then on reads and writes travel there while requests keep the
+control link to themselves. The second connection inherits the session's
+identity rather than logging in again.
+
 Not yet: GSI's signed-DH path and X.509 delegation (both refused by name
-rather than mis-answered), `kXR_bind` parallel data streams, resumable copies,
-and HTTP/2.
+rather than mis-answered), resumable copies, and HTTP/2.
 
 Full documentation is in [`docs/`](docs/) (`mkdocs serve` to read it), with
 [`SECURITY.md`](SECURITY.md) for the threat model,

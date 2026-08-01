@@ -115,6 +115,33 @@ if result.corrupt_pages:
     raise IOError(f"corrupt pages at {result.corrupt_pages}")
 ```
 
+### A second connection for the bytes
+
+`bind_data_path()` opens one more connection to the same server, binds it to
+the same session with `kXR_bind`, and moves this handle's bulk I/O onto it.
+Requests keep going out on the control link, so a `stat` or a `close` is
+never stuck behind a megabyte of file, and the reply to a read comes back on
+the data path.
+
+```python
+handle = fh.raw.file
+handle.bind_data_path()          # returns the path id the server assigned
+print(handle.data_path)          # 1
+data = handle.read(64 << 20, 0)  # the request on one socket, the data on the other
+```
+
+It applies to `read`, `readv`, `pgread`, `write` and `pgwrite`; everything
+else is unaffected. Calling it twice is a no-op - a handle keeps the path it
+has - and the binding is per connection, so a handle that lost its data
+server and was re-opened elsewhere reports `data_path == 0` again and can be
+bound again.
+
+The second connection does not log in: it names the session it belongs to and
+inherits that session's identity, which is why a server only accepts it from
+the client that opened the session. It costs a handshake, not an
+authentication, but it is still a connection - worth it for a file being
+streamed, not for one being peeked at.
+
 ### Checkpointed writes
 
 A checkpoint is a transaction over one handle: the server journals what you

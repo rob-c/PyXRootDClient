@@ -87,6 +87,18 @@ with xrd.open(url, "rb") as fh:
     blocks = fh.raw.file.readv([(off, 128 << 10) for off in offsets])
 ```
 
+For one file being streamed hard, give its bytes a socket of their own:
+
+```python
+handle = fh.raw.file
+handle.bind_data_path()        # kXR_bind; see Files -> a second connection
+```
+
+The reads still go out on the control link and the data comes back on the new
+one, so a `stat` in another thread is not queued behind a 64 MiB read. It
+costs a connection and a handshake, which is why it is a call and not a
+default.
+
 For many files, go wide rather than deep - one session per worker thread, or
 `asyncio.gather` over separate handles ([Asynchronous use](async.md)). A
 single session serialises its own calls.

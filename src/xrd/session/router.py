@@ -97,6 +97,15 @@ class Router:
     def connected(self) -> bool:
         return self._session is not None and not self._session.closed
 
+    def bind_data_path(self) -> int:
+        """Bind a second connection to the current session for bulk data.
+
+        Not retried and not followed across a redirect: a path id belongs to
+        one session on one server, so a caller that loses the connection must
+        ask the new one for a new path rather than be handed a stale number.
+        """
+        return self.session.bind_data_path()
+
     def execute(self, request: Request, *, path: str = "", **kwargs: object) -> Result:
         """Run ``request``, following redirects and retrying dropped connections."""
         hops = 0

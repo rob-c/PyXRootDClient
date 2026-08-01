@@ -59,6 +59,7 @@ __all__ = [
     "Waiting",
     "Attention",
     "Failed",
+    "PathLost",
     "Disconnected",
 ]
 
@@ -66,6 +67,7 @@ _log = get_logger(__name__)
 
 #: Streamids reserved for bring-up; regular traffic starts above these.
 _SID_HANDSHAKE, _SID_PROTOCOL, _SID_LOGIN, _SID_AUTH = 0, 1, 2, 3
+_SID_BIND = 2
 _FIRST_SID = 4
 
 
@@ -81,6 +83,9 @@ class State(IntEnum):
     READY = 6
     FAILED = 7
     CLOSED = 8
+    #: Waiting for ``kXR_bind`` to answer. Only a data connection is ever
+    #: here; it takes the place of LOGIN and AUTH, which it skips.
+    BIND = 9
 
 
 # --------------------------------------------------------------------------
@@ -177,6 +182,18 @@ class Failed(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class PathLost(Event):
+    """A bound data connection went away.
+
+    The session survives: only the requests routed over that path failed,
+    and each of those gets its own :class:`Failed`.
+    """
+
+    pathid: int
+    reason: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class Disconnected(Event):
     """The peer closed, or the machine was closed locally."""
 
@@ -195,6 +212,23 @@ class _Pending:
     buffer: bytearray = field(default_factory=bytearray)
     status: rp.StatusInfo | None = None
     path: str = ""
+    pathid: int = 0
+    path_bytes: bytes = b""
+
+
+@dataclass(slots=True)
+class _Framer:
+    """One link's inbound cursor.
+
+    There is one per connection, not one per session: frames from a bound
+    data path interleave with the control link's on nobody's schedule, so a
+    single buffer would splice two half-frames together.
+    """
+
+    buffer: bytearray = field(default_factory=bytearray)
+    header: ResponseHeader | None = None
+    need_trailer: int = 0
+    trailer_for: int | None = None
 
 
 class SessionMachine:
@@ -210,12 +244,17 @@ class SessionMachine:
         credentials: Iterator[Credential] | None = None,
         username: str = "",
         want_tls: bool = False,
+        bind_to: bytes = b"",
     ) -> None:
         self.host = host
         self.port = port
         self.config = config or Config()
         self.username = username or self.config.username
         self.want_tls = want_tls or self.config.require_tls
+        #: Session id to attach to with ``kXR_bind`` instead of logging in.
+        self.bind_to = bind_to
+        #: The path id the server gave this connection, once bound.
+        self.pathid = 0
 
         self.state = State.NEW
         self.protocol_info = ProtocolInfo()
@@ -225,16 +264,14 @@ class SessionMachine:
         self.tls_active = False
 
         self._out = bytearray()
-        self._in = bytearray()
+        self._out_path: dict[int, bytearray] = {}
         self._events: list[Event] = []
         self._pending: dict[int, _Pending] = {}
         self._free: list[int] = []
         self._next_sid = _FIRST_SID
 
-        # Inbound framing cursor.
-        self._header: ResponseHeader | None = None
-        self._need_trailer = 0
-        self._trailer_for: int | None = None
+        # Inbound framing cursor, one per link.
+        self._framers: dict[int, _Framer] = {0: _Framer()}
 
         # Authentication ladder.
         self._credentials = credentials
@@ -256,10 +293,15 @@ class SessionMachine:
         self.state = State.HANDSHAKE
 
     def data_to_send(self) -> bytes:
-        """Drain and return everything queued for the wire."""
+        """Drain and return everything queued for the control link."""
         data = bytes(self._out)
         del self._out[:]
         return data
+
+    def path_data_to_send(self, pathid: int) -> bytes:
+        """Drain and return everything queued for a bound data path."""
+        queued = self._out_path.pop(pathid, None)
+        return bytes(queued) if queued else b""
 
     @property
     def has_data_to_send(self) -> bool:
@@ -283,6 +325,8 @@ class SessionMachine:
         if pending is None:
             raise ProtocolError(f"stream {streamid} is not waiting")
         self._out += pending.frame
+        if pending.path_bytes:
+            self._out_path.setdefault(pending.pathid, bytearray()).extend(pending.path_bytes)
 
     def release(self, streamid: int) -> None:
         """Abandon a stream - after a redirect, or when the caller gives up."""
@@ -323,20 +367,31 @@ class SessionMachine:
             if signed is not None:
                 seqno, mac = signed
                 frame = encode(r.Sigver(request.opcode, seqno, mac), sid) + frame
-        self._pending[sid] = _Pending(request, frame, path=path)
+        data = request.path_data()
+        self._pending[sid] = _Pending(
+            request, frame, path=path, pathid=request.pathid, path_bytes=data
+        )
         self._out += frame
+        if data:
+            self._out_path.setdefault(request.pathid, bytearray()).extend(data)
 
     # ------------------------------------------------------------------
     # Inbound
     # ------------------------------------------------------------------
 
-    def receive_data(self, data: bytes | None) -> None:
-        """Feed bytes from the wire. ``None`` or ``b""`` signals EOF."""
+    def receive_data(self, data: bytes | None, *, pathid: int = 0) -> None:
+        """Feed bytes from one link. ``None`` or ``b""`` signals its EOF.
+
+        ``pathid`` names the bound data path the bytes came off; 0 is the
+        control link. Losing a data path costs only the requests routed over
+        it, so its EOF is not the session's.
+        """
+        framer = self._framers.setdefault(pathid, _Framer())
         if not data:
-            self._on_eof()
+            self._on_eof() if pathid == 0 else self._on_path_eof(pathid)
             return
-        self._in += data
-        self._parse()
+        framer.buffer += data
+        self._parse(framer)
 
     def next_event(self) -> Event | None:
         """The oldest undelivered event, or ``None``."""
@@ -362,50 +417,60 @@ class SessionMachine:
         self._pending.clear()
         self._events.append(Disconnected("connection closed by peer"))
 
-    def _parse(self) -> None:
-        buf = self._in
+    def _on_path_eof(self, pathid: int) -> None:
+        reason = f"data path {pathid} closed by peer"
+        for sid, pending in list(self._pending.items()):
+            if pending.pathid == pathid:
+                del self._pending[sid]
+                self._events.append(Failed(sid, pending.request, XrdConnectionError(reason)))
+        self._framers.pop(pathid, None)
+        self._out_path.pop(pathid, None)
+        self._events.append(PathLost(pathid, reason))
+
+    def _parse(self, framer: _Framer) -> None:
+        buf = framer.buffer
         while True:
-            if self._need_trailer:
-                if len(buf) < self._need_trailer:
+            if framer.need_trailer:
+                if len(buf) < framer.need_trailer:
                     return
                 # Through a memoryview, because bytes(bytearray_slice) copies
                 # twice: once to build the slice and once to freeze it. On a
                 # multi-megabyte read that second copy is measurable.
-                trailer = bytes(memoryview(buf)[: self._need_trailer])
-                del buf[: self._need_trailer]
-                self._need_trailer = 0
-                sid = self._trailer_for
-                self._trailer_for = None
+                trailer = bytes(memoryview(buf)[: framer.need_trailer])
+                del buf[: framer.need_trailer]
+                framer.need_trailer = 0
+                sid = framer.trailer_for
+                framer.trailer_for = None
                 assert sid is not None
                 self._on_status_data(sid, trailer)
                 continue
 
-            if self._header is None:
+            if framer.header is None:
                 if len(buf) < c.RESPONSE_HDRLEN:
                     return
-                self._header = decode_header(buf[: c.RESPONSE_HDRLEN])
+                framer.header = decode_header(buf[: c.RESPONSE_HDRLEN])
                 del buf[: c.RESPONSE_HDRLEN]
 
-            header = self._header
+            header = framer.header
             if len(buf) < header.dlen:
                 return
             body = bytes(memoryview(buf)[: header.dlen])
             del buf[: header.dlen]
-            self._header = None
-            self._dispatch(header, body)
+            framer.header = None
+            self._dispatch(header, body, framer)
 
     # ------------------------------------------------------------------
     # Dispatch
     # ------------------------------------------------------------------
 
-    def _dispatch(self, header: ResponseHeader, body: bytes) -> None:
+    def _dispatch(self, header: ResponseHeader, body: bytes, framer: _Framer) -> None:
         if header.status == c.kXR_attn:
             inner = self._unwrap_attn(body)
             if inner is None:
                 return
             header, body = inner
 
-        if self.state in (State.HANDSHAKE, State.PROTOCOL, State.LOGIN, State.AUTH):
+        if self.state in (State.HANDSHAKE, State.PROTOCOL, State.LOGIN, State.AUTH, State.BIND):
             self._bringup(header, body)
             return
 
@@ -414,7 +479,7 @@ class SessionMachine:
             _log.debug("response on unknown stream %d (%s)", header.streamid,
                        c.status_name(header.status))
             return
-        self._on_response(header, body, pending)
+        self._on_response(header, body, pending, framer)
 
     def _unwrap_attn(self, body: bytes) -> tuple[ResponseHeader, bytes] | None:
         """Unpack a ``kXR_asynresp``, or record the notice and return None."""
@@ -448,6 +513,11 @@ class SessionMachine:
             self.protocol_info = rp.parse_protocol(body)
             self._events.append(Negotiated(self.protocol_info))
             self._after_protocol()
+            return
+
+        if self.state is State.BIND:
+            self.pathid = rp.parse_bind(body)
+            self._become_ready()
             return
 
         if self.state is State.LOGIN:
@@ -485,6 +555,12 @@ class SessionMachine:
         self._begin_login()
 
     def _begin_login(self) -> None:
+        if self.bind_to:
+            # A data connection never logs in: it says which session it
+            # belongs to and inherits that session's identity wholesale.
+            self.state = State.BIND
+            self._out += encode(r.Bind(self.bind_to), _SID_BIND)
+            return
         self.state = State.LOGIN
         self._out += encode(r.Login(self.username), _SID_LOGIN)
 
@@ -547,7 +623,9 @@ class SessionMachine:
 
     # -- request responses ----------------------------------------------
 
-    def _on_response(self, header: ResponseHeader, body: bytes, pending: _Pending) -> None:
+    def _on_response(
+        self, header: ResponseHeader, body: bytes, pending: _Pending, framer: _Framer
+    ) -> None:
         sid = header.streamid
         status = header.status
 
@@ -592,8 +670,8 @@ class SessionMachine:
             state = rp.parse_status(body)
             pending.status = state
             if state.dlen:
-                self._need_trailer = state.dlen
-                self._trailer_for = sid
+                framer.need_trailer = state.dlen
+                framer.trailer_for = sid
             else:
                 self._on_status_data(sid, b"")
 

@@ -74,6 +74,7 @@ class File:
         self._flags = OpenFlags.NONE
         self._mode = 0
         self._checkpoint = False
+        self._pathid = 0
         #: How many times this handle has been re-opened after losing its
         #: server. Zero on a healthy connection; useful in a log line when a
         #: long read survived a restart nobody noticed.
@@ -96,6 +97,28 @@ class File:
     @property
     def endpoint(self) -> str:
         return self._router.endpoint
+
+    @property
+    def data_path(self) -> int:
+        """The bound data path this handle's bulk I/O uses, or 0 for none."""
+        return self._pathid
+
+    def bind_data_path(self) -> int:
+        """Move this handle's bulk I/O onto a second connection.
+
+        Opens one connection more to the same server, binds it to the same
+        session, and routes every subsequent read and write over it - the
+        requests still go out on the control link, so a stat or a close is
+        never stuck behind a megabyte of file. Returns the path id, and is
+        idempotent: a handle already bound keeps the path it has.
+
+        The path belongs to the connection. If the data server vanishes and
+        the handle is re-opened elsewhere, the binding is not carried over -
+        :attr:`data_path` goes back to 0 and this can be called again.
+        """
+        if not self._pathid:
+            self._pathid = self._router.bind_data_path()
+        return self._pathid
 
     def open(
         self,
@@ -170,6 +193,7 @@ class File:
         started is what lets a manager route around it.
         """
         stale, self._handle, self._stat = self._router, None, None
+        self._pathid = 0
         if self._owns_router:
             # Discarded, not pooled: this connection has just failed under a
             # live handle, and the next caller deserves better than that.
@@ -273,7 +297,7 @@ class File:
         return b"".join(parts)
 
     def _read_one(self, offset: int, length: int) -> bytes:
-        data = self._execute(lambda handle: r.Read(handle, offset, length)).data
+        data = self._execute(lambda handle: r.Read(handle, offset, length, self._pathid)).data
         if len(data) > length:
             raise ProtocolError(
                 f"the server answered a {length} byte read at offset {offset} with "
@@ -305,7 +329,7 @@ class File:
             return []
         out: dict[int, list[bytes]] = {}
         for batch in _batches(wanted):
-            result = self._execute(_readv_for(batch))
+            result = self._execute(_readv_for(batch, self))
             for segment in rp.parse_readv(result.data):
                 out.setdefault(segment.offset, []).append(segment.data)
         return [_segment_for(rng, out.get(rng.offset)) for rng in wanted]
@@ -316,7 +340,9 @@ class File:
         With ``verify`` the checksums are checked here and any failing page
         offsets come back in :attr:`~xrd.types.PageResult.corrupt_pages`.
         """
-        result = self._execute(lambda handle: r.PgRead(handle, offset, size))
+        result = self._execute(
+            lambda handle: r.PgRead(handle, offset, size, pathid=self._pathid)
+        )
         if len(result.data) > _packed_length(size, offset):
             raise ProtocolError(
                 f"the server answered a {size} byte paged read at offset {offset} with "
@@ -361,7 +387,7 @@ class File:
         written = 0
         while written < len(view):
             piece = view[written : written + limit]
-            self._submit(r.Write(self.handle, offset + written, piece.tobytes()))
+            self._submit(r.Write(self.handle, offset + written, piece.tobytes(), self._pathid))
             written += len(piece)
         self._invalidate(offset + written)
         return written
@@ -406,7 +432,7 @@ class File:
         if not data:
             return 0
         payload = pack_pages(data, offset)
-        self._submit(r.PgWrite(self.handle, offset, payload))
+        self._submit(r.PgWrite(self.handle, offset, payload, pathid=self._pathid))
         self._invalidate(offset + len(data))
         return len(data)
 
@@ -527,14 +553,16 @@ class Checkpoint:
         return f"Checkpoint({str(self.file.url)!r})"
 
 
-def _readv_for(batch: Sequence[ReadRange]) -> Callable[[bytes], Request]:
+def _readv_for(batch: Sequence[ReadRange], file: File) -> Callable[[bytes], Request]:
     """Bind ``batch`` to a builder that still takes the handle as an argument.
 
     :meth:`File._execute` re-opens a lost file and retries, and the retry must
     be issued against the new handle - so the ranges are captured here and the
     handle is not.
     """
-    return lambda handle: r.ReadV([(handle, rng.offset, rng.length) for rng in batch])
+    return lambda handle: r.ReadV(
+        [(handle, rng.offset, rng.length) for rng in batch], file.data_path
+    )
 
 
 def _packed_length(size: int, offset: int) -> int:

@@ -270,6 +270,21 @@ class AsyncFile:
     async def tell(self) -> int:
         return await _run(self._sync.tell)
 
+    async def bind_data_path(self) -> int:
+        """Move bulk I/O onto a second connection. ``root://`` only.
+
+        See :meth:`xrd.File.bind_data_path`. It costs a connection and a
+        handshake, so it is worth it for a file being streamed and not for
+        one being peeked at.
+        """
+        return await _run(self._native("bind_data_path").bind_data_path)
+
+    @property
+    def data_path(self) -> int:
+        """The bound data path this file's bulk I/O uses, or 0 for none."""
+        found = self.file
+        return found.data_path if found is not None else 0
+
     # -- metadata ------------------------------------------------------
 
     async def stat(self, *, refresh: bool = False) -> StatInfo:

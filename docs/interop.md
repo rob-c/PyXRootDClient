@@ -56,7 +56,6 @@ know which client its users are running.
 | --- | --- |
 | GSI signed Diffie-Hellman | refused by name rather than mis-answered |
 | X.509 delegation | same |
-| `kXR_bind` split data sockets | one multiplexed stream is enough, and simpler |
 
 Each raises an exception that names the feature. A server insisting on one of
 them says so at the handshake, not three operations later.

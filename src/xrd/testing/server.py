@@ -165,6 +165,11 @@ class FakeServer:
 
         self._live: set[object] = set()
         self._live_lock = threading.Lock()
+        #: Logged-in connections by session id, so ``kXR_bind`` can find the
+        #: one a data path is asking to join.
+        self._sessions: dict[bytes, _Connection] = {}
+        self._parked: set[threading.Event] = set()
+        self._sessions_issued = 0
 
         self.sec = sec
         self.flags = flags
@@ -246,6 +251,12 @@ class FakeServer:
             self._thread.start()
         return self
 
+    def next_sessid(self) -> bytes:
+        """A fresh session id, distinct per login as a real server's is."""
+        with self._live_lock:
+            self._sessions_issued += 1
+            return self.sessid[:15] + bytes([self._sessions_issued & 0xFF])
+
     def disconnect(self) -> None:
         """Drop every live connection, as a restarting server would.
 
@@ -254,6 +265,9 @@ class FakeServer:
         """
         with self._live_lock:
             live, self._live = set(self._live), set()
+            parked, self._parked = set(self._parked), set()
+        for waiting in parked:
+            waiting.set()
         for sock in live:
             try:
                 sock.shutdown(socket.SHUT_RDWR)  # type: ignore[attr-defined]
@@ -307,6 +321,15 @@ class _Connection:
         self.checkpoints: dict[bytes, _Checkpoint] = {}
         self.next_handle = 1
         self.auth_seen = 0
+        self.sessid = b""
+        #: Data connections bound to this one, by path id.
+        self.paths: dict[int, _Connection] = {}
+        self.next_pathid = 1
+        #: The connection this one is a data path of, once bound.
+        self.bound_to: _Connection | None = None
+        #: Which link the reply to the request in hand goes out on.
+        self.route = 0
+        self.unpark = threading.Event()
 
     # -- plumbing -------------------------------------------------------
 
@@ -322,10 +345,22 @@ class _Connection:
                 if not header or len(header) < c.REQUEST_HDRLEN:
                     return
                 sid, opcode, params, dlen = _REQ.unpack(header)
-                body = self.rfile.read(dlen) if dlen else b""
+                # dlen counts the data even when the data is on a bound path,
+                # so where to read it from is decided by the request, not by
+                # which socket the header arrived on.
+                source = self.paths.get(_data_path(opcode, params), self)
+                body = source.rfile.read(dlen) if dlen else b""
                 self.s.seen.append(opcode)
+                self.route = _reply_path(opcode, params, body)
                 for chunk in self._dispatch(sid, opcode, params, body):
                     self._send(chunk)
+                if self.bound_to is not None:
+                    # A bound connection is the other end's to read and write:
+                    # its own thread must never take a byte off it again.
+                    with self.s._live_lock:
+                        self.s._parked.add(self.unpark)
+                    self.unpark.wait()
+                    return
                 if opcode == c.kXR_endsess:
                     return
         except (OSError, ValueError):
@@ -333,6 +368,13 @@ class _Connection:
         finally:
             with self.s._live_lock:
                 self.s._live.discard(self.sock)
+                self.s._parked.discard(self.unpark)
+                if self.sessid:
+                    self.s._sessions.pop(self.sessid, None)
+            if self.bound_to is not None:
+                self.bound_to.paths.pop(
+                    next((k for k, v in self.bound_to.paths.items() if v is self), 0), None
+                )
             try:
                 self.rfile.close()
                 self.sock.close()  # type: ignore[attr-defined]
@@ -340,7 +382,8 @@ class _Connection:
                 pass
 
     def _send(self, data: bytes) -> None:
-        self.sock.sendall(data)  # type: ignore[attr-defined]
+        target = self.paths.get(self.route, self)
+        target.sock.sendall(data)  # type: ignore[attr-defined]
 
     def _dispatch(self, sid: int, opcode: int, params: bytes, body: bytes) -> Iterator[bytes]:
         if opcode == c.kXR_sigver:
@@ -422,9 +465,36 @@ def _h_protocol(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iter
     yield _frame(sid, c.kXR_ok, struct.pack(">iI", conn.s.version, conn.s.flags))
 
 
+def _data_path(opcode: int, params: bytes) -> int:
+    """The path a request's *data* travels on, if it named one."""
+    return params[12] if opcode in (c.kXR_write, c.kXR_pgwrite) else 0
+
+
+def _reply_path(opcode: int, params: bytes, body: bytes) -> int:
+    """The path a request's *reply* travels on, if it named one."""
+    if opcode in (c.kXR_read, c.kXR_pgread):
+        return body[0] if body else 0
+    return params[15] if opcode == c.kXR_readv else 0
+
+
+def _h_bind(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    owner = conn.s._sessions.get(params[:16])
+    if owner is None:
+        yield _error(sid, 3010, "no such session")
+        return
+    pathid = owner.next_pathid
+    owner.next_pathid += 1
+    owner.paths[pathid] = conn
+    conn.bound_to = owner
+    yield _frame(sid, c.kXR_ok, bytes([pathid]))
+
+
 def _h_login(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
     trailer = conn.s.sec.encode() + b"\x00" if conn.s.sec else b""
-    yield _frame(sid, c.kXR_ok, conn.s.sessid + trailer)
+    conn.sessid = conn.s.next_sessid()
+    with conn.s._live_lock:
+        conn.s._sessions[conn.sessid] = conn
+    yield _frame(sid, c.kXR_ok, conn.sessid + trailer)
 
 
 def _h_auth(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
@@ -849,6 +919,7 @@ def _h_fattr(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterato
 _HANDLERS = {
     c.kXR_protocol: _h_protocol,
     c.kXR_login: _h_login,
+    c.kXR_bind: _h_bind,
     c.kXR_auth: _h_auth,
     c.kXR_ping: _h_ping,
     c.kXR_endsess: _h_endsess,

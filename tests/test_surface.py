@@ -190,9 +190,11 @@ def _file_removexattr(fh):
 
 
 FILE = {
+    "bind_data_path": lambda fh: fh.bind_data_path(),
     "checkpoint": _file_checkpoint,
     "checksum": lambda fh: fh.checksum(),
     "close": lambda fh: fh.close(),
+    "data_path": lambda fh: fh.data_path,
     "endpoint": lambda fh: fh.endpoint,
     "flush": lambda fh: fh.flush(),
     "getxattr": _file_xattr,

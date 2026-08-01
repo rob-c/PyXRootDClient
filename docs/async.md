@@ -72,6 +72,16 @@ await fs.symlink("/store/f.root", "/store/latest")
 await fs.readlink("/store/latest")
 ```
 
+So is the second data connection, which is a coroutine here because opening
+it is a round trip:
+
+```python
+async with xrd.aio.open(url, "rb") as fh:
+    await fh.bind_data_path()      # kXR_bind; see Files -> a second connection
+    print(fh.data_path)            # 1, and 0 on an http(s) endpoint
+    blob = await fh.read()
+```
+
 Flushing inside the block is the one difference worth remembering: a buffered
 write still sitting in the buffer reaches the server *after* the commit, and
 so is not part of the transaction.

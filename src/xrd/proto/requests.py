@@ -489,16 +489,24 @@ class Close(Request):
 class Read(Request):
     """``kXR_read``."""
 
-    __slots__ = ("fhandle", "offset", "length")
+    __slots__ = ("fhandle", "offset", "length", "pathid")
     opcode = c.kXR_read
+    reply_on_path = True
 
-    def __init__(self, fhandle: bytes, offset: int, length: int) -> None:
+    def __init__(self, fhandle: bytes, offset: int, length: int, pathid: int = 0) -> None:
         self.fhandle = fhandle
         self.offset = offset
         self.length = length
+        self.pathid = pathid
 
     def params(self, w: Writer) -> None:
         w.padded(self.fhandle, 4).i64(self.offset).i32(self.length)
+
+    def payload(self) -> bytes:
+        # ``read_args``: the path to answer on, then seven reserved bytes.
+        # Absent entirely when there is no path, because older servers size
+        # the request from ``dlen`` and reject a body they did not ask for.
+        return Writer().u8(self.pathid).zeros(7).bytes() if self.pathid else b""
 
     def __repr__(self) -> str:
         return f"Read(offset={self.offset}, length={self.length})"
@@ -507,21 +515,25 @@ class Read(Request):
 class Write(Request):
     """``kXR_write``."""
 
-    __slots__ = ("fhandle", "offset", "data")
+    __slots__ = ("fhandle", "offset", "data", "pathid")
     opcode = c.kXR_write
     signed = True
     idempotent = False
 
-    def __init__(self, fhandle: bytes, offset: int, data: bytes) -> None:
+    def __init__(self, fhandle: bytes, offset: int, data: bytes, pathid: int = 0) -> None:
         self.fhandle = fhandle
         self.offset = offset
         self.data = data
+        self.pathid = pathid
 
     def params(self, w: Writer) -> None:
-        w.padded(self.fhandle, 4).i64(self.offset).zeros(4)
+        w.padded(self.fhandle, 4).i64(self.offset).u8(self.pathid).zeros(3)
 
     def payload(self) -> bytes:
-        return self.data
+        return b"" if self.pathid else self.data
+
+    def path_data(self) -> bytes:
+        return self.data if self.pathid else b""
 
     def __repr__(self) -> str:
         return f"Write(offset={self.offset}, len={len(self.data)})"
@@ -550,6 +562,7 @@ class ReadV(Request):
 
     __slots__ = ("chunks", "pathid")
     opcode = c.kXR_readv
+    reply_on_path = True
 
     def __init__(self, chunks: Sequence[tuple[bytes, int, int]], pathid: int = 0) -> None:
         #: ``(fhandle, offset, length)`` triples.
@@ -609,6 +622,7 @@ class PgRead(Request):
 
     __slots__ = ("fhandle", "offset", "length", "reqflags", "pathid")
     opcode = c.kXR_pgread
+    reply_on_path = True
 
     def __init__(
         self, fhandle: bytes, offset: int, length: int, retry: bool = False, pathid: int = 0
@@ -653,7 +667,10 @@ class PgWrite(Request):
         w.padded(self.fhandle, 4).i64(self.offset).u8(self.pathid).u8(self.reqflags).zeros(2)
 
     def payload(self) -> bytes:
-        return self.data
+        return b"" if self.pathid else self.data
+
+    def path_data(self) -> bytes:
+        return self.data if self.pathid else b""
 
     def __repr__(self) -> str:
         return f"PgWrite(offset={self.offset}, len={len(self.data)})"

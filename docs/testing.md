@@ -31,6 +31,13 @@ frames responses, handles `kXR_open`/`read`/`write`/`readv`/`pgread`, dirlist,
 stat, mkdir, rm, mv, truncate, chmod, xattrs, query, prepare, checkpoints, the
 link extensions, and ping, plus the login and authentication handshake.
 
+It also speaks `kXR_bind`, and speaks it properly: a second connection that
+names a live session is registered as that session's data path, and from then
+on the bytes of a `kXR_write` are read off it and the reply to a `kXR_read`
+is written to it, while the requests themselves stay on the connection that
+opened the file. Each login gets its own session id, so binds land where they
+were aimed.
+
 ### Making it behave badly
 
 | Attribute | Effect |

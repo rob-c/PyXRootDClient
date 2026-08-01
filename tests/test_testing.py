@@ -214,11 +214,17 @@ def test_the_announced_protocol_can_be_chosen():
 
 
 def test_an_unsupported_request_is_refused_not_ignored():
-    from xrd.proto import requests as r
+    from xrd.proto.frames import Request
+
+    class Gpfile(Request):
+        """An opcode the fake server has never heard of."""
+
+        __slots__ = ()
+        opcode = c.kXR_gpfile
 
     with FakeServer() as srv, xrd.FileSystem(srv.url) as fs:
-        with pytest.raises(OSError):
-            fs._router.execute(r.Bind(b"\x00" * 16))
+        with pytest.raises(OSError, match="is not supported"):
+            fs._router.execute(Gpfile())
 
 
 def test_an_unsupported_query_is_refused():
