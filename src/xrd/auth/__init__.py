@@ -14,6 +14,12 @@ perfectly good ticket sitting there.
 
 A mechanism that raises from ``available()`` is never fatal: :func:`select`
 catches it, records the reason, and carries on to the next one.
+
+When nothing at all is usable and there is a person at the terminal,
+:func:`select` asks for what is missing rather than failing - see
+:mod:`xrd.auth.prompt` for the rules, and ``Config(prompt=False)`` to have
+none of it. With nobody there, the same explanation goes into the
+:class:`~xrd.errors.NoMechanismError` instead.
 """
 
 from __future__ import annotations
@@ -23,16 +29,23 @@ from collections.abc import Iterator
 from .._log import get_logger
 from ..config import Config
 from ..errors import NoMechanismError
+from . import prompt
 from .base import Credential, Offer, parse_security_trailer
 from .gsi import GSICredential
 from .krb5 import KerberosCredential
+from .prompt import Ask, Prompter, ask_on_terminal, forget
 from .simple import HostCredential, UnixCredential
 from .sss import SSSCredential
 from .ztn import TokenCredential, discover_token
 
 __all__ = [
+    "Ask",
     "Credential",
     "Offer",
+    "Prompter",
+    "ask_on_terminal",
+    "forget",
+    "supply",
     "parse_security_trailer",
     "register",
     "registry",
@@ -87,6 +100,10 @@ def select(
     Iteration is lazy: building a GSI proxy costs a file read and a parse, so
     it only happens if the mechanisms ahead of it were rejected. Pass a dict
     as ``rejected`` to collect why each skipped mechanism was unusable.
+
+    If the whole ladder comes up empty and ``config`` allows prompting, one
+    last pass asks a person for the missing material - a proxy path, a token
+    - and yields whatever that produces.
     """
     config = config or Config()
     offers = parse_security_trailer(sec) if isinstance(sec, str) else list(sec)
@@ -95,21 +112,135 @@ def select(
     order += [o.name for o in offers if o.name not in order]
     why = {} if rejected is None else rejected
 
+    found = False
     for name in order:
         cls = _REGISTRY.get(name)
         if cls is None:
             why[name] = "not supported by this client"
             continue
-        try:
-            cred = cls.available(by_name[name], config, username=username, host=host)
-        except Exception as exc:  # a broken credential must not mask the rest
-            why[name] = f"{type(exc).__name__}: {exc}"
-            _log.debug("%s unusable: %s", name, exc)
+        cred = _build(cls, by_name[name], config, username=username, host=host, why=why)
+        if cred is not None:
+            found = True
+            yield cred
+
+    # Only now, with nothing to offer the server, is it worth interrupting
+    # somebody: a working ``unix`` fallback must never provoke a question.
+    if found or not prompt.interactive(config):
+        return
+    for name in order:
+        cls = _REGISTRY.get(name)
+        if cls is None:
             continue
-        if cred is None:
-            why[name] = "no credential material found"
-            continue
-        yield cred
+        cred = _ask(cls, by_name[name], config, username=username, host=host, why=why)
+        if cred is not None:
+            yield cred
+            return
+
+
+def _build(
+    cls: type[Credential],
+    offer: Offer,
+    config: Config,
+    *,
+    username: str,
+    host: str,
+    why: dict[str, str],
+) -> Credential | None:
+    """One rung of the ladder, with its rejection recorded in ``why``."""
+    try:
+        cred = cls.available(offer, config, username=username, host=host)
+    except Exception as exc:  # a broken credential must not mask the rest
+        why[cls.name] = f"{type(exc).__name__}: {exc}"
+        _log.debug("%s unusable: %s", cls.name, exc)
+        return None
+    if cred is None:
+        why[cls.name] = _why_not(cls, offer, config, username=username, host=host)
+        return None
+    why.pop(cls.name, None)
+    return cred
+
+
+def _why_not(
+    cls: type[Credential], offer: Offer, config: Config, *, username: str, host: str
+) -> str:
+    """The mechanism's own account of what is absent, for the error message.
+
+    This is what turns "no usable authentication mechanism" into something
+    actionable in a log nobody is watching - the same sentence a prompt would
+    have opened with, and the fix that goes with it.
+    """
+    try:
+        ask = cls.missing(offer, config, username=username, host=host)
+    except Exception as exc:  # diagnosing the problem must not become one
+        return f"no credential material found ({type(exc).__name__}: {exc})"
+    return f"{ask.reason}; try: {ask.hint}" if ask is not None else "no credential material found"
+
+
+#: One answer, and one more for the typo in it.
+_ATTEMPTS = 2
+
+
+def _ask(
+    cls: type[Credential],
+    offer: Offer,
+    config: Config,
+    *,
+    username: str,
+    host: str,
+    why: dict[str, str],
+) -> Credential | None:
+    """Ask a person for this mechanism's material and build a credential from it.
+
+    An answer that does not work is diagnosed by :meth:`~Credential.missing`
+    all over again, so the second question says *why* the first answer was no
+    good rather than repeating itself.
+    """
+    try:
+        ask = cls.missing(offer, config, username=username, host=host)
+    except Exception as exc:
+        _log.debug("cannot say what %s wants: %s", cls.name, exc)
+        return None
+    if ask is None:
+        return None
+    for attempt in range(_ATTEMPTS):
+        answer = prompt.answer_for(ask, config)
+        if not answer:
+            return None
+        trial = cls.using(answer, config)
+        cred = _build(cls, offer, trial, username=username, host=host, why=why)
+        if cred is not None:
+            return cred
+        prompt.forget(ask)  # a wrong answer is not worth remembering
+        if attempt + 1 < _ATTEMPTS:
+            again = cls.missing(offer, trial, username=username, host=host)
+            if again is None:
+                break
+            ask = again
+    prompt.remember(ask, None)  # asked twice and still nothing: stop asking
+    return None
+
+
+def supply(name: str, config: Config, *, host: str = "") -> Config | None:
+    """Ask for one mechanism's material and give back a config that uses it.
+
+        >>> config = supply("ztn", config, host="dav.example.org") or config
+
+    This is the door in for surfaces with no security trailer to select from
+    - HTTP has a ``401`` and a ``WWW-Authenticate`` header instead. ``None``
+    means there was nothing to ask, nobody to ask, or no answer.
+    """
+    cls = _REGISTRY.get(name)
+    if cls is None or not prompt.interactive(config):
+        return None
+    try:
+        ask = cls.missing(Offer(name), config, username=config.username, host=host)
+    except Exception as exc:
+        _log.debug("cannot say what %s wants: %s", name, exc)
+        return None
+    if ask is None:
+        return None
+    answer = prompt.answer_for(ask, config)
+    return cls.using(answer, config) if answer else None
 
 
 def require(

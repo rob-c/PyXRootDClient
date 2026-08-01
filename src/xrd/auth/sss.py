@@ -20,6 +20,7 @@ from ..config import Config
 from ..crypto.blowfish import Blowfish
 from ..errors import CredentialError
 from .base import Credential, Offer
+from .prompt import Ask
 
 __all__ = ["SSSKey", "SSSCredential", "read_keytab", "default_keytab_path", "build_credential"]
 
@@ -199,6 +200,39 @@ class SSSCredential(Credential):
             if wanted is None or key.name == wanted:
                 return cls(key, username or config.username)
         return None
+
+    @classmethod
+    def missing(cls, offer: Offer, config: Config, *, username: str, host: str) -> Ask | None:
+        path = default_keytab_path(config)
+        wanted = offer.options().get("n")
+        if not os.path.isfile(path):
+            reason = f"there is no keytab at {path}"
+        else:
+            try:
+                keys = read_keytab(path)
+            except PermissionError as exc:
+                reason = str(exc)
+            except (OSError, ValueError) as exc:
+                reason = f"{path} could not be read as a keytab: {exc}"
+            else:
+                if not keys:
+                    reason = f"{path} holds no unexpired key"
+                elif wanted is not None and not any(key.name == wanted for key in keys):
+                    reason = f"{path} holds no key named {wanted!r}, which is the one asked for"
+                else:
+                    return None
+        return Ask(
+            mechanism=cls.name,
+            what="a shared-secret keytab",
+            reason=reason,
+            hint="xrdsssadmin -k <name> add <keytab>, kept mode 0600 and off shared storage",
+            prompt="path to a keytab file",
+            host=host,
+        )
+
+    @classmethod
+    def using(cls, answer: str, config: Config) -> Config:
+        return config.evolve(keytab=os.path.expanduser(answer))
 
     def __repr__(self) -> str:
         return f"SSSCredential(key={self.key!r}, username={self.username!r})"

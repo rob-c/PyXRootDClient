@@ -125,6 +125,64 @@ costs no extra argument. `verify_tls=False` exists for self-signed test
 endpoints and is spelled `--no-verify-tls` on the command line so that it
 shows up in shell history and in review.
 
+## Being asked for what is missing
+
+At a terminal, a login that would have failed for want of a proxy or a token
+asks for one instead of dying:
+
+```console
+$ xrd-fs ls root://eoslhcb.cern.ch//eos/lhcb/user/j/jane
+xrd: eoslhcb.cern.ch accepts gsi, but an X.509 proxy is missing
+     why: the proxy in /tmp/x509up_u1000 expired 3h 20m ago
+     fix: voms-proxy-init -voms <your VO>, or point $X509_USER_PROXY at one
+     path to a proxy file (Enter to skip):
+```
+
+Answering with a path is enough; pressing Enter declines and the usual
+`NoMechanismError` follows. A `ztn` question takes either a token pasted
+whole or the path to a file holding one, and reads it with `getpass`, so it
+is neither echoed nor left in the scrollback.
+
+The rules are deliberately narrow, because a library that asks at the wrong
+moment is a library that hangs a batch job:
+
+* only when **every** mechanism failed - a working `unix` fallback is never
+  interrupted;
+* only for mechanisms the server actually offered, and only for material a
+  person could type (`gsi`, `ztn`, `sss` - never `krb5`);
+* only when both `stdin` and `stderr` are a terminal;
+* once per `(mechanism, endpoint)` per process, with a refusal remembered
+  just as firmly as an answer - and one more question if the first answer was
+  a typo, saying what was wrong with it;
+* on `stderr`, so `xrd-fs cat ... | wc -c` still gets bytes and only bytes.
+
+Over HTTP there is no security trailer to work from, so a `401` stands in for
+one: `WWW-Authenticate: Bearer` asks for a token, and an `https` endpoint
+that says anything else is asked for the X.509 proxy. Only the first `401` of
+a request asks - a second one means the credential was refused, not absent.
+
+Turning it off, or putting the question somewhere else:
+
+```python
+Config(prompt=False)          # never ask; fail with the usual error
+Config(prompt=True)           # ask even when this is not a terminal
+Config(prompter=my_dialog)    # a GUI, a notebook widget, a secrets manager
+```
+
+`$XRD_PROMPT=0` does the same for a whole job, and `--no-prompt` for one
+command. A prompter is any callable taking an
+[`Ask`][xrd.auth.prompt.Ask] - the mechanism, what is missing, why, the fix,
+and whether the answer is secret - and returning what was typed, or `None` to
+decline. Answers live in this process only; `xrd.auth.forget()` drops them.
+
+With nobody there to ask, the same explanation goes into the error instead:
+
+```
+NoMechanismError: no usable authentication mechanism (server offered: gsi,
+ztn, unix) [gsi: the proxy in /tmp/x509up_u1000 expired 3h 20m ago; try:
+voms-proxy-init -voms <your VO> ...]
+```
+
 ## Debugging a refusal
 
 ```console

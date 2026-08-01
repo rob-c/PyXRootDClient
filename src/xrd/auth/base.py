@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from ..config import Config
+from .prompt import Ask
 
 __all__ = ["Credential", "Offer", "parse_security_trailer"]
 
@@ -80,6 +81,26 @@ class Credential(ABC):
         Must not raise for the ordinary "not configured" case - returning
         ``None`` lets the ladder fall through to the next mechanism.
         """
+
+    @classmethod
+    def missing(cls, offer: Offer, config: Config, *, username: str, host: str) -> Ask | None:
+        """What a person could type to make this mechanism work, and why.
+
+        Answers both questions the ladder needs: it goes into the error when
+        nothing worked, and into the prompt when there is somebody to ask.
+        ``None`` - the default - means there is nothing worth asking for:
+        ``unix`` needs no material, and nobody can type a Kerberos ticket.
+        """
+        return None
+
+    @classmethod
+    def using(cls, answer: str, config: Config) -> Config:
+        """A config that takes this mechanism's material from ``answer``.
+
+        Only ever called with what :meth:`missing` asked for, so mechanisms
+        that do not implement one need not implement the other.
+        """
+        raise NotImplementedError(f"{cls.name or cls.__name__} cannot be supplied by hand")
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(name={self.name!r})"

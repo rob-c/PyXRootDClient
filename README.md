@@ -106,6 +106,13 @@ cache with no help at all, and will tell you when your ticket expired, but the
 exchange itself goes through `gssapi` because a Kerberos token can only
 honestly be tested against a live KDC.
 
+At a terminal, a login with no proxy and no token asks for one — naming what
+is missing, where it looked, and the command that produces it — instead of
+failing; in a batch job it stays silent and puts the same explanation in the
+error. `Config(prompt=False)`, `--no-prompt` and `$XRD_PROMPT=0` settle it
+either way, and `Config(prompter=...)` moves the question into a GUI or a
+notebook.
+
 Credentials are redacted from logs, reprs and tracebacks — that is enforced by
 a test, not a convention.
 
@@ -153,7 +160,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-1848 tests, of which the great majority need no network, no KDC and no
+1924 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

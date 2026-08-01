@@ -221,8 +221,18 @@ class HTTPClient:
         is what makes a ranged ``GET`` a stream rather than a buffer.
         """
         target = url
+        asked = False
         for _ in range(self.config.redirect_limit + 1):
             response = self._once(method, target, body, headers)
+            if response.status == 401 and not asked:
+                # One shot at asking, and only ever the first time: a second
+                # 401 with the credential in hand means it was refused, not
+                # absent, and no amount of typing fixes that.
+                asked = True
+                if self._ask_for_credentials(target, response):
+                    response.read(MAX_BODY)
+                    response.close()
+                    continue
             if response.status in _REDIRECTS and response.getheader("Location"):
                 location = response.getheader("Location", "")
                 response.read()
@@ -263,6 +273,31 @@ class HTTPClient:
         finally:
             response.close()
         return Response(response.status, response.reason, response.msg, payload, str(url))
+
+    def _ask_for_credentials(
+        self, url: XRootDURL, response: http.client.HTTPResponse
+    ) -> bool:
+        """Ask for what a ``401`` says is needed. ``True`` if worth retrying.
+
+        HTTP has no security trailer, so the challenge stands in for one:
+        ``WWW-Authenticate: Bearer`` wants a token, and an ``https`` endpoint
+        that says anything else is asking for the X.509 proxy it would have
+        wanted in the handshake. Plain ``http`` can only ever use a token.
+        """
+        from ..auth import supply
+
+        challenge = (response.getheader("WWW-Authenticate") or "").lower()
+        wanted = ["ztn"] if "bearer" in challenge or not url.use_tls else ["gsi", "ztn"]
+        for name in wanted:
+            config = supply(name, self.config, host=url.host)
+            if config is not None:
+                self.config = config
+                # Both halves of the request change with the answer: the
+                # Authorization header, and the certificate the context
+                # presents - and a pooled connection has the old one.
+                self.close()
+                return True
+        return False
 
     def _once(
         self,

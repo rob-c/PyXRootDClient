@@ -82,9 +82,12 @@ def test_json_output_covers_the_types_the_library_returns():
 
 
 def test_the_command_line_carries_the_configuration():
-    args = argparse.Namespace(token="t", user="me", no_verify_tls=True, verbose=0)
+    args = argparse.Namespace(
+        token="t", user="me", no_verify_tls=True, verbose=0, prompt=False, no_prompt=True
+    )
     config = config_from(args)
     assert (config.token, config.username, config.verify_tls) == ("t", "me", False)
+    assert config.prompt is False
 
 
 # ---------------------------------------------------------------------------

@@ -73,6 +73,20 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.StatInfoFlags
 
+## Authentication
+
+::: xrd.auth.select
+
+::: xrd.auth.require
+
+::: xrd.auth.supply
+
+::: xrd.auth.prompt.Ask
+
+::: xrd.auth.prompt.ask_on_terminal
+
+::: xrd.auth.prompt.forget
+
 ## Errors
 
 ::: xrd.errors

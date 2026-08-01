@@ -110,14 +110,17 @@ to repeat, are reissued on a fresh connection.
 except xrd.NoMechanismError as exc:
     print(exc)
     exc.offered    # ['gsi', 'unix'] - what the server said it would take
-    exc.tried      # {'gsi': 'no proxy at /tmp/x509up_u1000', ...}
+    exc.tried      # {'gsi': 'there is no file at /tmp/x509up_u1000; try: ...'}
 # no usable authentication mechanism (server offered: gsi, unix)
-# [gsi: no proxy at /tmp/x509up_u1000; unix: refused]
+# [gsi: there is no file at /tmp/x509up_u1000; try: voms-proxy-init -voms
+#  <your VO>, or point $X509_USER_PROXY at one; unix: refused]
 ```
 
-One exception, every mechanism, and the reason each did not apply - rather
-than a bare "authentication failed" that tells you nothing about which of the
-six to fix.
+One exception, every mechanism, the reason each did not apply, and the
+command that would fix it - rather than a bare "authentication failed" that
+tells you nothing about which of the six to fix. At a terminal you are asked
+for the missing proxy or token before it comes to this; see
+[Authentication](auth.md#being-asked-for-what-is-missing).
 
 ## Unsupported operations
 

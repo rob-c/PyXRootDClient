@@ -42,6 +42,16 @@ its arguments are joined is still caught. `Config`, `XRootDURL`,
 material, and no exception message carries a credential. Tests enforce each of
 these; see `tests/test_auth.py`.
 
+**A prompt cannot leak the answer.** A secret is read with `getpass`, so it
+is never echoed and never lands in the scrollback; questions go to `stderr`,
+never `stdout`, so a redirected pipe can neither swallow one nor be polluted
+by it; and the `Ask` handed to a prompter carries the mechanism, the reason
+and the fix, but never a credential. Answers are held in memory for the life
+of the process so that one endpoint is asked about once -
+`xrd.auth.forget()` drops them - and nothing is written to disk. With no
+terminal there is no question at all: prompting is off unless `stdin` and
+`stderr` both say otherwise, or `Config(prompt=True)` insists.
+
 **A world-readable SSS keytab is refused**, with the same reasoning as the C
 implementation: the file holds shared secrets in the clear, so mode `0o077`
 bits are fatal. The failure is logged at `WARNING`, not swallowed, because

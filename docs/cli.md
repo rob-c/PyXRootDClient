@@ -14,6 +14,8 @@ Common options on every subcommand:
 | `--token TOKEN` | bearer token to present |
 | `--user NAME` | username to authenticate as |
 | `--no-verify-tls` | do not verify the server certificate |
+| `--prompt` | ask for missing credentials even when this is not a terminal |
+| `--no-prompt` | never ask for credentials; fail instead |
 
 ## `xrd-fs`
 

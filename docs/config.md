@@ -64,6 +64,8 @@ production. `evolve` returns a new one.
 | `auth_order` | `("gsi", "ztn", "krb5", "sss", "unix", "host")` | |
 | `verify_tls` | `True` | |
 | `require_tls` | `False` | |
+| `prompt` | `None` (ask only at a terminal) | `XRD_PROMPT` |
+| `prompter` | `None` (ask on the terminal) | |
 
 See [Authentication](auth.md) for what each mechanism looks for.
 

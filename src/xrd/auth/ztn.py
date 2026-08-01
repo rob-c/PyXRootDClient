@@ -17,6 +17,7 @@ from .._log import get_logger
 from ..config import Config
 from ..errors import TokenExpiredError
 from .base import Credential, Offer
+from .prompt import Ask
 
 __all__ = ["TokenCredential", "discover_token", "token_claims", "token_expiry"]
 
@@ -100,6 +101,35 @@ class TokenCredential(Credential):
     ) -> TokenCredential | None:
         token = discover_token(config)
         return cls(token) if token else None
+
+    @classmethod
+    def missing(cls, offer: Offer, config: Config, *, username: str, host: str) -> Ask | None:
+        if discover_token(config) is not None:
+            return None
+        looked = ", ".join(["$BEARER_TOKEN", *_token_paths(config)])
+        return cls.ask(reason=f"nothing in {looked}", host=host)
+
+    @classmethod
+    def ask(cls, *, reason: str, host: str = "") -> Ask:
+        """The question to put to a person when there is no token to be found."""
+        return Ask(
+            mechanism=cls.name,
+            what="a bearer token",
+            reason=reason,
+            hint=f"oidc-token <issuer> > /tmp/bt_u{os.getuid()}, or set $BEARER_TOKEN",
+            prompt="the token itself, or a path to one",
+            host=host,
+            secret=True,
+        )
+
+    @classmethod
+    def using(cls, answer: str, config: Config) -> Config:
+        # A token is one long word and a path is not, so which was typed is
+        # never in doubt: anything naming a readable file is read from it.
+        path = os.path.expanduser(answer)
+        if os.path.isfile(path):
+            return config.evolve(token=None, token_file=path)
+        return config.evolve(token=answer)
 
     def __repr__(self) -> str:
         return f"TokenCredential(len={len(self.token)}, token=<redacted>)"

@@ -444,12 +444,15 @@ def test_select_skips_mechanisms_this_client_cannot_do():
 
 
 def test_select_records_why_a_mechanism_had_no_material(tmp_path, monkeypatch):
+    """The reason is the mechanism's own, so the error is worth reading: where
+    it looked, and the command that would have put something there."""
     monkeypatch.delenv("BEARER_TOKEN", raising=False)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
     monkeypatch.setattr("os.getuid", lambda: 999999)
     rejected: dict[str, str] = {}
     list(auth.select("&P=ztn&P=host", Config(), username="b", rejected=rejected))
-    assert rejected["ztn"] == "no credential material found"
+    assert rejected["ztn"].startswith("nothing in $BEARER_TOKEN, ")
+    assert "/tmp/bt_u999999; try: oidc-token" in rejected["ztn"]
 
 
 def test_a_mechanism_that_raises_does_not_mask_the_rest(monkeypatch):
@@ -490,9 +493,11 @@ def test_select_is_lazy():
         auth.register(UnixCredential)
 
 
-def test_require_raises_when_nothing_fits():
+def test_require_raises_when_nothing_fits(tmp_path):
+    # An explicit proxy path, because this machine may well have a real one.
+    config = Config(proxy=str(tmp_path / "x509up"), prompt=False)
     with pytest.raises(NoMechanismError) as exc:
-        auth.require("&P=pwd&P=gsi", Config())
+        auth.require("&P=pwd&P=gsi", config)
     assert exc.value.offered == ["pwd", "gsi"]
     assert "pwd" in exc.value.tried
 

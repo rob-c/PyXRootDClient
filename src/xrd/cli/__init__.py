@@ -81,6 +81,15 @@ def common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-verify-tls", action="store_true", help="do not verify the server certificate"
     )
+    asking = parser.add_mutually_exclusive_group()
+    asking.add_argument(
+        "--prompt",
+        action="store_true",
+        help="ask for missing credentials even when this is not a terminal",
+    )
+    asking.add_argument(
+        "--no-prompt", action="store_true", help="never ask for credentials; fail instead"
+    )
 
 
 def configure_logging(verbosity: int) -> None:
@@ -103,6 +112,8 @@ def config_from(args: argparse.Namespace) -> Config:
         settings["username"] = args.user
     if args.no_verify_tls:
         settings["verify_tls"] = False
+    if args.prompt or args.no_prompt:
+        settings["prompt"] = bool(args.prompt)
     return Config(**settings)  # type: ignore[arg-type]
 
 

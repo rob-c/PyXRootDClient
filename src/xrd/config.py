@@ -12,8 +12,20 @@ import getpass
 import os
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .auth.prompt import Prompter
 
 __all__ = ["Config", "current", "configure", "override"]
+
+
+def _env_flag(name: str) -> bool | None:
+    """A tri-state environment switch: ``None`` when the variable is unset."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return None
+    return raw.strip().lower() not in ("0", "no", "off", "false")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -88,6 +100,13 @@ class Config:
     auth_order: Sequence[str] = ("gsi", "ztn", "krb5", "sss", "unix", "host")
     verify_tls: bool = True
     require_tls: bool = False
+    #: Ask for missing credentials rather than failing. ``None`` - the default,
+    #: overridable with ``$XRD_PROMPT`` - means "only if somebody is there",
+    #: which is a terminal on both stdin and stderr. See :mod:`xrd.auth.prompt`.
+    prompt: bool | None = field(default_factory=lambda: _env_flag("XRD_PROMPT"))
+    #: Where those questions go. ``None`` uses the terminal; a callable taking
+    #: an :class:`~xrd.auth.prompt.Ask` puts them in a dialog or a notebook.
+    prompter: Prompter | None = None
 
     # -- behaviour -----------------------------------------------------
     #: Re-open a read-only file and carry on when its data server disappears

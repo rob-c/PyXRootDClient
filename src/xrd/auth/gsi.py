@@ -44,6 +44,7 @@ from ..crypto.rsa import RSAPrivateKey, pem_blocks
 from ..crypto.x509 import ProxyCredential, default_proxy_path, load_proxy
 from ..errors import CredentialError
 from .base import Credential, Offer
+from .prompt import Ask, humanise
 
 __all__ = [
     "GSICredential",
@@ -392,6 +393,36 @@ class GSICredential(Credential):
             return None
         options = offer.options()
         return cls(proxy, cryptomod=options.get("c", "ssl"), issuer_hash=options.get("ca", ""))
+
+    @classmethod
+    def missing(cls, offer: Offer, config: Config, *, username: str, host: str) -> Ask | None:
+        path = default_proxy_path(config)
+        if not os.path.isfile(path):
+            reason = f"there is no file at {path}"
+        else:
+            try:
+                proxy = load_proxy(path)
+            except (OSError, ValueError) as exc:
+                reason = f"{path} could not be read as a proxy: {exc}"
+            else:
+                if proxy.expired:
+                    reason = f"the proxy in {path} expired {humanise(proxy.remaining())} ago"
+                elif not isinstance(proxy.key, RSAPrivateKey):
+                    reason = f"the key in {path} is not RSA, which is all GSI does"
+                else:
+                    return None  # perfectly good: available() said no for another reason
+        return Ask(
+            mechanism=cls.name,
+            what="an X.509 proxy",
+            reason=reason,
+            hint="voms-proxy-init -voms <your VO>, or point $X509_USER_PROXY at one",
+            prompt="path to a proxy file",
+            host=host,
+        )
+
+    @classmethod
+    def using(cls, answer: str, config: Config) -> Config:
+        return config.evolve(proxy=os.path.expanduser(answer))
 
     def __repr__(self) -> str:
         return f"GSICredential(identity={self.identity!r})"
