@@ -139,7 +139,28 @@ fs.evict(["/store/a.root"])
 fs.statvfs("/store")
 fs.query_space("/store")      # SpaceInfo: one space token, in bytes
 fs.query_stats("a")           # the server's XML statistics summary
+fs.extensions()               # which vendor opcodes it admits to having
 ```
+
+### Asking before sending a vendor opcode
+
+`symlink`, `link`, `readlink`, `utime` and `chown` are not XProtocol; a stock
+daemon answers `UnsupportedError`. A server that does implement them says so
+in its `xrdfs.ext` configuration value, and `extensions()` is that one round
+trip:
+
+```python
+if "setattr" in fs.extensions():
+    fs.utime("/store/f.root")
+```
+
+The names are the server's own - `setattr`, `symlink`, `readlink`, `link` -
+and a server that has never heard of the key answers by echoing it back or by
+saying nothing, both of which arrive as an empty set. That is the right answer
+for a stock daemon, and the reason this is worth asking once rather than
+catching an exception per call. Over `davs://` it returns an empty set with no
+request at all, so a program that guards on it has one code path for both
+schemes.
 
 `statvfs()` and `query_space()` answer different questions. `statvfs()`
 describes the whole storage element the way `df` would, in megabytes and

@@ -568,6 +568,27 @@ class FileSystem:
         values = body.split("\n")
         return {name: value for name, value in zip(wanted, values, strict=False) if value}
 
+    def extensions(self) -> frozenset[str]:
+        """Which vendor opcodes the server admits to implementing.
+
+        ``setattr``, ``symlink``, ``readlink`` and ``link`` are extensions no
+        stock XRootD has, so a program that must not fail can ask before it
+        asks::
+
+            if "setattr" in fs.extensions():
+                fs.utime(path)
+
+        The answer is the server's ``xrdfs.ext`` configuration value. A server
+        that has never heard of the key answers by echoing it back or by
+        saying nothing at all, and both arrive here as an empty set - which is
+        the right answer for a stock daemon, and the reason this is worth one
+        round trip rather than an exception per call.
+        """
+        listed = self.query_config("xrdfs.ext").get("xrdfs.ext", "")
+        # The one server that answers this repeats the key in the value.
+        names = {name.strip() for name in listed.rpartition("=")[2].split(",")}
+        return frozenset(names - {"", "xrdfs.ext"})
+
     def checksum_cancel(self, path: str) -> None:
         """Abandon a checksum the server is still computing (``kXR_Qckscan``).
 

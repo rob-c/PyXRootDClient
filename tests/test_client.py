@@ -374,6 +374,19 @@ def test_query_config_defaults_to_the_version(fs):
     assert fs.query_config() == {"version": "v5.6.0"}
 
 
+def test_the_server_says_which_vendor_opcodes_it_has(fs):
+    assert fs.extensions() == frozenset({"setattr", "symlink", "readlink", "link"})
+
+
+def test_a_server_that_never_heard_of_the_key_has_no_extensions(fs, server):
+    """Stock XRootD answers an unknown config key by repeating it, which is
+    not a list of one extension called ``xrdfs.ext``."""
+    server.config_values["xrdfs.ext"] = "xrdfs.ext"
+    assert fs.extensions() == frozenset()
+    del server.config_values["xrdfs.ext"]
+    assert fs.extensions() == frozenset()
+
+
 def test_the_config_attribute_is_the_client_config_not_a_query(fs, config):
     assert fs.config is config
 

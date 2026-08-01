@@ -475,6 +475,9 @@ class AsyncFileSystem:
     async def query_config(self, *names: str) -> dict[str, str]:
         return await _run(self._sync.query_config, *names)
 
+    async def extensions(self) -> frozenset[str]:
+        return await _run(self._sync.extensions)
+
     async def query_stats(self, selectors: str = "a") -> str:
         return await _run(self._sync.query_stats, selectors)
 

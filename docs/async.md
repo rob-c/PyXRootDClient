@@ -75,6 +75,7 @@ await fs.lstat("/store/latest")
 await fs.utime("/store/f.root", ns=(atime_ns, mtime_ns))
 await fs.chown("/store/f.root", uid, gid)
 await fs.listxattr_tree("/store/run7")   # attribute names for a subtree
+await fs.extensions()                    # which of these the server has
 ```
 
 So are server-side range copies, which take either an `AsyncFile` or the

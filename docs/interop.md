@@ -89,6 +89,15 @@ Mode is deliberately not in the block, because `kXR_chmod` already carries it.
 Neither call follows a final symbolic link: the server uses
 `AT_SYMLINK_NOFOLLOW`, so on a link they change the link.
 
+None of these is safe to send blindly, and the server says so itself: the
+`xrdfs.ext` configuration key answers with the vendor opcodes it implements,
+which is what `fs.extensions()` reads. The value repeats the key
+(`xrdfs.ext=setattr,symlink,readlink,link`), as the server that introduced it
+emits it; a stock daemon echoes an unknown config key back unchanged, so the
+reply that means "none of them" is indistinguishable from a reply of no
+extensions at all, and both parse to an empty set. The native FUSE client
+gates its vendor opcodes on the same key.
+
 Three option bits are vendor extensions of standard requests rather than new
 requests. `kXR_statNoFollow` (`0x40` of the `kXR_stat` options byte, the value
 nginx-xrootd reads) is what `lstat` and `stat(follow_symlinks=False)` set;

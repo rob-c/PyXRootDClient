@@ -628,6 +628,16 @@ class HTTPFileSystem(FileSystem):
     def query_config(self, *names: str) -> dict[str, str]:
         raise self._unsupported("config query")
 
+    def extensions(self) -> frozenset[str]:
+        """None, and no round trip needed to know it.
+
+        The vendor opcodes are opcodes; HTTP has no verb for any of them, so
+        the question has one answer here and it is worth answering rather than
+        refusing - a caller that guards its `symlink` on this gets the same
+        code path over `root://` and `davs://`.
+        """
+        return frozenset()
+
     def protocol(self) -> ProtocolInfo:
         raise self._unsupported("protocol handshake")
 

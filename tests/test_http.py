@@ -356,6 +356,12 @@ def test_open_accepts_posc_for_symmetry_and_ignores_it(fs, dav):
     assert dav.contents("/d/posc.txt") == b"body"
 
 
+def test_no_vendor_opcode_survives_the_crossing_to_http(fs):
+    """A caller that guards on :meth:`extensions` gets one code path for both
+    schemes, so this answers rather than refusing."""
+    assert fs.extensions() == frozenset()
+
+
 def test_what_webdav_has_no_answer_for_says_so(fs):
     for call in (
         lambda: fs.statvfs("/"),

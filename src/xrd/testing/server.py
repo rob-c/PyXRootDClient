@@ -141,8 +141,15 @@ class FakeServer:
         #: Owners set by ``kXR_setattr``: ``path -> (uid, gid)``. No stat field
         #: carries them, so this is where a test looks.
         self.owners: dict[str, tuple[int, int]] = {}
-        #: Values ``kXR_query`` config lookups answer with.
-        self.config_values: dict[str, str] = {"version": "v5.6.0", "role": "server"}
+        #: Values ``kXR_query`` config lookups answer with. ``xrdfs.ext`` is
+        #: how a server says which vendor opcodes it implements, and this one
+        #: implements all four; the reply repeats the key, as the server that
+        #: introduced it does.
+        self.config_values: dict[str, str] = {
+            "version": "v5.6.0",
+            "role": "server",
+            "xrdfs.ext": "xrdfs.ext=setattr,symlink,readlink,link",
+        }
         #: The ``oss.*`` space token ``kXR_Qspace`` answers with.
         self.space = (
             "oss.cgroup=public&oss.space=2000000&oss.free=1500000"

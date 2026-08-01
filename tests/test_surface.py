@@ -122,6 +122,7 @@ FILESYSTEM = {
     "endpoint": lambda fs: fs.endpoint,
     "evict": lambda fs: fs.evict(["f.root"]),
     "exists": lambda fs: fs.exists("f.root"),
+    "extensions": lambda fs: fs.extensions(),
     "getsize": lambda fs: fs.getsize("f.root"),
     "getxattr": _fs_xattr,
     "glob": lambda fs: list(fs.glob("/store/*.root")),
