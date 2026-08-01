@@ -740,11 +740,26 @@ def test_remove_source_moves_the_file(url, tmp_path, server, capsys):
         ["--include", "*.root"],
         ["--sync", "size"],
         ["--delete"],
+        ["--parallel", "4"],
     ],
 )
 def test_the_tree_flags_need_a_tree(url, tmp_path, capsys, argv):
     code = cp_cli.main([*argv, url + "data/a.root", str(tmp_path / "x")])
     assert (code, "add -r" in capsys.readouterr().err) == (2, True)
+
+
+def test_parallel_copies_several_files_of_the_tree_at_once(local_tree, url, server, capsys):
+    assert cp_cli.main(["-r", "-q", "--parallel", "3", str(local_tree), url + "par/"]) == 0
+    assert sorted(p for p in server.files if p.startswith("/par")) == [
+        "/par/tree/keep.root",
+        "/par/tree/skip.log",
+        "/par/tree/sub/deep.root",
+    ]
+
+
+def test_parallel_is_a_count_of_files_so_zero_is_a_usage_error(local_tree, url, capsys):
+    code = cp_cli.main(["-r", "--parallel", "0", str(local_tree), url + "no/"])
+    assert (code, "at least one" in capsys.readouterr().err) == (2, True)
 
 
 def test_continue_carries_on_from_a_partial_download(url, tmp_path, capsys):

@@ -100,6 +100,12 @@ def _parser() -> argparse.ArgumentParser:
         help="with -r, skip files the target already has, compared this way",
     )
     parser.add_argument(
+        "--parallel",
+        type=int,
+        metavar="N",
+        help="with -r, copy N files at once (default 1)",
+    )
+    parser.add_argument(
         "--delete",
         action="store_true",
         help="with -r, remove files under DEST that SOURCE does not have",
@@ -197,8 +203,12 @@ def _destination(source: XRootDURL, dest: XRootDURL, *, into: bool) -> XRootDURL
 
 def _misuse(args: argparse.Namespace) -> str | None:
     """The flag combinations that cannot mean anything, in words."""
-    if not args.recursive and (args.include or args.exclude or args.sync or args.delete):
-        return "--include, --exclude, --sync and --delete describe a tree; add -r"
+    if not args.recursive and (
+        args.include or args.exclude or args.sync or args.delete or args.parallel
+    ):
+        return "--include, --exclude, --sync, --delete and --parallel describe a tree; add -r"
+    if args.parallel is not None and args.parallel < 1:
+        return "--parallel is how many files to copy at once, so at least one"
     if args.tpc and (args.dry_run or args.remove_source):
         return "--tpc hands the transfer to the servers; --dry-run and --remove-source cannot"
     if args.resume and (args.tpc or args.no_clobber):
@@ -279,6 +289,7 @@ def _run(
                         exclude=args.exclude,
                         sync=args.sync,
                         delete=args.delete,
+                        workers=args.parallel,
                         **options,
                     )
                 )

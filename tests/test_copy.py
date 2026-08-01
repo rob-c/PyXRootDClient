@@ -466,6 +466,85 @@ def test_a_resumed_tree_carries_on_file_by_file(tmp_path, server):
 
 
 # ---------------------------------------------------------------------------
+# Several files at once
+# ---------------------------------------------------------------------------
+
+
+def test_several_files_are_copied_at_once(tree, server, monkeypatch):
+    """A barrier three transfers must reach together, or the test times out."""
+    gate = threading.Barrier(3, timeout=10)
+    one_file = engine.copy
+
+    def barred(*args, **kwargs):
+        gate.wait()
+        return one_file(*args, **kwargs)
+
+    monkeypatch.setattr(engine, "copy", barred)
+    results = xrd.copy_tree(tree, server.url / "wide", workers=3)
+    assert copied(server, "/wide") == ["notes.log", "one.root", "sub/two.root"]
+    assert len(results) == 3
+
+
+def test_the_config_says_how_many_files_when_the_call_does_not(tree, server, monkeypatch):
+    gate = threading.Barrier(3, timeout=10)
+    one_file = engine.copy
+
+    def barred(*args, **kwargs):
+        gate.wait()
+        return one_file(*args, **kwargs)
+
+    monkeypatch.setattr(engine, "copy", barred)
+    xrd.copy_tree(tree, server.url / "cfg", config=xrd.Config(parallel_files=3))
+    assert copied(server, "/cfg") == ["notes.log", "one.root", "sub/two.root"]
+
+
+def test_workers_do_not_reorder_the_results(tree, server):
+    """Whoever finishes first, the answer is still the order of the walk."""
+    ordered = xrd.copy_tree(tree, server.url / "a", workers=1)
+    concurrent = xrd.copy_tree(tree, server.url / "b", workers=4)
+    assert [r.source for r in ordered] == [r.source for r in concurrent]
+
+
+def test_progress_over_a_tree_of_workers_counts_the_whole_tree(tree, server):
+    seen = []
+    xrd.copy_tree(tree, server.url / "tp", workers=3, progress=lambda d, t: seen.append((d, t)))
+    assert [done for done, _ in seen] == sorted(done for done, _ in seen)
+    assert seen[-1] == (9, None)  # three files of three bytes, and no known total
+
+
+def test_one_worker_reports_progress_a_file_at_a_time(tree, server):
+    """Nothing interleaves, so the per-file pair still means something."""
+    seen = []
+    xrd.copy_tree(tree, server.url / "sp", workers=1, progress=lambda d, t: seen.append((d, t)))
+    assert seen == [(3, 3), (3, 3), (3, 3)]
+
+
+def test_the_first_failure_stops_the_tree_rather_than_copying_on(tmp_path, server, monkeypatch):
+    for index in range(20):
+        (tmp_path / f"f{index}.bin").write_bytes(b"x")
+    doomed = next(engine._walk(parse(tmp_path), xrd.Config()))  # whatever the walk finds first
+    attempted = []
+    never = threading.Event()
+
+    def refuse(source, target, **kwargs):
+        attempted.append(str(source))
+        if str(source).endswith(doomed):
+            raise OSError("that one is not going anywhere")
+        never.wait(0.5)  # long enough that the cancellation is what ends the tree
+        return None
+
+    monkeypatch.setattr(engine, "copy", refuse)
+    with pytest.raises(OSError, match="not going anywhere"):
+        xrd.copy_tree(tmp_path, server.url / "stop", workers=2)
+    assert len(attempted) < 20
+
+
+def test_workers_skip_what_sync_says_is_already_there(tree, server):
+    assert len(xrd.copy_tree(tree, server.url / "ws", workers=3, sync="size")) == 3
+    assert xrd.copy_tree(tree, server.url / "ws", workers=3, sync="size") == []
+
+
+# ---------------------------------------------------------------------------
 # Several connections at once
 # ---------------------------------------------------------------------------
 

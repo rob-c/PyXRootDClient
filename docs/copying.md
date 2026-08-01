@@ -135,6 +135,25 @@ Local destination directories are created as needed; remote ones come for
 free, because a remote write asks for `kXR_mkpath`. Extra keyword arguments
 are handed to `copy()` for each file.
 
+### Several files at once
+
+```python
+xrd.copy_tree(src, dst, workers=8)          # eight transfers in flight
+```
+
+`workers` files are copied at once, defaulting to `config.parallel_files`
+and, at `1`, to one after another. Raise it for a tree of small files, where
+each transfer is a round trip and none is long enough to be spread over
+connections of its own; a tree of large files is already busy, because each
+of those is divided as above.
+
+Results come back in the order the walk found them however many workers there
+were, and the first failure is raised as it would be one at a time - whatever
+has not started is cancelled rather than left to copy on behind the
+exception. While more than one file is in flight, `progress` is called with
+the bytes moved across the whole tree and a total of `None`, since interleaved
+per-file positions would not add up to anything.
+
 ### Choosing what travels
 
 ```python
@@ -245,6 +264,7 @@ simpler and, on a fast network, not obviously slower - see
 | --- | --- |
 | `config.chunk_size` | bytes per request, default 4 MiB (`XRD_CPCHUNKSIZE`) |
 | `config.parallel_chunks` | connections a long copy is spread over, `1` to disable (`XRD_CPPARALLELCHUNKS`) |
+| `config.parallel_files` | files of a tree copied at once (`XRD_CPPARALLELFILES`) |
 | `config.verify_checksums` | default for `verify` |
 | `config.preferred_checksum` | default for `algorithm` |
 

@@ -70,6 +70,7 @@ $ xrd-cp -r --exclude '*.log' /tmp/results root://host//store/results
 $ xrd-cp -r --include '*.root' --sync size /tmp/results root://host//store/results
 $ xrd-cp -r --delete /tmp/results root://host//store/results
 $ xrd-cp -r --dry-run /tmp/results root://host//store/results
+$ xrd-cp -r --parallel 8 /tmp/many-small root://host//store/many-small
 $ xrd-cp --remove-source /tmp/f.root root://host//store/f.root   # a move
 $ xrd-cp -c root://host//store/big.root /scratch/big.root   # carry on, do not restart
 ```
@@ -92,6 +93,7 @@ For a tree:
 | `--exclude PATTERN` | paths matching one of these do not (wins over include) |
 | `--sync {size,mtime,checksum}` | skip what is already there, judged that way |
 | `--delete` | remove what is in the target but not in the source |
+| `--parallel N` | copy N files at once (default 1) |
 | `--dry-run` | print what would happen, transfer nothing |
 | `--remove-source` | delete the source once the copy is verified - a move |
 
@@ -100,6 +102,11 @@ source root, so `sub/*.root` means what it looks like. `--sync checksum` asks
 both endpoints for a digest, which is exact and not free; `--sync size` is one
 stat each. `--delete` never removes anything an `--exclude` hid, because it
 was never a candidate in the first place.
+
+`--parallel` is files in flight, not requests: a tree of small files is
+round-trip-bound, so copying several at once is what makes it faster, while a
+single large file is already spread over several connections by itself. It
+needs `-r`, since without a tree there is nothing to run in parallel.
 
 `cp` semantics decide the destination: a target that already exists as a
 directory is copied *into*, so a second run of `cp -r tree /dest` writes

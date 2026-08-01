@@ -36,10 +36,14 @@ production. `evolve` returns a new one.
 | `chunk_size` | 4 MiB | `XRD_CPCHUNKSIZE` |
 | `readahead` | 1 MiB | `XRD_READAHEAD` |
 | `parallel_chunks` | `4` | `XRD_CPPARALLELCHUNKS` |
+| `parallel_files` | `1` | `XRD_CPPARALLELFILES` |
 
 `parallel_chunks` is how many connections one large copy is spread over, a
 span of the file each; `1` keeps the single stream. See
 [Copying](copying.md#several-connections-at-once) for when it applies.
+`parallel_files` is how many files of a `copy_tree` are in flight at once,
+and defaults to one because each of them is already spread over
+`parallel_chunks`.
 
 ## Pooling
 

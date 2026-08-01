@@ -452,8 +452,9 @@ asserted wire-exactly in `tests/test_copy.py`. `resume=True` continues an
 interrupted transfer from what is already at the target, verifying by
 comparing the two ends rather than the tail it streamed, and a file long
 enough for it is cut into `config.parallel_chunks` spans carried by a
-connection each, verified the same way. Not done: parallel *file* workers in
-`copy_tree`, and the adaptive in-flight window.
+connection each, verified the same way. `copy_tree(..., workers=N)` runs N of
+those transfers at once, in walk order and cancelling the rest on the first
+failure. Not done: the adaptive in-flight window.
 
 **Deliverable:** `xrd.copy` / `xrd.copytree`, any backend to any backend.
 

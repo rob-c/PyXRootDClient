@@ -571,6 +571,52 @@ def _walk(url: XRootDURL, config: Config) -> Iterator[str]:
                 yield f"{rel}/{name}" if rel else name
 
 
+class _Total:
+    """Every worker's progress added up, because their files interleave.
+
+    A per-file ``(done, total)`` pair means nothing once several files are in
+    flight at once, so each worker reports its own deltas here and the caller
+    hears about the tree instead: bytes moved so far, against a total nobody
+    can know without walking ahead and asking every file its length.
+    """
+
+    def __init__(self, report: Progress) -> None:
+        self._report = report
+        self._lock = threading.Lock()
+        self._done = 0
+
+    def worker(self) -> Progress:
+        """A ``progress`` callback for one file, counted into the whole."""
+        seen = 0
+
+        def report(done: int, _total: int | None) -> None:
+            nonlocal seen
+            with self._lock:
+                self._done += done - seen
+                seen = done
+                self._report(self._done, None)
+
+        return report
+
+
+def _in_order(
+    items: Sequence[str], workers: int, run: Callable[[str], CopyResult | None]
+) -> list[CopyResult]:
+    """``run`` over ``items``, several at a time, answering in the order asked.
+
+    A file that raises stops the tree, as it does one at a time: the first
+    failure is re-raised and whatever has not started is cancelled rather than
+    left to copy on behind the exception.
+    """
+    with ThreadPoolExecutor(workers, thread_name_prefix="xrd-tree") as pool:
+        pending = [pool.submit(run, item) for item in items]
+        try:
+            return [done for future in pending if (done := future.result()) is not None]
+        finally:
+            for future in pending:
+                future.cancel()
+
+
 def copy_tree(
     source: Any,
     target: Any,
@@ -581,6 +627,7 @@ def copy_tree(
     exclude: Sequence[str] = (),
     sync: SyncMode | None = None,
     delete: bool = False,
+    workers: int | None = None,
     **options: Any,
 ) -> list[CopyResult]:
     """Copy a directory recursively, returning one result per file copied.
@@ -596,21 +643,37 @@ def copy_tree(
     ``delete`` removes files under the target that the source does not have -
     excluded ones among them, since after this call the target is meant to
     hold what the selection describes and nothing else.
+
+    ``workers`` files are copied at once, defaulting to ``config.parallel_files``
+    and, at ``1``, to one after another. It is worth raising for a tree of small
+    files, where each transfer is a round trip and no transfer is long enough
+    for :func:`copy` to spread over connections of its own; a tree of large
+    files is already busy. Results come back in the order the walk found them
+    however many workers there were, and the first failure cancels the rest.
+    While more than one file is in flight, ``progress`` is called with the bytes
+    moved across the whole tree and a total of ``None``, since interleaved
+    per-file positions would not add up to anything.
     """
     cfg = config or Config()
     src_url, dst_url = parse(source), parse(target)
     algo = options.get("algorithm") or cfg.preferred_checksum
     wanted = [rel for rel in _walk(src_url, cfg) if _selected(rel, include, exclude)]
-    results = []
-    for rel in wanted:
+    count = cfg.parallel_files if workers is None else workers
+    total = _Total(progress) if progress is not None and count > 1 else None
+
+    def move(rel: str) -> CopyResult | None:
         destination = dst_url / rel
         if sync is not None and _up_to_date(src_url / rel, destination, cfg, sync, algo):
-            continue
+            return None
         if destination.is_local and not options.get("dry_run"):
             os.makedirs(os.path.dirname(destination.path), exist_ok=True)
-        results.append(
-            copy(src_url / rel, destination, config=cfg, progress=progress, **options)
-        )
+        report = progress if total is None else total.worker()
+        return copy(src_url / rel, destination, config=cfg, progress=report, **options)
+
+    if count > 1:
+        results = _in_order(wanted, count, move)
+    else:
+        results = [done for rel in wanted if (done := move(rel)) is not None]
     if delete:
         _prune(dst_url, cfg, set(wanted), dry_run=bool(options.get("dry_run")))
     return results

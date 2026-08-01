@@ -829,8 +829,12 @@ xrd.http.third_party(src, dst, *, mode="pull", delegate=False, verify=None, ...)
   Gated on a target that takes an offset (never an HTTP `PUT`), a source that
   will state its length, and a file long enough to give every worker a whole
   `chunk_size`. Verification compares both ends, as resumption does.
-- Not implemented yet: parallel file workers in `copy_tree`, and the adaptive
-  in-flight window (each span's pump is sequential with a fixed `chunk_size`).
+- A tree is as wide as `workers` / `config.parallel_files`: one thread per
+  file in flight, results collected in submission order so the walk's order
+  survives, and pending futures cancelled when one raises. Progress over a
+  parallel tree is aggregated, because per-file positions interleave.
+- Not implemented yet: the adaptive in-flight window (each span's pump is
+  sequential with a fixed `chunk_size`).
 
 ---
 

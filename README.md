@@ -78,7 +78,8 @@ recopied (`sync="size" | "mtime" | "checksum"`), pruned (`delete=True`),
 rehearsed (`dry_run=True`) or moved (`remove_source=True`). An interrupted
 transfer is continued rather than restarted with `resume=True`, or `xrd-cp -c`,
 and a file long enough to be worth it is moved by `config.parallel_chunks`
-connections at once, one span of the file each.
+connections at once, one span of the file each. A tree of small files copies
+`workers=` of them in parallel, `xrd-cp -r --parallel N`.
 
 **Async.** `xrd.aio` mirrors the whole surface — same names, same arguments,
 `await` in front. `import xrd` does not import `asyncio`; the facade is
@@ -171,7 +172,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2144 tests, of which the great majority need no network, no KDC and no
+2154 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official
