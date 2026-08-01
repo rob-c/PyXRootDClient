@@ -71,6 +71,7 @@ $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
 $ xrd-cp -n /tmp/f.root root://host//store/f.root      # never overwrite
 $ xrd-cp --verify -a crc32c /tmp/f.root root://host//store/f.root
 $ xrd-cp --chunk-size 8M --progress root://host//store/big.root /scratch/
+$ xrd-cp --in-flight 4 root://host//store/big.root /scratch/   # deeper read-ahead
 $ xrd-cp -r --exclude '*.log' /tmp/results root://host//store/results
 $ xrd-cp -r --include '*.root' --sync size /tmp/results root://host//store/results
 $ xrd-cp -r --delete /tmp/results root://host//store/results

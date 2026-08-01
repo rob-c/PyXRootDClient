@@ -99,6 +99,23 @@ forbidden to exist.
 finishes an interrupted tree rather than recopying it - `sync=` skips files
 that are already complete, `resume=` finishes the one that was in flight.
 
+## Reading ahead of the writes
+
+A read and a write are both round trips, and a loop that does them strictly in
+turn spends each one waiting out the other. Every transfer therefore reads
+`config.in_flight` chunks ahead of the write that is out, on a thread of its
+own, so the copy goes at the slower of its two ends rather than at their sum:
+
+```python
+xrd.copy(src, dst, config=xrd.Config(in_flight=4))   # four chunks in hand
+xrd.copy(src, dst, config=xrd.Config(in_flight=1))   # strictly one at a time
+```
+
+It costs `in_flight` buffers of `chunk_size` and one thread per transfer, which
+is why `1` is worth asking for between two local files, where there is no
+latency to hide. The chunks are written in the order they were read, so the
+digest a verified copy computes is still the file's.
+
 ## Several connections at once
 
 A copy big enough to be worth it is moved by more than one connection: the
@@ -263,6 +280,7 @@ simpler and, on a fast network, not obviously slower - see
 | Setting | Effect |
 | --- | --- |
 | `config.chunk_size` | bytes per request, default 4 MiB (`XRD_CPCHUNKSIZE`) |
+| `config.in_flight` | chunks read ahead of the write, `1` to disable (`XRD_CPINFLIGHT`) |
 | `config.parallel_chunks` | connections a long copy is spread over, `1` to disable (`XRD_CPPARALLELCHUNKS`) |
 | `config.parallel_files` | files of a tree copied at once (`XRD_CPPARALLELFILES`) |
 | `config.verify_checksums` | default for `verify` |

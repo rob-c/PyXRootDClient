@@ -176,6 +176,7 @@ class Config:
     readahead: int = field(default_factory=lambda: _env_int("XRD_READAHEAD", 1 << 20))
     parallel_chunks: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELCHUNKS", 4))
     parallel_files: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELFILES", 1))
+    in_flight: int = field(default_factory=lambda: _env_int("XRD_CPINFLIGHT", 2))
 
     # -- pooling -------------------------------------------------------
     pool_size: int = field(default_factory=lambda: _env_int("XRD_POOLSIZE", 8))

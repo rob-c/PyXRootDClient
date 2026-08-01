@@ -844,8 +844,16 @@ xrd.http.third_party(src, dst, *, mode="pull", delegate=False, verify=None, ...)
   file in flight, results collected in submission order so the walk's order
   survives, and pending futures cancelled when one raises. Progress over a
   parallel tree is aggregated, because per-file positions interleave.
-- Not implemented yet: the adaptive in-flight window (each span's pump is
-  sequential with a fixed `chunk_size`).
+- The pump reads `config.in_flight` chunks ahead of the write in flight, on
+  one thread, so a read and a write overlap instead of taking turns; chunks
+  leave the queue in the order they were read, which is what keeps the
+  streaming digest honest. A failure on either side stops the other: the
+  reader hands its exception to the consumer, and a write that raises drains
+  the queue and joins the thread rather than leaving it filling one.
+  `in_flight=1` is the sequential pump, for a copy with no latency to hide.
+  The chunk size stays fixed: the parallel-span layout hands every worker a
+  whole `chunk_size`, so a size that moved under it would change the plan the
+  spans were cut to.
 
 ---
 

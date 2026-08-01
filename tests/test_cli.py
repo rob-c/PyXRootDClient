@@ -798,6 +798,25 @@ def test_parallel_is_a_count_of_files_so_zero_is_a_usage_error(local_tree, url, 
     assert (code, "at least one" in capsys.readouterr().err) == (2, True)
 
 
+def test_the_in_flight_window_reaches_the_copy(url, tmp_path, capsys, monkeypatch):
+    seen = []
+    real = cp_cli.copy
+
+    def spy(*args, config, **options):
+        seen.append(config.in_flight)
+        return real(*args, config=config, **options)
+
+    monkeypatch.setattr(cp_cli, "copy", spy)
+    target = tmp_path / "f"
+    assert cp_cli.main(["--in-flight", "5", "-q", url + "data/a.root", str(target)]) == 0
+    assert (seen, target.read_bytes()) == ([5], BODY)
+
+
+def test_the_window_is_a_count_of_chunks_so_zero_is_a_usage_error(url, tmp_path, capsys):
+    code = cp_cli.main(["--in-flight", "0", url + "data/a.root", str(tmp_path / "f")])
+    assert (code, "at least one" in capsys.readouterr().err) == (2, True)
+
+
 def test_continue_carries_on_from_a_partial_download(url, tmp_path, capsys):
     target = tmp_path / "partial.root"
     target.write_bytes(b"hello ")

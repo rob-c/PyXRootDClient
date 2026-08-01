@@ -454,7 +454,10 @@ comparing the two ends rather than the tail it streamed, and a file long
 enough for it is cut into `config.parallel_chunks` spans carried by a
 connection each, verified the same way. `copy_tree(..., workers=N)` runs N of
 those transfers at once, in walk order and cancelling the rest on the first
-failure. Not done: the adaptive in-flight window.
+failure. The pump keeps `config.in_flight` chunks read ahead of the write it
+is waiting on, so a read and a write overlap instead of taking turns; the
+chunk size stays fixed, because the span layout hands every worker a whole
+`chunk_size` and a size that moved under it would change that plan.
 
 **Deliverable:** `xrd.copy` / `xrd.copytree`, any backend to any backend.
 

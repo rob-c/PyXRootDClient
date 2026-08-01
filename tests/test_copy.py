@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import os
 import threading
+import time
 
 import pytest
 
@@ -767,3 +768,132 @@ def test_persist_on_close_can_be_declined(server):
         result = xrd.third_party(server.url / "data/a.root", dst.url / "plain.root", posc=False)
     assert result.size == 11
     assert "/plain.root" in dst.files
+
+
+# ---------------------------------------------------------------------------
+# The read-ahead window
+# ---------------------------------------------------------------------------
+
+
+class _Slow(io.RawIOBase):
+    """A source whose reads take long enough to notice, and say when they ran."""
+
+    def __init__(self, data: bytes, delay: float = 0.02) -> None:
+        self._data = io.BytesIO(data)
+        self._delay = delay
+        self.reads = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer) -> int:
+        time.sleep(self._delay)
+        self.reads += 1
+        return self._data.readinto(buffer)
+
+
+class _Recorder(io.RawIOBase):
+    """A target that remembers what it was handed, in order."""
+
+    def __init__(self) -> None:
+        self.chunks: list[bytes] = []
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, data) -> int:
+        self.chunks.append(bytes(data))
+        return len(data)
+
+
+@pytest.mark.parametrize("depth", [1, 2, 4])
+def test_the_pump_moves_the_same_bytes_whatever_the_window(depth):
+    payload = os.urandom(5000)
+    target = _Recorder()
+    moved = engine._pump(io.BytesIO(payload), target, None, 1024, None, None, depth)
+    assert (moved, b"".join(target.chunks)) == (len(payload), payload)
+
+
+@pytest.mark.parametrize("depth", [1, 2])
+def test_a_copy_through_the_window_is_byte_for_byte(tmp_path, depth):
+    payload = os.urandom(1 << 16)
+    source = tmp_path / "in.bin"
+    source.write_bytes(payload)
+    result = xrd.copy(
+        source, tmp_path / "out.bin", config=xrd.Config(in_flight=depth), chunk_size=4096
+    )
+    assert (tmp_path / "out.bin").read_bytes() == payload
+    assert result.size == len(payload)
+
+
+@pytest.mark.parametrize(("depth", "ahead"), [(1, False), (3, True)])
+def test_reading_ahead_overlaps_the_reads_with_the_writes(depth, ahead):
+    """The window is only worth having if reads run on while a write is out."""
+    reader = _Slow(b"x" * 4096, delay=0.005)
+    seen = []
+
+    class Writer(_Recorder):
+        def write(self, data):
+            seen.append(reader.reads)  # how many chunks had been read by now
+            time.sleep(0.05)
+            return super().write(data)
+
+    engine._pump(reader, Writer(), None, 1024, None, None, depth)
+    assert (seen[1] > 2) is ahead  # without the window it is strictly one at a time
+    assert seen == [1, 2, 3, 4] or ahead
+
+
+def test_a_source_that_only_has_read_is_still_moved(tmp_path):
+    """Not everything that reads bytes implements ``readinto``."""
+
+    class ReadOnly:
+        def __init__(self, data: bytes) -> None:
+            self._data = io.BytesIO(data)
+
+        def read(self, size: int = -1) -> bytes:
+            return self._data.read(size)
+
+    target = _Recorder()
+    assert engine._pump(ReadOnly(b"abcdef"), target, None, 4, None, None, 2) == 6
+    assert b"".join(target.chunks) == b"abcdef"
+
+
+def test_a_source_that_fails_mid_stream_raises_where_the_caller_can_see_it():
+    class Broken(_Slow):
+        def readinto(self, buffer) -> int:
+            if self.reads:
+                raise OSError("the disk went away")
+            return super().readinto(buffer)
+
+    with pytest.raises(OSError, match="the disk went away"):
+        engine._pump(Broken(b"y" * 4096, delay=0), _Recorder(), None, 1024, None, None, 3)
+
+
+def test_a_write_that_fails_stops_the_reader_rather_than_leaving_it_running():
+    reader = _Slow(b"z" * (1 << 16), delay=0)
+
+    class Failing(_Recorder):
+        def write(self, data):
+            raise OSError("no room")
+
+    with pytest.raises(OSError, match="no room"):
+        engine._pump(reader, Failing(), None, 1024, None, None, 2)
+    alive = [t for t in threading.enumerate() if t.name == "xrd-readahead"]
+    assert alive == []
+
+
+def test_progress_and_digests_still_see_the_file_in_order():
+    payload = os.urandom(4096)
+    digest = xrd.crypto.new("adler32")
+    steps: list[int] = []
+    def report(done, _total):
+        steps.append(done)
+
+    engine._pump(io.BytesIO(payload), _Recorder(), 4096, 1024, report, digest, 4)
+    assert steps == [1024, 2048, 3072, 4096]
+    assert digest.hexdigest() == xrd.crypto.checksum_bytes("adler32", payload)
+
+
+def test_the_window_is_a_setting_and_a_flag(tmp_path):
+    assert xrd.Config().in_flight == 2
+    assert xrd.Config(in_flight=1).in_flight == 1

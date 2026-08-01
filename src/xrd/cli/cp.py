@@ -63,6 +63,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("-a", "--algorithm", metavar="NAME", help="checksum to verify with")
     parser.add_argument("--chunk-size", type=size_arg, metavar="N", help="transfer chunk, e.g. 8M")
     parser.add_argument(
+        "--in-flight",
+        type=int,
+        metavar="N",
+        help="chunks read ahead while the last is written (default 2, 1 for neither)",
+    )
+    parser.add_argument(
         "-p",
         "--progress",
         action="store_true",
@@ -209,6 +215,8 @@ def _misuse(args: argparse.Namespace) -> str | None:
         return "--include, --exclude, --sync, --delete and --parallel describe a tree; add -r"
     if args.parallel is not None and args.parallel < 1:
         return "--parallel is how many files to copy at once, so at least one"
+    if args.in_flight is not None and args.in_flight < 1:
+        return "--in-flight is how many chunks to hold at once, so at least one"
     if args.tpc and (args.dry_run or args.remove_source):
         return "--tpc hands the transfer to the servers; --dry-run and --remove-source cannot"
     if args.resume and (args.tpc or args.no_clobber):
@@ -223,6 +231,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"{PROGRAM}: {complaint}", file=sys.stderr)
         return USAGE
     config = config_from(args)
+    if args.in_flight is not None:
+        config = config.evolve(in_flight=args.in_flight)
     sources = [parse(s) for s in args.source]
     dest = parse(args.dest)
     show = args.progress if args.progress is not None else (sys.stderr.isatty() and not args.quiet)

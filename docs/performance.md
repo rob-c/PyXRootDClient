@@ -75,10 +75,11 @@ cfg = xrd.Config(
     readahead=4 << 20,         # buffered reads pull more per request
     parallel_chunks=8,         # spans of a copy moved at once, one connection each
     parallel_files=4,          # files of a tree copied at once
+    in_flight=4,               # chunks read ahead of the write in flight
 )
 ```
 
-Defaults are 4 MiB, 1 MiB, 4 and 1. On a high-latency WAN link raise all three;
+Defaults are 4 MiB, 1 MiB, 4, 1 and 2. On a high-latency WAN link raise all three;
 on loopback they make no difference. `parallel_chunks` is what a single large
 transfer is spread over, so it is the one that turns a WAN copy from
 round-trip-bound into bandwidth-bound - at the cost of one login per span, and
@@ -87,6 +88,11 @@ of a verification that reads both files instead of digesting the stream
 `parallel_files` is the other half of that trade: a tree of small files is
 round-trip-bound however wide each transfer is allowed to be, and is the case
 where raising it wins the most.
+
+`in_flight` is the cheapest of them: one thread and a few buffers per
+transfer, and it is what stops a read waiting for the write before it. Set it
+to `1` for a local-to-local copy, where there is no latency for the overlap to
+hide.
 
 For many ranges from one file, ask once:
 

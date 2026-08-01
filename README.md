@@ -77,7 +77,9 @@ between any two endpoints, local paths included, with checksum verification
 on by default and a `progress=` callback that takes `(done, total)`. A tree
 can be filtered (`include=`, `exclude=`), brought up to date rather than
 recopied (`sync="size" | "mtime" | "checksum"`), pruned (`delete=True`),
-rehearsed (`dry_run=True`) or moved (`remove_source=True`). An interrupted
+rehearsed (`dry_run=True`) or moved (`remove_source=True`). Every transfer keeps
+`config.in_flight` chunks read ahead of the write it is waiting on, so the two
+ends overlap instead of taking turns. An interrupted
 transfer is continued rather than restarted with `resume=True`, or `xrd-cp -c`,
 and a file long enough to be worth it is moved by `config.parallel_chunks`
 connections at once, one span of the file each. A tree of small files copies
@@ -174,7 +176,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2204 tests, of which the great majority need no network, no KDC and no
+2218 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official
