@@ -80,6 +80,12 @@ _WANT_DIGEST = {
 #: Digests XRootD and dCache send as hex; the rest arrive base64 per RFC 3230.
 _HEX_DIGESTS = frozenset({"adler32", "crc32", "crc32c", "unixcksum", "cksum"})
 
+#: Hex widths :mod:`hashlib` cannot report, because these are not hashes.
+#: Both encodings of a ``crc64`` are in the wild - sixteen hex digits over
+#: ``root://`` and WebDAV, base64 of eight big-endian bytes under RFC 9530 -
+#: and they are different lengths, so the value itself says which it is.
+_HEX_WIDTHS = {"crc64": 16, "crc64nvme": 16}
+
 
 # ---------------------------------------------------------------------------
 # XML
@@ -252,10 +258,12 @@ def _is_hex(value: str, algorithm: str) -> bool:
     """
     import hashlib
 
-    try:
-        wanted = 2 * hashlib.new(algorithm).digest_size
-    except ValueError:
-        return False
+    wanted = _HEX_WIDTHS.get(algorithm, 0)
+    if not wanted:
+        try:
+            wanted = 2 * hashlib.new(algorithm).digest_size
+        except ValueError:
+            return False
     return len(value) == wanted and all(ch in "0123456789abcdefABCDEF" for ch in value)
 
 

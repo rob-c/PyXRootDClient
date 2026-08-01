@@ -16,6 +16,7 @@ import zlib
 from collections.abc import Callable, Iterable
 
 from .crc32c import crc32c
+from .crc64 import crc64, crc64nvme
 
 __all__ = ["Checksum", "new", "algorithms", "checksum_file", "checksum_bytes"]
 
@@ -81,7 +82,11 @@ _NATIVE: dict[str, tuple[Callable[..., int], int, int]] = {
     "adler32": (zlib.adler32, 1, 8),
     "crc32": (zlib.crc32, 0, 8),
     "crc32c": (crc32c, 0, 8),
+    "crc64": (crc64, 0, 16),
+    "crc64nvme": (crc64nvme, 0, 16),
 }
+#: The one alias a server registers: CRC-64/XZ answers to both names.
+_ALIASES = {"crc64xz": "crc64"}
 _HASHLIB = ("md5", "sha1", "sha224", "sha256", "sha384", "sha512")
 
 
@@ -93,6 +98,7 @@ def algorithms() -> tuple[str, ...]:
 def new(name: str) -> Checksum | _HashlibChecksum:
     """A fresh incremental digest for ``name`` (case-insensitive)."""
     key = name.lower().replace("-", "")
+    key = _ALIASES.get(key, key)
     if key in _NATIVE:
         step, seed, width = _NATIVE[key]
         return Checksum(key, step, seed, width)

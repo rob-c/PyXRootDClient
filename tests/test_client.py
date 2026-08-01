@@ -366,6 +366,16 @@ def test_checksum_can_ask_for_another_algorithm(fs):
     assert fs.checksum("/data/a.root", "md5").algorithm == "md5"
 
 
+def test_a_crc64_checksum_is_one_the_client_can_check_itself(fs):
+    """Stock XRootD computes no 64-bit CRC, so a gateway that answers with one
+    is only useful to a client that can compute the same value."""
+    from xrd.crypto import checksum_bytes
+
+    result = fs.checksum("/data/a.root", "crc64")
+    assert result.algorithm == "crc64"
+    assert result.value == checksum_bytes("crc64", b"hello world")
+
+
 def test_query_config_answers_every_name(fs):
     assert fs.query_config("version", "role") == {"version": "v5.6.0", "role": "server"}
 

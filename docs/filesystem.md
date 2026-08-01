@@ -236,7 +236,10 @@ one reaches you without waiting for a release.
 
 `checksum()` asks for `config.preferred_checksum` (`adler32` by default) and
 returns whatever the server actually computed, which is not always what you
-asked for.
+asked for. Anything the server names can be verified here without a compiler:
+`adler32`, `crc32`, `crc32c`, `crc64` (CRC-64/XZ, what `xrdcrc64` computes,
+also spelled `crc64xz`), `crc64nvme` and the `hashlib` digests -
+`xrd.crypto.algorithms()` is the list.
 
 !!! warning "Servers cache checksums"
     A file rewritten in place can come back with the digest of its previous

@@ -38,6 +38,9 @@ error instead.
 xrd.copy(src, dst, verify=True, algorithm="crc32c")
 ```
 
+Any name in `xrd.crypto.algorithms()` works, including the 64-bit CRCs a
+gateway offers and stock XRootD has no calculator for.
+
 A mismatch raises `ChecksumMismatchError`, which carries both digests.
 
 !!! warning

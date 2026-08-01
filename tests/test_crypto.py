@@ -15,6 +15,7 @@ import pytest
 from xrd.crypto.blowfish import Blowfish, _pi_fraction_words
 from xrd.crypto.checksum import algorithms, checksum_bytes, checksum_file, new
 from xrd.crypto.crc32c import PAGE_SIZE, _crc32c_py, crc32c, pack_pages, unpack_pages
+from xrd.crypto.crc64 import crc64, crc64nvme
 from xrd.crypto.sigver import Signer, is_signed, sigver_hmac
 from xrd.proto import constants as c
 from xrd.proto import requests as r
@@ -197,12 +198,47 @@ def test_the_advertised_algorithms_all_work():
         ("adler32", f"{zlib.adler32(b'123456789'):08x}"),
         ("crc32", f"{zlib.crc32(b'123456789'):08x}"),
         ("crc32c", "e3069283"),
+        ("crc64", "995dc9bbdf1939fa"),
+        ("crc64nvme", "ae8b14860a799888"),
         ("md5", hashlib.md5(b"123456789").hexdigest()),
         ("sha256", hashlib.sha256(b"123456789").hexdigest()),
     ],
 )
 def test_checksum_values(name, expected):
     assert checksum_bytes(name, b"123456789") == expected
+
+
+def test_crc64_xz_answers_to_both_of_its_names():
+    """A server registers ``crc64xz`` as an alias of ``crc64``; the digest
+    reports the canonical one whichever was asked for."""
+    h = new("CRC64-XZ")
+    h.update(b"123456789")
+    assert h.name == "crc64"
+    assert h.hexdigest() == checksum_bytes("crc64", b"123456789")
+
+
+def test_the_two_crc64s_are_different_checksums():
+    """``crc64nvme`` is a distinct registered name, never a spelling of the
+    other: they share their seed and their width and nothing else."""
+    assert checksum_bytes("crc64", b"abc") != checksum_bytes("crc64nvme", b"abc")
+
+
+def test_crc64_is_chainable():
+    assert crc64(b"56789", crc64(b"1234")) == crc64(b"123456789")
+    assert crc64nvme(b"56789", crc64nvme(b"1234")) == crc64nvme(b"123456789")
+
+
+def test_crc64_of_nothing_is_zero():
+    """Seed and final xor are both all ones, so they cancel over no bytes."""
+    assert crc64(b"") == 0
+    assert crc64nvme(b"") == 0
+
+
+def test_a_crc64_digest_is_eight_bytes():
+    h = new("crc64")
+    h.update(b"123456789")
+    assert h.value == 0x995DC9BBDF1939FA
+    assert h.digest() == (0x995DC9BBDF1939FA).to_bytes(8, "big")
 
 
 def test_checksum_names_are_case_insensitive():

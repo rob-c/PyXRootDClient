@@ -39,7 +39,7 @@ Reply = tuple[int, bytes, dict[str, str]]
 #: the real implementation have it.
 Handler = Callable[[str, str, dict[str, str]], Reply | None]
 
-_DIGESTS = ("adler32", "md5", "sha256", "crc32c")
+_DIGESTS = ("adler32", "md5", "sha256", "crc32c", "crc64")
 
 
 def _clean(path: str) -> str:

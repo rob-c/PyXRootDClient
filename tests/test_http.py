@@ -444,6 +444,19 @@ def test_a_base64_digest_is_decoded_to_hex(dav):
     assert digest(dav.url / "d/a.root", "sha256").value == checksum_bytes("sha256", BODY)
 
 
+def test_a_base64_crc64_is_decoded_even_though_hashlib_never_heard_of_it(dav):
+    """A CRC is not a hash, so the width that tells hex from base64 has to be
+    written down rather than asked of :mod:`hashlib`."""
+    assert digest(dav.url / "d/a.root", "crc64").value == checksum_bytes("crc64", BODY)
+
+
+def test_a_hex_crc64_is_left_as_it_is():
+    """Sixteen hex digits is the ``root://`` and WebDAV spelling; twelve
+    characters of base64 is the RFC 9530 one, and they cannot be confused."""
+    value = checksum_bytes("crc64", BODY)
+    assert _pick_digest(f"crc64={value}", "crc64") == value
+
+
 def test_a_server_that_offers_no_digest_says_so(dav, fs):
     dav.digests = False
     with pytest.raises(UnsupportedError, match="digest"):
