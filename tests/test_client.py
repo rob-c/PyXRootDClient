@@ -649,6 +649,15 @@ def test_open_volunteers_the_stat(fs):
     handle.close()
 
 
+def test_a_file_stored_whole_says_so_rather_than_saying_nothing(fs):
+    """The compression fields are in every ``kXR_open`` reply; a server that
+    stores files whole zeroes them, which is an answer and not an absence."""
+    handle = File(fs.url.with_path("/data/a.root"), fs.config, router=fs._router)
+    handle.open()
+    assert handle.compression == (0, "")
+    handle.close()
+
+
 def test_an_open_that_fails_does_not_leave_a_connection_behind(server, config):
     """A caught FileExistsError in a loop used to cost a socket per attempt."""
     handle = File(server.url.with_path("/data/a.root"), config)

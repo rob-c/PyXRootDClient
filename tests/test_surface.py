@@ -216,6 +216,7 @@ FILE = {
     "checkpoint": _file_checkpoint,
     "checksum": lambda fh: fh.checksum(),
     "close": lambda fh: fh.close(),
+    "compression": lambda fh: fh.compression,
     "data_path": lambda fh: fh.data_path,
     "endpoint": lambda fh: fh.endpoint,
     "flush": lambda fh: fh.flush(),

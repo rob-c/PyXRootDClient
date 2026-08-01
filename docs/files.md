@@ -71,7 +71,13 @@ handle.clone(other, [(0, 4096, 0)])                       # kXR_clone, server-si
 handle.sync()
 handle.truncate(1 << 20)
 print(handle.checksum())                                  # adler32:1a0b045d
+print(handle.compression)                                 # (0, '') - stored whole
 ```
+
+`compression` is the page size and algorithm the server reported when the
+file was opened. Modern servers store files whole and report `(0, "")`; the
+fields are in every `kXR_open` reply, so this is something you can check
+rather than assume.
 
 `File` can also be used on its own, with or without `with`:
 

@@ -336,15 +336,18 @@ def parse_locate(data: bytes) -> list[LocationInfo]:
     return out
 
 
-def parse_open(data: bytes, path: str = "") -> tuple[bytes, StatInfo | None]:
-    """``kXR_open`` - the handle plus, with ``kXR_retstat``, a stat line."""
+def parse_open(data: bytes, path: str = "") -> tuple[bytes, StatInfo | None, tuple[int, str]]:
+    """``kXR_open`` - the handle, the stat ``kXR_retstat`` asked for, and the
+    compression page size and algorithm, which are ``(0, "")`` for the
+    uncompressed file every modern server stores."""
     r = Reader(data, "kXR_open")
     fhandle = r.bytes(c.FHANDLE_LEN)
     if r.remaining < 8:
-        return fhandle, None
-    r.skip(8)  # cpsize[4] cptype[4]
+        return fhandle, None, (0, "")
+    page = r.i32()
+    algorithm = r.bytes(4).split(b"\x00", 1)[0].decode("utf-8", "replace")
     tail = r.rest().split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
-    return fhandle, _stat_fields(tail, path) if tail else None
+    return fhandle, _stat_fields(tail, path) if tail else None, (page, algorithm)
 
 
 def parse_checksum(data: bytes) -> ChecksumInfo:

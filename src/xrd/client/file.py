@@ -76,6 +76,7 @@ class File:
         self._owns_router = router is None
         self._handle: bytes | None = None
         self._stat: StatInfo | None = None
+        self._compression: tuple[int, str] = (0, "")
         self._size_hint = 0
         self._flags = OpenFlags.NONE
         self._mode = 0
@@ -158,10 +159,22 @@ class File:
         # handle made itself is handed over rather than shared, so that there
         # is exactly one router responsible for putting it back.
         self._router = self._router.pin(transfer=self._owns_router)
-        self._handle, self._stat = rp.parse_open(result.data, self.url.path)
+        self._handle, self._stat, self._compression = rp.parse_open(
+            result.data, self.url.path
+        )
         if self._stat is not None:
             self._size_hint = self._stat.st_size
         return self.handle
+
+    @property
+    def compression(self) -> tuple[int, str]:
+        """The compression page size and algorithm the open reported.
+
+        ``(0, "")`` for a file stored whole, which is every file a modern
+        server has: the fields survive in the ``kXR_open`` reply, and reading
+        them is how you can tell rather than assume.
+        """
+        return self._compression
 
     @property
     def recoverable(self) -> bool:

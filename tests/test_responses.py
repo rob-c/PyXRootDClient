@@ -242,16 +242,27 @@ def test_location_splits_host_and_port_including_ipv6():
 
 
 def test_parse_open_handle_only():
-    fhandle, stat = rp.parse_open(b"HDL0")
+    fhandle, stat, compression = rp.parse_open(b"HDL0")
     assert fhandle == b"HDL0"
     assert stat is None
+    assert compression == (0, "")
 
 
 def test_parse_open_with_retstat():
     body = b"HDL0" + bytes(8) + b"id0 99 0 1700000000\x00"
-    fhandle, stat = rp.parse_open(body, "/a")
+    fhandle, stat, compression = rp.parse_open(body, "/a")
     assert fhandle == b"HDL0"
     assert stat is not None and stat.st_size == 99 and stat.path == "/a"
+    assert compression == (0, "")
+
+
+def test_parse_open_reads_the_compression_fields():
+    """A compressed file reports its page size and the algorithm that made it;
+    the four bytes of the name are padded with NULs, not sized."""
+    body = b"HDL0" + (8192).to_bytes(4, "big") + b"lzw\x00" + b"id0 99 0 1700000000\x00"
+    _, stat, compression = rp.parse_open(body, "/a")
+    assert compression == (8192, "lzw")
+    assert stat is not None and stat.st_size == 99
 
 
 def test_parse_checksum():

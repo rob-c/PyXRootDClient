@@ -132,7 +132,7 @@ def third_party(
             # the pinned router takes the connection over: the name it is
             # bound to here is the only one left holding it.
             dst_router = dst_router.pin(transfer=True)
-            handle, _ = rp.parse_open(result.data, du.path)
+            handle, _, _ = rp.parse_open(result.data, du.path)
 
             # 2. Arm the rendezvous, then register the key at the source. The
             #    source open may be deferred until the pull completes.
@@ -142,7 +142,7 @@ def third_party(
                 r.Open(f"{su.path}?{_src_opaque(key, du.host, token_mode)}", int(OpenFlags.READ)),
                 path=su.path,
             )
-            src_handle, _ = rp.parse_open(src_result.data, su.path)
+            src_handle, _, _ = rp.parse_open(src_result.data, su.path)
 
             # 3. Trigger the pull and wait for the destination to finish.
             try:
