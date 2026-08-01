@@ -132,6 +132,7 @@ fs.query_config("version", "role", "sitename")
 fs.query(QueryCode.SPACE, "/store")
 fs.checksum("/store/f.root")            # ChecksumInfo(algorithm, value)
 fs.locate("/store/f.root")              # which servers hold it
+fs.locate("/store/run7", flags=xrd.LocateFlags.FOR_DIRLIST)   # about to list it
 fs.deep_locate("/store/f.root")         # follow managers to the data servers
 fs.prepare(["/store/a.root", "/store/b.root"])   # stage from tape
 fs.evict(["/store/a.root"])

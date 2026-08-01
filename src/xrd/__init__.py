@@ -48,7 +48,16 @@ from .errors import (
     WaitLimitError,
     XRootDError,
 )
-from .flags import Access, DirListFlags, MkDirFlags, OpenFlags, QueryCode, StatInfoFlags
+from .flags import (
+    Access,
+    DirListFlags,
+    LocateFlags,
+    MkDirFlags,
+    OpenFlags,
+    PrepareFlags,
+    QueryCode,
+    StatInfoFlags,
+)
 from .io import open_url as open
 from .path import XRootDPath
 from .path import XRootDPath as Path  # ``xrd.Path`` reads the way pathlib does
@@ -130,8 +139,10 @@ __all__ = [
     # flags
     "Access",
     "DirListFlags",
+    "LocateFlags",
     "MkDirFlags",
     "OpenFlags",
+    "PrepareFlags",
     "QueryCode",
     "StatInfoFlags",
     # errors

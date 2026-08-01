@@ -272,6 +272,23 @@ def test_fattr_set_encodes_name_then_value():
     assert body.endswith(b"val")
 
 
+def test_every_locate_option_the_protocol_defines_has_a_name():
+    """``fs.locate`` takes the enum and nothing else, so a bit missing from it
+    is a question no caller can ask. ``kXR_4dirlist`` was one: XProtocol packs
+    the locate options into the open-option numbers, and it is the bit that
+    tells a redirector the locate is the prelude to a listing."""
+    from xrd.flags import LocateFlags
+
+    assert {int(flag) for flag in LocateFlags if flag} == {
+        c.kXR_addPeers,
+        c.kXR_refreshLoc,
+        c.kXR_prefname,
+        c.kXR_4dirlist,
+        c.kXR_nowaitLoc,
+    }
+    assert params_of(r.Locate("/a", c.kXR_4dirlist))[:2] == struct.pack(">H", c.kXR_4dirlist)
+
+
 def test_fattr_list_takes_no_names():
     assert body_of(r.Fattr.list("/p")) == b"/p\x00"
 

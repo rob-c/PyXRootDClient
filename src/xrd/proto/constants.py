@@ -184,6 +184,7 @@ kXR_evict = 0x0001
 kXR_addPeers = 0x0001
 kXR_refreshLoc = 0x0080
 kXR_prefname = 0x0100
+kXR_4dirlist = 0x0400
 kXR_nowaitLoc = 0x2000
 
 # ---- kXR_fattr subcodes and options ----

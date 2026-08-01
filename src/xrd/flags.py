@@ -125,6 +125,10 @@ class LocateFlags(IntFlag):
     ADD_PEERS = 1 << 0
     REFRESH = 1 << 7
     PREFER_NAME = 1 << 8
+    #: ``kXR_4dirlist``: this locate is the prelude to a directory listing, so
+    #: a redirector should answer with the servers that can list it rather
+    #: than the ones that happen to hold a file of that name.
+    FOR_DIRLIST = 1 << 10
     NO_WAIT = 1 << 13
 
 

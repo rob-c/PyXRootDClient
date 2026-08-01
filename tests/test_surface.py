@@ -26,7 +26,16 @@ import xrd
 from xrd.client.file import File
 from xrd.client.filesystem import FileSystem
 from xrd.config import Config
-from xrd.flags import Access, DirListFlags, MkDirFlags, OpenFlags, QueryCode, StatInfoFlags
+from xrd.flags import (
+    Access,
+    DirListFlags,
+    LocateFlags,
+    MkDirFlags,
+    OpenFlags,
+    PrepareFlags,
+    QueryCode,
+    StatInfoFlags,
+)
 from xrd.path import XRootDPath
 from xrd.testing import FakeServer
 from xrd.types import ReadRange, WriteChunk
@@ -394,9 +403,11 @@ NAMES = {
     "File": _use_file,
     "FileSystem": lambda srv, tmp: xrd.FileSystem(srv.url, CONFIG).close(),
     "LocationInfo": lambda srv, tmp: xrd.LocationInfo(address="a:1094").address,
+    "LocateFlags": lambda srv, tmp: LocateFlags.FOR_DIRLIST | LocateFlags.NONE,
     "MkDirFlags": lambda srv, tmp: MkDirFlags.MAKEPATH | MkDirFlags.NONE,
     "OpenFlags": lambda srv, tmp: OpenFlags.READ | OpenFlags.UPDATE,
     "PageResult": lambda srv, tmp: xrd.PageResult(data=b"x", offset=0).data,
+    "PrepareFlags": lambda srv, tmp: PrepareFlags.STAGE | PrepareFlags.NONE,
     "Path": lambda srv, tmp: xrd.Path(srv.url.with_path("/store"), config=CONFIG).close(),
     "ProtocolInfo": lambda srv, tmp: xrd.ProtocolInfo(version=0x310).version,
     "QueryCode": lambda srv, tmp: int(QueryCode.CHECKSUM),

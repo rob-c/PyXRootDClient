@@ -120,8 +120,9 @@ See [Configuration](config.md).
 ## Flags
 
 `xrd.OpenFlags`, `xrd.MkDirFlags`, `xrd.DirListFlags`, `xrd.Access`,
-`xrd.QueryCode` and `xrd.StatInfoFlags` exist with the same members, for the
-cases where you want the raw protocol. Most code should not need them: mode
+`xrd.QueryCode`, `xrd.StatInfoFlags`, `xrd.LocateFlags` and `xrd.PrepareFlags`
+exist with the same members, for the cases where you want the raw protocol.
+Most code should not need them: mode
 strings cover opening, `makedirs(exist_ok=True)` covers `MAKEPATH`, and
 `scandir` always asks for stat information.
 

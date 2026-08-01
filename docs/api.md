@@ -85,6 +85,10 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.StatInfoFlags
 
+::: xrd.LocateFlags
+
+::: xrd.PrepareFlags
+
 ## Authentication
 
 ::: xrd.auth.select
