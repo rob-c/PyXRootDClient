@@ -26,14 +26,14 @@ schedulable and several can run in parallel.
 ## Status — as built
 
 Phases 0–10 are **implemented**: 18 kLOC under `src/xrd/` against 18 kLOC of
-tests, **2433 tests green in ~50 s** with no third-party import anywhere —
+tests, **2510 tests green in ~50 s** with no third-party import anywhere —
 `root://` and `davs://` are peers, any endpoint copies to any other, both are
 awaitable, both are a URL scheme in pandas and a command in a shell, and the
-whole authentication ladder bar Kerberos is pure Python. Of the 2433, 47 are
+whole authentication ladder bar Kerberos is pure Python. Of the 2510, 47 are
 the interoperability and parity suites (a real `xrootd` daemon, and the
 official bindings alongside), 17 need the `[fsspec]` extra and one runs `mypy`
 over the public surface and checks the revealed types; the rest run
-against the stdlib alone. Coverage on `proto/`, `crypto/`, `client/` and `s3/` is
+against the stdlib alone. Coverage on `proto/`, `crypto/`, `client/`, `s3/` and `root/` is
 **100%**, line and branch, and gated there — and is 100% across the whole
 package besides.
 
@@ -45,7 +45,10 @@ multipart uploads, and `xrd.testing.FakeS3Server` to test against
 ([S3 object storage](../../s3.md)) - and the guard rails a beginner meets
 before they meet the protocol: a ceiling on reads that named no size, an
 `xrd-cp` that will not overwrite without `-f`, and an `xrd-fs rm -r` that asks
-([Safety](../../safety.md)).
+([Safety](../../safety.md)). Newest is `xrd.root`: a pure-Python ROOT and
+TTree reader that streams baskets off a storage element straight into PyTorch
+tensors, with every column it cannot decode named and refused rather than
+guessed at ([Reading ROOT files](../../root.md)).
 
 | Phase | State | Shipped as |
 |---|---|---|

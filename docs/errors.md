@@ -33,6 +33,9 @@ Exception
     ├── RedirectLimitError
     ├── ChecksumMismatchError
     ├── TooLargeError                 a whole-file read that would not fit
+    ├── ROOTError                     reading a ROOT file (xrd.root)
+    │   ├── FormatError               these bytes are not the format they claim
+    │   └── UnsupportedFeatureError   a valid file this reader does not decode
     └── ServerError                   a kXR_error response
         ├── NotFoundError             + FileNotFoundError   ENOENT
         ├── ExistsError               + FileExistsError     EEXIST

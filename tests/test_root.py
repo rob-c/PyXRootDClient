@@ -1,0 +1,701 @@
+"""Reading ROOT files in pure Python.
+
+The files under ``tests/data`` are real ones written by real ROOT versions
+(see the README there), so what is asserted here is what ROOT wrote. The
+crafted bytes are for the corners no honest file in the corpus reaches: a
+64-bit file header, a directory with no keys, and a tree written before this
+reader's history begins.
+"""
+
+from __future__ import annotations
+
+import array
+import io
+import pathlib
+import struct
+import zlib
+
+import pytest
+
+from xrd.root import (
+    Branch,
+    Directory,
+    FormatError,
+    Jagged,
+    Key,
+    ROOTFile,
+    TTree,
+    UnsupportedFeatureError,
+    open_root,
+)
+from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
+from xrd.root.compression import _lz4, algorithm, decompress
+from xrd.root.file import Source, _directory_record
+from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
+from xrd.root.tree import Basket
+
+DATA = pathlib.Path(__file__).parent / "data"
+
+
+def opened(name: str) -> ROOTFile:
+    return open_root(str(DATA / f"{name}.root"))
+
+
+@pytest.fixture
+def simple():
+    with opened("simple") as handle:
+        yield handle["tree"]
+
+
+@pytest.fixture
+def flat():
+    with opened("small-flat-tree") as handle:
+        yield handle["tree"]
+
+
+# -- crafted bytes --------------------------------------------------------
+
+
+def tstring(text: str) -> bytes:
+    raw = text.encode()
+    return bytes([len(raw)]) + raw
+
+
+def record(version: int, body: bytes = b"") -> bytes:
+    """A byte-counted record, which is how ROOT introduces every class."""
+    return struct.pack(">IH", BYTE_COUNT_MASK | (2 + len(body)), version) + body
+
+
+def key_bytes(
+    classname: str,
+    name: str,
+    title: str = "",
+    *,
+    seek_key: int = 0,
+    payload: bytes = b"",
+    big: bool = False,
+    datime: int = 0,
+) -> bytes:
+    tail = tstring(classname) + tstring(name) + tstring(title)
+    keylen = 18 + (16 if big else 8) + len(tail)
+    seeks = struct.pack(">qq" if big else ">ii", seek_key, 0)
+    version = 1004 if big else 4
+    head = struct.pack(
+        ">iHiIhh", keylen + len(payload), version, len(payload), datime, keylen, 1
+    )
+    return head + seeks + tail + payload
+
+
+def wide_file(*, seek_keys_broken: bool = False) -> bytes:
+    """A whole ROOT file in the 64-bit layout, holding one unreadable object."""
+    begin, nbytes_name = 100, 32
+    seek_keys = begin + nbytes_name + 42
+    inner = key_bytes("TH1F", "h", "a histogram", seek_key=seek_keys + 100, big=True)
+    keys = key_bytes("TDirectory", "f", big=True, seek_key=seek_keys) + struct.pack(">i", 1) + inner
+    directory = struct.pack(
+        ">HIIiiqqq", 1005, 0, 0, len(keys), nbytes_name, begin, 0,
+        0 if seek_keys_broken else seek_keys,
+    )
+    header = struct.pack(">4sii", b"root", 1000004, begin) + struct.pack(
+        ">qqiiiBiqi", len(keys) + seek_keys, 0, 0, 0, nbytes_name, 4, 1, 0, 0
+    )
+    return header.ljust(begin + nbytes_name, b"\x00") + directory + keys
+
+
+def named_bytes(name: str, title: str = "") -> bytes:
+    return record(1, struct.pack(">HII", 1, 0, 0) + tstring(name) + tstring(title))
+
+
+def objarray_bytes() -> bytes:
+    """A ``TObjArray`` holding nothing, which is what an empty tree has."""
+    return record(3, struct.pack(">HII", 1, 0, 0) + tstring("") + struct.pack(">ii", 0, 0))
+
+
+def oldest_tree_bytes() -> bytes:
+    """A ``TTree`` of the oldest version this reader accepts, with no branches."""
+    body = named_bytes("t", "an old tree") + record(1) * 3
+    body += struct.pack(">qqqq", 7, 0, 0, 0)  # entries, then bytes written three ways
+    body += struct.pack(">iii", 0, 0, 0)  # timer interval, scan field, update
+    body += struct.pack(">qqqqq", 0, 0, 0, 0, 0)  # the entry and size limits
+    return record(6, body + objarray_bytes())
+
+
+def oldest_branch_bytes() -> bytes:
+    """A ``TBranch`` of the oldest version this reader accepts."""
+    body = named_bytes("b", "b/I") + record(1)
+    body += struct.pack(">iiii", 1, 4096, 0, 0)  # compression, basket size, offsets, baskets
+    body += struct.pack(">q", 0)  # the entry the next basket would start at
+    body += struct.pack(">iii", 0, 0, 0)  # offset in the parent, max baskets, split level
+    body += struct.pack(">qqq", 5, 0, 0)  # entries, then bytes written both ways
+    body += objarray_bytes() * 3
+    return record(10, body + b"\x01" + b"\x01" + b"\x01" + tstring(""))
+
+
+def basket_bytes(payload: bytes, *, nevsize: int, nevbuf: int, last: int) -> bytes:
+    """A basket whose event size is written negative, so features follow it."""
+    tail = tstring("TBasket") + tstring("b") + tstring("")
+    fields = (
+        struct.pack(">hii", 4, 4096, -nevsize)
+        + record(1, b"\x00")
+        + struct.pack(">ii", nevbuf, last)
+        + b"\x00"
+    )
+    keylen = 18 + 8 + len(tail) + len(fields)
+    head = struct.pack(">iHiIhh", keylen + len(payload), 4, len(payload), 0, keylen, 1)
+    return head + struct.pack(">ii", 0, 0) + tail + fields + payload
+
+
+def source_over(data: bytes, name: str = "crafted") -> Source:
+    return Source(io.BytesIO(data), name, owned=True)
+
+
+# -- Buffer ---------------------------------------------------------------
+
+
+def test_a_buffer_reads_every_width_of_number():
+    buf = Buffer(struct.pack(">BbHhIiqd", 1, -1, 2, -2, 3, -3, -4, 0.5))
+    assert (buf.u8(), buf.i8(), buf.u16(), buf.i16()) == (1, -1, 2, -2)
+    assert (buf.u32(), buf.i32(), buf.i64(), buf.f64()) == (3, -3, -4, 0.5)
+    assert buf.remaining == 0
+    assert repr(buf) == "<Buffer at 30 of 30>"
+
+
+def test_a_short_record_says_so_rather_than_reading_past_the_end():
+    with pytest.raises(FormatError, match="ends 4 bytes before"):
+        Buffer(b"\x00\x01").i32()
+    with pytest.raises(FormatError, match="asked for 9 bytes"):
+        Buffer(b"\x00").take(9)
+    with pytest.raises(FormatError, match="array of 16 bytes"):
+        Buffer(b"\x00").i64s(2)
+
+
+def test_strings_come_in_both_lengths_ROOT_writes():
+    long = "x" * 300
+    buf = Buffer(tstring("short") + b"\xff" + struct.pack(">i", 300) + long.encode())
+    assert buf.string() == "short"
+    assert buf.string() == long
+
+
+def test_a_class_name_without_its_terminator_is_a_format_error():
+    assert Buffer(b"TTree\x00rest").cstring() == "TTree"
+    with pytest.raises(FormatError, match="ran off the end"):
+        Buffer(b"TTree").cstring()
+
+
+def test_a_record_written_without_a_byte_count_can_be_read_but_not_skipped():
+    buf = Buffer(struct.pack(">HH", 7, 0))
+    assert buf.header() == (7, None)
+    assert buf.pos == 2
+    assert Buffer(record(3)).header() == (3, 6)
+    with pytest.raises(FormatError, match="cannot be skipped"):
+        Buffer(struct.pack(">HH", 7, 0)).skip_record()
+
+
+def test_resuming_after_a_record_moves_only_when_there_is_somewhere_to_move():
+    buf = Buffer(b"\x00\x00\x00\x00")
+    buf.resume(None)
+    assert buf.pos == 0
+    buf.resume(3)
+    assert buf.pos == 3
+
+
+def test_a_referenced_object_carries_an_extra_word():
+    plain = Buffer(struct.pack(">HII", 1, 7, 0))
+    assert plain.tobject() == (7, 0)
+    marked = Buffer(struct.pack(">HIIH", 1, 7, 1 << 4, 0))
+    assert marked.tobject() == (7, 16)
+    assert marked.remaining == 0
+
+
+def test_a_named_object_gives_its_name_and_title():
+    body = struct.pack(">HII", 1, 0, 0) + tstring("pt") + tstring("transverse momentum")
+    buf = Buffer(record(1, body))
+    assert buf.named() == ("pt", "transverse momentum")
+
+
+def test_a_null_or_repeated_object_is_read_from_the_map_not_the_stream():
+    assert Buffer(struct.pack(">I", 0)).any({}) is None
+    buf = Buffer(struct.pack(">I", 40))
+    buf.refs[40] = "seen before"
+    assert buf.any({}) == "seen before"
+
+
+def test_a_new_class_is_read_and_remembered_for_the_next_reference():
+    body = b"Thing\x00" + b"\x07"
+    stream = struct.pack(">I", BYTE_COUNT_MASK | (4 + len(body))) + struct.pack(
+        ">I", NEW_CLASS_TAG
+    ) + body
+    buf = Buffer(stream)
+    assert buf.any({"Thing": lambda b: b.u8()}) == 7
+    assert buf.refs[4 + MAP_OFFSET] == "Thing"
+
+
+def test_a_class_reference_that_points_nowhere_is_a_format_error():
+    stream = struct.pack(">II", BYTE_COUNT_MASK | 4, CLASS_MASK | 999)
+    with pytest.raises(FormatError, match="points nowhere"):
+        Buffer(stream).any({})
+
+
+def test_an_unknown_class_is_stepped_over_and_named():
+    body = b"TH1F\x00" + b"junk"
+    stream = struct.pack(">I", BYTE_COUNT_MASK | (4 + len(body))) + struct.pack(
+        ">I", NEW_CLASS_TAG
+    ) + body + b"after"
+    buf = Buffer(stream)
+    assert buf.any({}) == "TH1F"
+    assert buf.take(5) == b"after"
+
+
+def test_an_unknown_class_with_no_length_cannot_be_stepped_over():
+    stream = struct.pack(">I", NEW_CLASS_TAG) + b"TH1F\x00"
+    with pytest.raises(FormatError, match="no length to skip"):
+        Buffer(stream).any({})
+
+
+def test_an_object_array_yields_what_it_holds():
+    item = struct.pack(">I", NEW_CLASS_TAG) + b"Num\x00" + b"\x05"
+    body = struct.pack(">HII", 1, 0, 0) + tstring("") + struct.pack(">ii", 1, 0) + item
+    buf = Buffer(record(3, body))
+    assert buf.objarray({"Num": lambda b: b.u8()}) == [5]
+    assert buf.remaining == 0
+
+
+# -- compression ----------------------------------------------------------
+
+
+def test_a_compressed_block_names_its_algorithm():
+    assert algorithm(b"ZL\x08") == "zlib"
+    assert algorithm(b"CS\x01") == "the pre-2005 ROOT algorithm"
+    assert algorithm(b"??") == "an unknown algorithm"
+
+
+def block(tag: bytes, payload: bytes, unpacked: int) -> bytes:
+    return (
+        tag
+        + b"\x08"
+        + len(payload).to_bytes(3, "little")
+        + unpacked.to_bytes(3, "little")
+        + payload
+    )
+
+
+def test_zlib_blocks_are_undone_one_after_another():
+    first, second = b"hello ", b"world"
+    data = block(b"ZL", zlib.compress(first), len(first)) + block(
+        b"ZL", zlib.compress(second), len(second)
+    )
+    assert decompress(data, 11) == b"hello world"
+
+
+def test_an_lz4_block_is_undone_after_its_checksum(monkeypatch):
+    sequence = lz4_literals(b"physics")
+    data = block(b"L4", b"\x00" * 8 + sequence, 7)
+    assert decompress(data, 7) == b"physics"
+
+
+def test_lzma_and_zstd_blocks_are_undone_too(monkeypatch):
+    import lzma
+
+    body = b"x" * 40
+    assert decompress(block(b"XZ", lzma.compress(body), 40), 40) == body
+    monkeypatch.setattr("xrd.root.compression._zstd", lambda blk, size: blk * size)
+    assert decompress(block(b"ZS", b"ab", 2), 4) == b"abab"
+
+
+def test_a_compression_this_reader_does_not_undo_is_refused_by_name():
+    with pytest.raises(UnsupportedFeatureError, match="pre-2005"):
+        decompress(block(b"CS", b"xx", 2), 2)
+
+
+def test_a_truncated_compressed_object_is_a_format_error():
+    with pytest.raises(FormatError, match="ran out after 0 of 8"):
+        decompress(b"ZL\x08\x00\x00", 8)
+    with pytest.raises(FormatError, match="says it is 1 bytes and only 0"):
+        decompress(block(b"ZL", b"x", 1)[:-1], 8)
+
+
+def test_a_block_that_gives_more_than_promised_is_a_format_error():
+    body = b"y" * 10
+    with pytest.raises(FormatError, match="gave 10 bytes where 5"):
+        decompress(block(b"ZL", zlib.compress(body), 10), 5)
+
+
+def lz4_literals(payload: bytes) -> bytes:
+    """An LZ4 sequence of literals only, which is how a block ends."""
+    count = len(payload)
+    if count < 15:
+        return bytes([count << 4]) + payload
+    token, count = bytes([0xF0]), count - 15
+    while count >= 255:
+        token += b"\xff"
+        count -= 255
+    return token + bytes([count]) + payload
+
+
+def test_lz4_copies_literals_out_however_many_there_are():
+    for size in (3, 15, 270, 600):
+        payload = bytes(range(size % 251)) * (size // max(size % 251, 1))
+        payload = (b"abc" * size)[:size]
+        assert _lz4(lz4_literals(payload) + b"", size) == payload
+
+
+def test_lz4_repeats_what_it_has_already_written():
+    #: four literals, then a match of four at a distance of four
+    data = bytes([0x40]) + b"abcd" + b"\x04\x00" + lz4_literals(b"!")
+    assert _lz4(data, 9) == b"abcdabcd!"
+
+
+def test_lz4_spells_a_run_as_a_match_that_overlaps_itself():
+    data = bytes([0x1B]) + b"a" + b"\x01\x00" + lz4_literals(b"z")
+    assert _lz4(data, 17) == b"a" * 16 + b"z"
+
+
+def test_lz4_reads_a_long_match_length_the_way_it_reads_a_long_literal():
+    data = bytes([0x1F]) + b"a" + b"\x01\x00" + b"\xff\x02" + lz4_literals(b"z")
+    assert _lz4(data, 1 + 19 + 255 + 2 + 1) == b"a" * (1 + 19 + 255 + 2) + b"z"
+
+
+def test_an_lz4_block_may_end_on_a_match():
+    assert _lz4(bytes([0x10]) + b"a" + b"\x01\x00", 5) == b"aaaaa"
+
+
+def test_an_lz4_match_cannot_point_before_the_block():
+    with pytest.raises(FormatError, match="bytes before the block"):
+        _lz4(bytes([0x10]) + b"a" + b"\x09\x00" + b"\x00", 12)
+
+
+def test_an_lz4_block_that_stops_mid_sequence_is_a_format_error():
+    with pytest.raises(FormatError, match="ends in the middle"):
+        _lz4(bytes([0xF0]), 4)
+    with pytest.raises(FormatError, match="gave 1 bytes where 9"):
+        _lz4(lz4_literals(b"a"), 9)
+
+
+# -- files, keys and directories ------------------------------------------
+
+
+def test_a_file_that_is_not_a_root_file_says_which_it_is(tmp_path):
+    page = tmp_path / "error.html"
+    page.write_bytes(b"<html>404</html>" * 20)
+    with pytest.raises(FormatError, match="is not a ROOT file"):
+        open_root(str(page))
+
+
+def test_a_truncated_file_says_where_it_ended(tmp_path):
+    short = tmp_path / "cut.root"
+    short.write_bytes((DATA / "simple.root").read_bytes()[:200])
+    with pytest.raises(FormatError, match="the file is truncated"):
+        open_root(str(short))
+
+
+def test_a_file_object_is_read_as_it_is_and_left_for_whoever_opened_it():
+    handle = (DATA / "simple.root").open("rb")
+    with open_root(handle) as root:
+        assert root.keys() == ["tree"]
+        assert root.name.endswith("simple.root")
+        assert "written by ROOT 60600" in repr(root)
+    assert not handle.closed
+    handle.close()
+
+
+def test_a_file_object_with_no_name_still_opens():
+    data = (DATA / "simple.root").read_bytes()
+    with open_root(io.BytesIO(data)) as root:
+        assert root.trees() == ["tree"]
+
+
+def test_a_key_says_what_it_holds_and_when_it_was_written():
+    with opened("simple") as root:
+        key = root._keys[0]
+        assert (key.classname, key.name, key.cycle) == ("TTree", "tree", 1)
+        assert repr(key) == "<Key 'tree';1 of class TTree>"
+        assert key.time.year >= 1995
+        assert key.compressed is (key.objlen != key.nbytes - key.keylen)
+
+
+def test_a_directory_behaves_like_the_mapping_it_is():
+    with opened("dirs-6.14.00") as root:
+        assert list(root) == ["dir1", "dir2", "dir3"]
+        assert len(root) == 3
+        assert "dir1" in root and "nope" not in root
+        assert root.classnames()["dir1"] == "TDirectory"
+        assert root.get("nope") is None
+        assert root.get("nope", "fallback") == "fallback"
+        assert repr(root["dir1"]) == "<Directory dir1 with 1 keys>"
+        assert root["dir1"].path == "dir1"
+        assert root["dir1/dir11"].keys() == ["h1"]
+        with pytest.raises(KeyError, match="is not in /"):
+            root["missing"]
+
+
+def test_a_directory_holding_no_tree_says_so_when_asked_for_one():
+    with opened("dirs-6.14.00") as root:
+        assert root.trees() == []
+        with pytest.raises(KeyError, match="holds 0 trees"):
+            root.tree()
+        with pytest.raises(UnsupportedFeatureError, match="is a TH1F"):
+            root["dir1/dir11/h1"]
+
+
+def test_the_only_tree_in_a_file_opens_without_being_named():
+    with opened("simple") as root:
+        assert isinstance(root.tree(), TTree)
+        assert root.tree("tree").name == "tree"
+
+
+def test_an_older_cycle_is_still_reachable_by_name():
+    with opened("simple") as root:
+        keys = root._keys
+        newer = Key(Buffer(key_bytes("TTree", "tree")))
+        newer.cycle = 2
+        root._keys = [newer, keys[0]]
+        assert root._key("tree").cycle == 2
+        assert root._key("tree;1").cycle == 1
+        assert root.keys() == ["tree"]
+        with pytest.raises(KeyError):
+            root._key("tree;9")
+
+
+def test_a_file_written_with_64_bit_seeks_reads_the_same_way(tmp_path):
+    path = tmp_path / "wide.root"
+    path.write_bytes(wide_file())
+    with open_root(str(path)) as root:
+        assert root.version == 4
+        assert root.keys() == ["h"]
+        assert root.classnames() == {"h": "TH1F"}
+
+
+def test_a_directory_with_no_key_list_is_refused():
+    with pytest.raises(FormatError, match="no key list"):
+        _directory_record(source_over(wide_file(seek_keys_broken=True)[132:]), 0)
+
+
+# -- trees, branches and leaves -------------------------------------------
+
+
+def test_a_flat_tree_reads_every_column_ROOT_can_write(flat):
+    assert len(flat) == 100
+    assert flat.typenames()["UInt64"] == "uint64"
+    assert flat["Int32"].array(0, 4).tolist() == [0, 1, 2, 3]
+    assert flat["Float64"].array(0, 2).tolist() == [0.0, 1.0]
+    assert flat["Str"].array(0, 2) == ["evt-000", "evt-001"]
+    assert flat["ArrayInt32"].length == 10
+    assert flat["ArrayInt32"].array(1, 2).tolist() == [1] * 10
+
+
+def test_a_variable_length_column_keeps_its_rows(flat):
+    jets = flat["SliceInt32"].array(0, 4)
+    assert isinstance(jets, Jagged)
+    assert jets.tolist() == [[], [1], [2, 2], [3, 3, 3]]
+    assert jets.lengths() == [0, 1, 2, 3]
+    assert flat["SliceInt32"].is_jagged
+    assert not flat["Int32"].is_jagged
+
+
+def test_a_tree_describes_itself_before_anything_is_read(simple):
+    assert repr(simple) == "<TTree 'tree' with 3 branches and 4 entries>"
+    assert simple.keys() == ["one", "two", "three"]
+    assert simple.readable() == ["one", "two", "three"]
+    assert list(simple) == simple.keys()
+    assert "one" in simple and "four" not in simple
+    assert simple.show().splitlines()[0].startswith("one")
+    assert repr(simple["two"]) == "<Branch 'two' of float32>"
+    assert simple["two"].title == "two"
+    assert len(simple["two"]) == 4
+    assert simple["two"].num_baskets == 1
+    with pytest.raises(KeyError, match="there is one, two, three"):
+        simple["four"]
+
+
+def test_a_tree_reads_several_columns_over_the_same_entries(simple):
+    assert simple.arrays(["one"], 1, 3)["one"].tolist() == [2, 3]
+    assert simple.arrays()["three"] == ["uno", "dos", "tres", "quatro"]
+
+
+def test_negative_entry_numbers_count_from_the_end(simple):
+    assert simple["one"].array(-2).tolist() == [3, 4]
+    assert simple["one"].array(0, -2).tolist() == [1, 2]
+    assert simple["one"].array(-99, 99).tolist() == [1, 2, 3, 4]
+
+
+def test_iterating_gives_batches_and_refuses_a_step_of_nothing(simple):
+    batches = list(simple.iterate(["one"], step=3))
+    assert [b["one"].tolist() for b in batches] == [[1, 2, 3], [4]]
+    assert list(simple.iterate(["one"], step=3, entry_start=1, entry_stop=99)) == [
+        {"one": array.array("i", [2, 3, 4])}
+    ]
+    with pytest.raises(ValueError, match="at least one entry"):
+        list(simple.iterate(step=0))
+
+
+def test_a_column_spanning_two_baskets_is_read_from_both():
+    with opened("pod-advanced") as root:
+        branch = root["orange"]["orange.Evtake_iwant"]
+        assert branch.num_baskets == 2
+        assert branch.record.basket_entry == [0, 77, 100]
+        assert branch.array(75, 80).tolist() == [75, 76, 77, 78, 79]
+        assert branch.array(0, 5).tolist() == [0, 1, 2, 3, 4]  # the second basket is not read
+        assert len(branch.array()) == 100
+
+
+def test_the_last_basket_read_is_kept_for_the_next_call():
+    with opened("pod-advanced") as root:
+        branch = root["orange"]["orange.Evtake_iwant"]
+        first = branch.basket(0)
+        assert branch.basket(0) is first
+        assert branch.basket(1) is not first
+        assert branch.basket(0) is not first
+
+
+def test_a_branch_holding_several_leaves_is_named_once_per_leaf():
+    with opened("padding") as root:
+        tree = root["tree"]
+        assert tree.keys()[:3] == ["pad.x1", "pad.x2", "pad.x3"]
+        assert tree["pad.x2"].array(0, 2).tolist() == [548655054794, 72058142692982730]
+        assert tree["nop.x2"].array(0, 2).tolist() == [0, 1]
+
+
+def test_an_ntuple_is_a_tree_with_something_after_it():
+    with opened("tntuple") as root:
+        tree = root["ntup"]
+        assert tree.keys() == ["x", "y"]
+        assert len(tree["x"].array()) == 10
+
+
+def test_a_column_this_reader_cannot_decode_is_named_with_the_reason():
+    with opened("embedded-std-vector") as root:
+        tree = root["modules"]
+        assert tree.readable() == ["hits_n"]
+        assert "streamer information" in tree.unreadable["hits_time_mc"]
+        assert tree.typenames()["hits_time_mc"] == "? (TLeafElement)"
+        assert " variable" not in tree.show()
+        with pytest.raises(UnsupportedFeatureError, match="unreadable lists the rest"):
+            tree["hits_time_mc"].array()
+
+
+def test_a_split_object_still_shows_every_sub_branch_it_was_split_into():
+    with opened("std-map-split1") as root:
+        tree = root["tree"]
+        assert len(tree.keys()) == 6
+        assert set(tree.unreadable) == set(tree.keys())
+
+
+def test_a_truncated_float_leaf_is_refused_rather_than_misread():
+    with opened("leaves") as root:
+        tree = root["tree"]
+        assert "16-bit float" in tree.unreadable["D16"]
+        assert tree["U8"].typename == "uint8"
+        assert tree["G64"].typename == "int64"
+        assert tree["ArrU32"].array(0, 1).tolist() == [0] * 10
+
+
+def test_a_leaf_class_nobody_has_heard_of_says_that_plainly():
+    assert "not a kind of leaf" in LeafRecord("TLeafQuantum").reason
+    assert LeafRecord("TLeafQuantum").typename is None
+    assert repr(LeafRecord("TLeafI")) == "<LeafRecord '' of class TLeafI>"
+
+
+def test_a_variable_leaf_sharing_a_branch_with_others_is_refused():
+    record = BranchRecord()
+    record.name = "shared"
+    first, second = LeafRecord("TLeafI"), LeafRecord("TLeafI")
+    first.count = second
+    record.leaves = [first, second]
+    branch = Branch("shared.a", record, first, source_over(b""))
+    assert repr(record) == "<BranchRecord 'shared' with 0 baskets>"
+    with pytest.raises(UnsupportedFeatureError, match="sharing a branch with 1 others"):
+        branch.array()
+
+
+def test_a_branch_record_walks_the_branches_beneath_it():
+    with opened("std-map-split1") as root:
+        tree = root["tree"]
+        top = tree["evt"].record
+        assert len(list(top.walk())) >= 1
+
+
+def test_a_tree_and_branch_from_2007_are_read_with_the_fields_of_their_day():
+    tree = read_tree(Buffer(oldest_tree_bytes()), source_over(b""), "t")
+    assert (tree.name, tree.title, len(tree)) == ("t", "an old tree", 7)
+    assert tree.branches == {}
+    branch = read_branch(Buffer(oldest_branch_bytes()))
+    assert (branch.name, branch.entries, branch.first_entry) == ("b", 5, 0)
+    assert branch.basket_seek == []
+
+
+def test_a_tree_from_before_this_reader_is_refused_by_version():
+    with pytest.raises(UnsupportedFeatureError, match="TTree version 4"):
+        read_tree(Buffer(record(4)), None, "old")
+    with pytest.raises(UnsupportedFeatureError, match="TTree version 5"):
+        read_tree(Buffer(record(1) + record(5)), None, "old", "TNtuple")
+    with pytest.raises(UnsupportedFeatureError, match="TBranch version 9"):
+        read_branch(Buffer(record(9)))
+
+
+def test_a_basket_that_writes_its_size_negative_carries_feature_bits():
+    raw = basket_bytes(b"0123456789", nevsize=2, nevbuf=5, last=0)
+    basket = Basket(source_over(raw), 0, len(raw), False)
+    assert basket.nevsize == 2
+    assert basket.nevbuf == 5
+    assert basket.data == b"0123456789"
+    assert basket.start_of(3, 0) == 6
+
+
+# -- jagged ---------------------------------------------------------------
+
+
+def jagged(rows: list[list[float]]) -> Jagged:
+    content = array.array("d", [value for row in rows for value in row])
+    offsets = array.array("q", [0])
+    for row in rows:
+        offsets.append(offsets[-1] + len(row))
+    return Jagged(content, offsets)
+
+
+def test_jagged_rows_index_like_a_sequence():
+    rows = jagged([[1.0, 2.0], [], [3.0]])
+    assert len(rows) == 3
+    assert rows[0].tolist() == [1.0, 2.0]
+    assert rows[-1].tolist() == [3.0]
+    assert [row.tolist() for row in rows[0:2]] == [[1.0, 2.0], []]
+    assert rows.tolist() == [[1.0, 2.0], [], [3.0]]
+    assert repr(rows) == "<Jagged 3 rows of 3 d values>"
+    with pytest.raises(IndexError, match="row out of range"):
+        rows[7]
+
+
+def test_jagged_rows_pad_to_a_rectangle():
+    rows = jagged([[1.0, 2.0], [], [3.0]])
+    values, width = rows.padded()
+    assert width == 2
+    assert values.tolist() == [1.0, 2.0, 0.0, 0.0, 3.0, 0.0]
+    cut, width = rows.padded(1, fill=-1.0)
+    assert (width, cut.tolist()) == (1, [1.0, -1.0, 3.0])
+
+
+def test_padding_an_integer_column_keeps_it_an_integer_column():
+    rows = Jagged(array.array("i", [1]), array.array("q", [0, 1, 1]))
+    values, _width = rows.padded(fill=0.0)
+    assert values.tolist() == [1, 0]
+    assert values.typecode == "i"
+
+
+# -- over the network -----------------------------------------------------
+
+
+def test_a_tree_reads_over_root_without_ever_being_downloaded(config):
+    from xrd.testing import FakeServer
+
+    data = (DATA / "small-flat-tree.root").read_bytes()
+    with FakeServer(files={"/data/flat.root": data}) as server:
+        with open_root(server.url.with_path("/data/flat.root"), config=config) as root:
+            tree = root["tree"]
+            assert tree.num_entries == 100
+            assert tree["Int32"].array(90, 95).tolist() == [90, 91, 92, 93, 94]
+            assert tree["SliceFloat64"].array(3, 4).tolist() == [[3.0, 3.0, 3.0]]
+
+
+def test_a_directory_can_be_built_over_any_source():
+    root = Directory(source_over(b""), [], "sub")
+    assert list(root) == []
+    assert root.get("anything") is None

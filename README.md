@@ -102,6 +102,26 @@ fs.listdir("/store/user/me")
 xrd.copy("root://eos.example.org//store/f.root", "s3://my-bucket/store/f.root")
 ```
 
+**ROOT files.** `xrd.root` opens a ROOT file and reads its trees in pure
+Python — no ROOT, no `uproot`, no `numpy`, no compiled extension. Nothing is
+downloaded: a tree is read a basket at a time, so a hundred-gigabyte file is
+walked from a laptop over the network, and `xrd.root.ml` turns those batches
+into tensors for a PyTorch `DataLoader`. Columns this reader cannot decode —
+split C++ objects, the truncated `Float16_t` — are listed with the reason
+rather than silently missing, because a plausible misreading of physics data
+is worse than a refusal.
+
+```python
+import torch, xrd.root, xrd.root.ml
+
+tree = xrd.root.open_root("root://eos.example.org//store/events.root").tree()
+pt = tree["Muon_pt"].array(0, 10_000)             # array.array, or Jagged rows
+
+loader = torch.utils.data.DataLoader(
+    xrd.root.ml.dataset(tree, ["Muon_pt"], step=8192), batch_size=None, num_workers=4
+)
+```
+
 **Async.** `xrd.aio` mirrors the whole surface — same names, same arguments,
 `await` in front. `import xrd` does not import `asyncio`; the facade is
 resolved on first use.
@@ -202,9 +222,9 @@ bucket — signatures checked against the AWS specification rather than trusted.
 
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
-S3, the copy engine, the CLI and the fsspec bindings are implemented and
-tested —
-2433 tests, of which the great majority need no network, no KDC and no
+S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
+reader are implemented and tested —
+2510 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

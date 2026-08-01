@@ -133,6 +133,26 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.s3.sign
 
+## ROOT files
+
+::: xrd.root.open_root
+
+::: xrd.root.ROOTFile
+
+::: xrd.root.Directory
+
+::: xrd.root.TTree
+
+::: xrd.root.Branch
+
+::: xrd.root.Jagged
+
+::: xrd.root.ml.to_tensor
+
+::: xrd.root.ml.iter_tensors
+
+::: xrd.root.ml.dataset
+
 ## Testing
 
 ::: xrd.testing.FakeServer
