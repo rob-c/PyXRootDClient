@@ -60,6 +60,8 @@ advance from `tree[name].is_jagged` and `typename`:
 | a fixed array (`x[10]/F`) | an `array.array`, `branch.length` values per entry |
 | a variable one (`x[n]/F`) | a `Jagged` — rows of different lengths |
 | a character leaf (`x/C`) | a `list[str]` |
+| a string, `std::string` or `TString` | a `list[str]` |
+| an STL container | a `list`, one Python object per entry |
 
 ```python
 tree["nMuon"].array()             # array('i', [2, 0, 3, ...])
@@ -86,10 +88,38 @@ for batch in tree.iterate(["Muon_pt", "Muon_eta"], step=50_000):
 `tree.arrays()` is the same for one range, and takes every readable column
 when it is not told which.
 
-## Into PyTorch
+## C++ classes and containers
 
-`xrd.root.ml` turns those batches into tensors, and is not imported until it
-is called, so nothing here costs anything on a machine with no PyTorch:
+A file written by a physics framework is usually a C++ class per entry, split
+by ROOT into one branch per member. Those branches are columns here like any
+other, under the names ROOT gave them:
+
+```python
+tree.keys()             # ['Muon.pt', 'Muon.eta', 'evt.N', 'evt.StlVecF64', ...]
+tree["evt.StlVecF64"].array(0, 100)   # <Jagged 100 rows of ...>
+```
+
+A member that is an STL container comes back as the Python thing it most
+nearly is, one per entry:
+
+| In the file | In Python |
+| --- | --- |
+| `std::vector<double>`, `list`, `deque`, `set` of numbers | a `Jagged` — rows of `array.array` |
+| a container of strings | a `list[list[str]]` |
+| `vector<vector<T>>` | a `list` of `list`s of `array.array` |
+| `std::map<K, V>`, `unordered_map` | a `list[dict]`, one dict per entry |
+| `std::string`, `TString` | a `list[str]` |
+| `std::vector<bool>` | rows of 0 and 1, a byte an element, which is how ROOT wrote it |
+
+`Double32_t` and `Float16_t` members are floats squeezed into three or four
+bytes by a recipe written in the leaf title (`[xmin,xmax,nbits]`, where the
+ends may be written in units of `pi`). They are unpacked back to `float64`, so
+`typenames()` says `float64` and nothing about the packing reaches you.
+
+## Into PyTorch and TensorFlow
+
+`xrd.root.ml` turns those batches into tensors. Neither framework is imported
+until it is called, so nothing here costs anything on a machine with neither:
 
 ```python
 import torch, xrd.root, xrd.root.ml
@@ -119,28 +149,53 @@ xrd.root.ml.iter_tensors(tree, step=8192, device="cuda")
 ```
 
 Unsigned columns wider than a byte are widened into the signed type that holds
-them, because torch's unsigned types beyond `uint8` are too thinly supported
-to hand anybody; a value too large for `int64` is refused by name rather than
-wrapped around.
+them, because neither framework's unsigned types beyond `uint8` are supported
+well enough to hand anybody; a value too large for `int64` is refused by name
+rather than wrapped around.
+
+TensorFlow takes the same tree through `tf_dataset`, which declares its shapes
+and types up front — from what the file says the columns are, without a first
+pass over the data — so the rest of `tf.data` works on it:
+
+```python
+data = xrd.root.ml.tf_dataset(tree, ["Muon_pt"], step=8192).prefetch(2)
+for batch in data:
+    model(batch["Muon_pt"])
+```
+
+With no column names, either dataset takes every numeric column and leaves the
+strings and objects out, rather than leaving them in to fail later.
+
+## Compression
+
+Every algorithm ROOT writes with is read here: zlib, lzma, LZ4, zstd, and the
+bare-deflate blocks ROOT wrote before 2005. The LZ4 decoder is Python, because
+a physics file should not need a wheel to be read; zstd uses Python 3.14's own
+`compression.zstd` where there is one and the `zstandard` package otherwise,
+and is the one case where a file may need something installed.
 
 ## What it refuses, and why by name
 
-This reader does the plain numeric and string leaves. A column of split C++
-objects needs the file's streamer information, which it does not decode, so
-such a column is listed in `tree.unreadable` with the reason and raises with
-the same sentence if it is asked for:
+A plausible misreading of physics data is worse than a refusal, so anything
+this reader does not understand is named rather than guessed at. A column that
+cannot be decoded is listed in `tree.unreadable` with the reason, and raises
+with the same sentence if it is asked for:
 
 ```python
 >>> tree.unreadable
-{'hits': "a split C++ object, which needs the file's streamer information"}
+{'evt': 'Event, which is a C++ type this reader does not decode; '
+        'a split file has its members as branches of their own'}
 ```
 
-That is deliberate. A plausible misreading of physics data is worse than a
-refusal, so anything not understood is named — the truncated `Float16_t` and
-`Double32_t` leaves, `zstd` compression where neither Python 3.14 nor the
-`zstandard` package is present, and trees written by ROOT 4 or older. Files
-compressed with zlib, lzma or LZ4 are read as they are; the LZ4 decoder is
-Python, because a physics file should not need a wheel to be read.
+What is named that way:
+
+- a whole object written per entry rather than split into members — for a
+  split file the members are branches, and those read;
+- a class with no layout this reader knows, such as `TLorentzVector`;
+- a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
+  keyed by a container or nested inside one;
+- a container written field by field rather than value by value;
+- trees written by ROOT 4 or older.
 
 ## Errors
 

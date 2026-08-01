@@ -12,12 +12,28 @@ object back-references written into the stream are absolute in those terms.
 
 from __future__ import annotations
 
+import array
 import struct
+import sys
 from typing import Any
 
 from .errors import FormatError
 
-__all__ = ["Buffer"]
+__all__ = ["Buffer", "to_native"]
+
+if sys.byteorder == "little":  # pragma: no cover - one of two, decided by the machine
+
+    def to_native(values: array.array[Any]) -> array.array[Any]:
+        """ROOT writes big-endian; make it the order this machine reads."""
+        values.byteswap()
+        return values
+
+else:  # pragma: no cover - big-endian machines, where ROOT's order is ours
+
+    def to_native(values: array.array[Any]) -> array.array[Any]:
+        return values
+
+
 
 BYTE_COUNT_MASK = 0x40000000
 NEW_CLASS_TAG = 0xFFFFFFFF
@@ -233,6 +249,22 @@ class Buffer:
         obj = reader(self)
         self.refs[start + MAP_OFFSET] = obj
         return obj
+
+    def tlist(self, classes: dict[str, Any]) -> list[Any]:
+        """A ``TList``: like a ``TObjArray``, but each entry carries an option.
+
+        The option is a string nobody reading data wants, written after the
+        object it belongs to, so it has to be stepped over one at a time.
+        """
+        _version, end = self.header()
+        self.tobject()
+        self.string()
+        items = []
+        for _ in range(self.i32()):
+            items.append(self.any(classes))
+            self.take(self.u8())
+        self.resume(end)
+        return items
 
     def objarray(self, classes: dict[str, Any]) -> list[Any]:
         """A ``TObjArray``: the container ROOT keeps branches and leaves in."""

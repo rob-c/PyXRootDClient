@@ -92,7 +92,7 @@ mypy_path = "src"
 # through narrow, guarded imports, so untyped is the honest description of
 # them rather than a hole in our own checking.
 [[tool.mypy.overrides]]
-module = ["gssapi.*", "google_crc32c.*", "fsspec.*", "zstandard.*"]
+module = ["gssapi.*", "google_crc32c.*", "fsspec.*", "zstandard.*", "tensorflow.*"]
 ignore_missing_imports = true
 
 # ``AbstractFileSystem`` is therefore ``Any``, and subclassing it is the whole

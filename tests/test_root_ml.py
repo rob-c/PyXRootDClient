@@ -1,9 +1,9 @@
 """Turning a tree into tensors.
 
-PyTorch is not a dependency of this library and is not installed in the test
-environment, so the tests stand a small module in for it: what they check is
-that the right calls are made with the right shapes and types, which is the
-part this library is responsible for.
+Neither PyTorch nor TensorFlow is a dependency of this library, and neither is
+installed in the test environment, so the tests stand a small module in for
+each: what they check is that the right calls are made with the right shapes
+and types, which is the part this library is responsible for.
 """
 
 from __future__ import annotations
@@ -16,7 +16,16 @@ import types
 import pytest
 
 from xrd.root import Jagged, UnsupportedFeatureError, open_root
-from xrd.root.ml import dataset, iter_tensors, numeric, to_tensor, to_tensors
+from xrd.root.ml import (
+    dataset,
+    iter_tensors,
+    numeric,
+    tf_dataset,
+    to_tensor,
+    to_tensors,
+    to_tf_tensor,
+    to_tf_tensors,
+)
 
 DATA = pathlib.Path(__file__).parent / "data"
 
@@ -106,7 +115,7 @@ def test_an_unsigned_column_is_widened_into_a_type_torch_takes(torch):
 
 
 def test_a_value_too_large_for_any_signed_type_is_refused_not_wrapped(torch):
-    with pytest.raises(UnsupportedFeatureError, match="too large for torch's int64"):
+    with pytest.raises(UnsupportedFeatureError, match="too large for int64"):
         to_tensor(array.array("Q", [2**63]))
 
 
@@ -159,3 +168,94 @@ def test_several_workers_split_the_entries_between_them(torch, flat):
 
     torch.utils.data.get_worker_info = lambda: types.SimpleNamespace(id=9, num_workers=3)
     assert list(iter(dataset(flat, ["Int32"], step=10))) == []
+
+
+class TfTensor:
+    """Enough of a TensorFlow tensor to see what was asked for."""
+
+    def __init__(self, raw, dtype, shape=None):
+        self.raw = raw
+        self.dtype = dtype
+        self.shape = shape
+
+    def values(self, code):
+        return array.array(code, self.raw).tolist()
+
+
+@pytest.fixture
+def tf(monkeypatch):
+    """A stand-in for TensorFlow, in the place ``import tensorflow`` looks."""
+    module = types.ModuleType("tensorflow")
+    for name in ("int8", "uint8", "int16", "int32", "int64", "float32", "float64"):
+        setattr(module, name, name)
+    module.constant = lambda raw: raw
+    module.io = types.SimpleNamespace(
+        decode_raw=lambda raw, dtype, little_endian: TfTensor(raw, dtype)
+    )
+    module.reshape = lambda tensor, shape: TfTensor(tensor.raw, tensor.dtype, shape)
+    module.TensorSpec = lambda shape, dtype: (shape, dtype)
+
+    class Dataset:
+        @staticmethod
+        def from_generator(batches, output_signature):
+            return types.SimpleNamespace(
+                signature=output_signature, batches=lambda: list(batches())
+            )
+
+    module.data = types.SimpleNamespace(Dataset=Dataset)
+    monkeypatch.setitem(sys.modules, "tensorflow", module)
+    return module
+
+
+def test_without_tensorflow_the_refusal_says_what_to_install(monkeypatch):
+    monkeypatch.setitem(sys.modules, "tensorflow", None)
+    with pytest.raises(UnsupportedFeatureError, match="pip install tensorflow"):
+        to_tf_tensor(array.array("i", [1]))
+
+
+def test_a_column_becomes_a_tensorflow_tensor_of_the_matching_type(tf):
+    tensor = to_tf_tensor(array.array("f", [1.5, 2.5]))
+    assert (tensor.dtype, tensor.shape) == ("float32", None)
+    assert tensor.values("f") == [1.5, 2.5]
+
+
+def test_a_fixed_size_array_column_becomes_rows_in_tensorflow(tf):
+    assert to_tf_tensor(array.array("i", [1, 2, 3, 4]), width=2).shape == (2, 2)
+
+
+def test_a_variable_column_is_padded_for_tensorflow_too(tf):
+    rows = Jagged(array.array("d", [1.0, 2.0, 3.0]), array.array("q", [0, 2, 2, 3]))
+    tensor = to_tf_tensor(rows, fill=-1.0)
+    assert tensor.shape == (3, 2)
+    assert tensor.values("d") == [1.0, 2.0, -1.0, -1.0, 3.0, -1.0]
+    empty = Jagged(array.array("i", []), array.array("q", [0, 0]))
+    assert to_tf_tensor(empty).shape == (0, 0)
+
+
+def test_a_batch_becomes_a_batch_of_tensorflow_tensors(tf):
+    batch = {"pt": array.array("f", [1.0, 2.0]), "hits": array.array("i", [1, 2, 3, 4])}
+    tensors = to_tf_tensors(batch, widths={"hits": 2})
+    assert tensors["pt"].shape is None
+    assert tensors["hits"].shape == (2, 2)
+
+
+def test_a_tf_dataset_declares_its_shapes_before_reading_anything(tf, flat):
+    data = tf_dataset(flat, ["Int32", "ArrayInt32", "SliceInt32"], step=40)
+    assert data.signature == {
+        "Int32": ((None,), "int32"),
+        "ArrayInt32": ((None, 10), "int32"),
+        "SliceInt32": ((None, None), "int32"),
+    }
+    batches = data.batches()
+    assert len(batches) == 3
+    assert batches[0]["Int32"].values("i")[:3] == [0, 1, 2]
+    assert batches[0]["ArrayInt32"].shape == (40, 10)
+
+
+def test_a_tf_dataset_with_no_names_takes_every_numeric_column(tf, flat):
+    assert set(tf_dataset(flat, step=100).signature) == set(numeric(flat))
+
+
+def test_a_column_that_is_not_numbers_has_no_tensor_shape(tf, flat):
+    with pytest.raises(UnsupportedFeatureError, match="which is not numbers"):
+        tf_dataset(flat, ["Str"])

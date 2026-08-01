@@ -4,12 +4,13 @@ A compressed ROOT object is a run of blocks, each with a nine-byte header
 saying which algorithm made it and how long it is either way. Blocks are at
 most 16 MB, so a large basket is several of them back to back.
 
-zlib and lzma come from the standard library. LZ4 is decoded here, in Python,
-because there is no LZ4 in the standard library and a physics file should not
-need a wheel to be read - it is a small format and this is a small decoder.
-zstd is used from the standard library on Python 3.14 and later, or from the
-``zstandard`` package if it happens to be installed, and is otherwise refused
-by name rather than guessed at.
+zlib and lzma come from the standard library, and so does the pre-2005 ROOT
+algorithm, which turns out to be deflate with the wrapper left off. LZ4 is
+decoded here, in Python, because there is no LZ4 in the standard library and a
+physics file should not need a wheel to be read - it is a small format and this
+is a small decoder. zstd is used from the standard library on Python 3.14 and
+later, or from the ``zstandard`` package if it happens to be installed, and is
+otherwise refused by name rather than guessed at.
 """
 
 from __future__ import annotations
@@ -108,6 +109,23 @@ def _lz4(src: bytes, size: int) -> bytes:
     return bytes(out)
 
 
+def _old(block: bytes, size: int) -> bytes:
+    """One pre-2005 ROOT block, which is deflate with nothing wrapped round it.
+
+    ROOT of that age carried its own copy of the classic PKZIP inflate, and
+    what it wrote is the bare deflate stream - the same bytes zlib produces,
+    without zlib's two-byte header and trailing checksum. That is what a
+    negative window size asks :mod:`zlib` for.
+    """
+    try:
+        out = zlib.decompress(block, -zlib.MAX_WBITS)
+    except zlib.error as exc:
+        raise FormatError(f"a pre-2005 block would not inflate: {exc}") from None
+    if len(out) != size:
+        raise FormatError(f"a pre-2005 block gave {len(out)} bytes where {size} were promised")
+    return out
+
+
 def decompress(data: bytes, size: int) -> bytes:
     """The ``size`` bytes that ``data``'s blocks were made from."""
     out = bytearray()
@@ -127,6 +145,8 @@ def decompress(data: bytes, size: int) -> bytes:
 
         if tag == b"ZL":
             out += zlib.decompress(block)
+        elif tag == b"CS":
+            out += _old(block, unpacked)
         elif tag == b"XZ":
             out += lzma.decompress(block)
         elif tag == b"L4":
@@ -136,7 +156,8 @@ def decompress(data: bytes, size: int) -> bytes:
         else:
             raise UnsupportedFeatureError(
                 f"this file is compressed with {algorithm(tag)}, which this reader does not "
-                f"undo; rewrite it with hadd, or ask ROOT for zlib, lzma or lz4"
+                f"undo; rewrite it with hadd, which will give you one of zlib, lzma, lz4 "
+                f"and zstd, and all four are read here"
             )
     if len(out) != size:
         raise FormatError(f"decompressing gave {len(out)} bytes where {size} were promised")

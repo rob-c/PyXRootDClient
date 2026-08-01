@@ -153,6 +153,12 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.ml.dataset
 
+::: xrd.root.ml.to_tf_tensor
+
+::: xrd.root.ml.tf_dataset
+
+::: xrd.root.ml.numeric
+
 ## Testing
 
 ::: xrd.testing.FakeServer

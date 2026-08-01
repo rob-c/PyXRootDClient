@@ -49,8 +49,9 @@ can only honestly be tested against a live KDC.
 - **[Files and paths](files.md)**, **[Namespaces](filesystem.md)**,
   **[Copying](copying.md)** - the three halves of the API.
 - **[S3 object storage](s3.md)** - the same three entry points over a bucket.
-- **[Reading ROOT files](root.md)** - trees and TTree branches in pure Python,
-  streamed into PyTorch a basket at a time.
+- **[Reading ROOT files](root.md)** - trees, split C++ classes and STL
+  containers in pure Python, streamed into PyTorch or TensorFlow a basket at
+  a time.
 - **[Authentication](auth.md)** - proxies, tokens, keytabs, and what to do
   when the ladder refuses everything.
 - **[Coming from pyxrootd](migrating.md)** - a translation table.
@@ -64,7 +65,7 @@ can only honestly be tested against a live KDC.
 The wire protocol, the session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
-reader are implemented and tested - 2510 tests, the great majority of which need no network, no KDC and no
+reader are implemented and tested - 2561 tests, the great majority of which need no network, no KDC and no
 `openssl`, plus [interoperability and parity suites](interop.md) that run
 against a real `xrootd` daemon and the official bindings side by side.
 Coverage is 100% of statements and branches across the package, and `proto/`,

@@ -31,6 +31,7 @@ from xrd.root import (
 from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
 from xrd.root.compression import _lz4, algorithm, decompress
 from xrd.root.file import Source, _directory_record
+from xrd.root.interp import build
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
 from xrd.root.tree import Basket
 
@@ -302,9 +303,32 @@ def test_lzma_and_zstd_blocks_are_undone_too(monkeypatch):
     assert decompress(block(b"ZS", b"ab", 2), 4) == b"abab"
 
 
+def deflated(payload: bytes) -> bytes:
+    """The deflate stream alone, which is what ROOT wrote before 2005."""
+    maker = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    return maker.compress(payload) + maker.flush()
+
+
+def test_a_pre_2005_block_is_deflate_with_the_wrapper_left_off():
+    body = b"a physics file from the last century" * 4
+    data = block(b"CS", deflated(body), len(body))
+    assert decompress(data, len(body)) == body
+
+
+def test_a_pre_2005_block_that_will_not_inflate_says_so():
+    with pytest.raises(FormatError, match="would not inflate"):
+        decompress(block(b"CS", b"not deflate at all", 4), 4)
+
+
+def test_a_pre_2005_block_of_the_wrong_length_is_not_handed_back():
+    body = b"eight!!!"
+    with pytest.raises(FormatError, match="gave 8 bytes where 4"):
+        decompress(block(b"CS", deflated(body), 4), 8)
+
+
 def test_a_compression_this_reader_does_not_undo_is_refused_by_name():
-    with pytest.raises(UnsupportedFeatureError, match="pre-2005"):
-        decompress(block(b"CS", b"xx", 2), 2)
+    with pytest.raises(UnsupportedFeatureError, match="an unknown algorithm"):
+        decompress(block(b"QQ", b"xx", 2), 2)
 
 
 def test_a_truncated_compressed_object_is_a_format_error():
@@ -563,27 +587,47 @@ def test_an_ntuple_is_a_tree_with_something_after_it():
 
 
 def test_a_column_this_reader_cannot_decode_is_named_with_the_reason():
+    with opened("std-map-split1") as root:
+        tree = root["tree"]
+        assert "evt" not in tree.readable()
+        assert "C++ type this reader does not decode" in tree.unreadable["evt"]
+        assert tree.typenames()["evt"] == "? (TLeafElement)"
+        with pytest.raises(UnsupportedFeatureError, match="unreadable lists every column"):
+            tree["evt"].array()
+
+
+def test_a_vector_member_of_a_split_object_is_read_as_rows():
     with opened("embedded-std-vector") as root:
         tree = root["modules"]
-        assert tree.readable() == ["hits_n"]
-        assert "streamer information" in tree.unreadable["hits_time_mc"]
-        assert tree.typenames()["hits_time_mc"] == "? (TLeafElement)"
-        assert " variable" not in tree.show()
-        with pytest.raises(UnsupportedFeatureError, match="unreadable lists the rest"):
-            tree["hits_time_mc"].array()
+        assert tree.unreadable == {}
+        assert tree.typenames() == {"hits_n": "int32", "hits_time_mc": "float32"}
+        assert tree["hits_time_mc"].is_jagged
+        assert tree["hits_time_mc"].array(0, 2).lengths() == [10, 11]
+        assert " variable" in tree.show()
 
 
-def test_a_split_object_still_shows_every_sub_branch_it_was_split_into():
+def test_a_split_object_shows_every_sub_branch_and_reads_the_maps():
     with opened("std-map-split1") as root:
         tree = root["tree"]
         assert len(tree.keys()) == 6
-        assert set(tree.unreadable) == set(tree.keys())
+        assert set(tree.unreadable) == {"evt"}
+        # What go-hep reads out of entry 1 of this same file, map for map.
+        assert tree["mi32"].array(1, 2) == [{0: 0}]
+        assert tree["msi32"].array(1, 2) == [{"key-000": 0}]
+        assert tree["mss"].array(1, 2) == [{"key-000": "val-000"}]
+        assert tree["msvs"].array(1, 2) == [{"key-000": ["val-000", "val-001", "val-002"]}]
+        assert tree["msvi32"].array(1, 2) == [{"key-000": array.array("i", [1, 0, 3, 0])}]
 
 
-def test_a_truncated_float_leaf_is_refused_rather_than_misread():
+def test_a_double32_leaf_is_unpacked_by_the_recipe_in_its_title():
     with opened("leaves") as root:
         tree = root["tree"]
-        assert "16-bit float" in tree.unreadable["D16"]
+        assert tree.unreadable == {}
+        assert tree["D16"].typename == tree["D32"].typename == "float64"
+        assert list(tree["D16"].array()) == [float(n) for n in range(10)]
+        assert list(tree["D32"].array()) == [float(n) for n in range(10)]
+        assert tree["ArrD16"].array(3, 4).tolist() == [3.0] * 10
+        assert tree["SliD32"].array(4, 5).tolist() == [[4.0] * 4]
         assert tree["U8"].typename == "uint8"
         assert tree["G64"].typename == "int64"
         assert tree["ArrU32"].array(0, 1).tolist() == [0] * 10
@@ -601,7 +645,7 @@ def test_a_variable_leaf_sharing_a_branch_with_others_is_refused():
     first, second = LeafRecord("TLeafI"), LeafRecord("TLeafI")
     first.count = second
     record.leaves = [first, second]
-    branch = Branch("shared.a", record, first, source_over(b""))
+    branch = Branch("shared.a", record, first, build(record, first, None), source_over(b""))
     assert repr(record) == "<BranchRecord 'shared' with 0 baskets>"
     with pytest.raises(UnsupportedFeatureError, match="sharing a branch with 1 others"):
         branch.array()

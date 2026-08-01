@@ -36,12 +36,13 @@ LEAF_TYPES = {
     "TLeafC": ("str", "", 0),
 }
 
+#: Leaves holding floats squeezed into fewer bytes, by the recipe in the title.
+PACKED_LEAVES = ("TLeafF16", "TLeafD32")
+
 #: Leaves that are real and are not plain numbers behind a name.
 LEAF_REASONS = {
     "TLeafElement": "a split C++ object, which needs the file's streamer information",
     "TLeafObject": "a whole object per entry, which needs the file's streamer information",
-    "TLeafF16": "a truncated 16-bit float, whose packing is stored in the streamer",
-    "TLeafD32": "a truncated 32-bit double, whose packing is stored in the streamer",
 }
 
 UNSIGNED = {"b": "B", "h": "H", "i": "I", "q": "Q"}
@@ -50,7 +51,17 @@ UNSIGNED = {"b": "B", "h": "H", "i": "I", "q": "Q"}
 class LeafRecord:
     """One column's description, as the file states it."""
 
-    __slots__ = ("classname", "name", "title", "length", "etype", "offset", "unsigned", "count")
+    __slots__ = (
+        "classname",
+        "name",
+        "title",
+        "length",
+        "etype",
+        "offset",
+        "unsigned",
+        "count",
+        "ltype",
+    )
 
     def __init__(self, classname: str) -> None:
         self.classname = classname
@@ -59,6 +70,8 @@ class LeafRecord:
         self.etype = self.offset = 0
         self.unsigned = False
         self.count: LeafRecord | None = None
+        #: The streamer type a ``TLeafElement`` names; ``-1`` for a whole object.
+        self.ltype = -1
 
     def __repr__(self) -> str:
         return f"<LeafRecord {self.name!r} of class {self.classname}>"
@@ -95,6 +108,7 @@ class BranchRecord:
     __slots__ = (
         "name",
         "title",
+        "classname",
         "entry_offset_len",
         "entries",
         "first_entry",
@@ -107,6 +121,8 @@ class BranchRecord:
 
     def __init__(self) -> None:
         self.name = self.title = ""
+        #: The C++ class a ``TBranchElement`` belongs to; empty for a plain branch.
+        self.classname = ""
         self.entry_offset_len = 0
         self.entries = self.first_entry = 0
         self.basket_bytes: list[int] = []
@@ -140,6 +156,9 @@ def read_leaf(buf: Buffer, classname: str) -> LeafRecord:
     if isinstance(count, LeafRecord):
         leaf.count = count
     buf.resume(inner)
+    if classname == "TLeafElement":
+        buf.i32()  # which member of the class this is, which its name says too
+        leaf.ltype = buf.i32()
     buf.resume(end)
     return leaf
 
@@ -184,8 +203,26 @@ def read_branch(buf: Buffer) -> BranchRecord:
     return branch
 
 
+def read_branch_element(buf: Buffer) -> BranchRecord:
+    """A ``TBranchElement``: a branch, plus the C++ class it was split out of.
+
+    The class name is what tells a top-level branch apart from a member of
+    something bigger - ``vector<float>`` says everything about how to read the
+    column, where ``Event`` says to look at the branches under it instead.
+    """
+    version, end = buf.header()
+    branch = read_branch(buf)
+    branch.classname = buf.string()
+    if version > 1:
+        buf.string(), buf.string()  # the parent class, and the TClonesArray class
+        buf.u32()  # the checksum of the class this was written from
+    buf.u16() if version >= 10 else buf.u32()  # that class's version
+    buf.resume(end)
+    return branch
+
+
 def read_derived_branch(buf: Buffer) -> BranchRecord:
-    """A ``TBranchElement`` and its relatives, down to the ``TBranch`` in them.
+    """A ``TBranchObject``, ``TBranchClones`` or ``TBranchSTL``.
 
     The C++ part on top is what this reader cannot follow; the branch part
     underneath is what makes the column appear in the tree at all, with a name
@@ -205,9 +242,12 @@ def _leaf_class(classname: str) -> Callable[[Buffer], LeafRecord]:
 
 
 #: What :meth:`Buffer.any` knows how to build; anything else is stepped over.
-CLASSES: dict[str, Any] = {name: _leaf_class(name) for name in LEAF_TYPES | LEAF_REASONS}
+CLASSES: dict[str, Any] = {
+    name: _leaf_class(name) for name in (*LEAF_TYPES, *LEAF_REASONS, *PACKED_LEAVES)
+}
 CLASSES["TBranch"] = read_branch
-for _derived in ("TBranchElement", "TBranchObject", "TBranchClones", "TBranchSTL"):
+CLASSES["TBranchElement"] = read_branch_element
+for _derived in ("TBranchObject", "TBranchClones", "TBranchSTL"):
     CLASSES[_derived] = read_derived_branch
 
 

@@ -10,13 +10,13 @@ laptop: the bytes that cross the wire are the ones asked for.
 from __future__ import annotations
 
 import array
-import sys
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from .buffer import Buffer
 from .compression import decompress
 from .errors import UnsupportedFeatureError
+from .interp import Column, Flat, Refused, Rows, Values, build
 
 if TYPE_CHECKING:
     from .file import Source
@@ -26,18 +26,6 @@ __all__ = ["Jagged", "Branch", "TTree"]
 
 #: Entries per step when iterating, if nobody says otherwise.
 DEFAULT_STEP = 10_000
-
-if sys.byteorder == "little":  # pragma: no cover - one of two, decided by the machine
-
-    def to_native(values: array.array[Any]) -> array.array[Any]:
-        """ROOT writes big-endian; make it the order this machine reads."""
-        values.byteswap()
-        return values
-
-else:  # pragma: no cover - big-endian machines, where ROOT's order is ours
-
-    def to_native(values: array.array[Any]) -> array.array[Any]:
-        return values
 
 
 class Jagged(Sequence[Any]):
@@ -148,12 +136,21 @@ class Branch:
     ``branch.leaf``, which is how ROOT itself writes such a name.
     """
 
-    __slots__ = ("name", "record", "leaf", "_source", "_cached")
+    __slots__ = ("name", "record", "leaf", "column", "_source", "_cached")
 
-    def __init__(self, name: str, record: BranchRecord, leaf: LeafRecord, source: Source) -> None:
+    def __init__(
+        self,
+        name: str,
+        record: BranchRecord,
+        leaf: LeafRecord,
+        column: Column,
+        source: Source,
+    ) -> None:
         self.name = name
         self.record = record
         self.leaf = leaf
+        #: How this column's bytes turn into values.
+        self.column = column
         self._source = source
         self._cached: tuple[int, Basket] | None = None
 
@@ -173,8 +170,8 @@ class Branch:
 
     @property
     def typename(self) -> str | None:
-        """``'float32'``, ``'str'``, or ``None`` when this reader cannot decode it."""
-        return self.leaf.typename
+        """``'float32'``, ``'list[str]'``, or ``None`` if it cannot be decoded."""
+        return self.column.typename
 
     @property
     def length(self) -> int:
@@ -185,22 +182,22 @@ class Branch:
         tensor. A variable column says ``1`` here and means the lengths in
         :class:`Jagged` instead.
         """
-        return self.leaf.length
+        return self.column.length if isinstance(self.column, Flat) else 1
 
     @property
     def is_jagged(self) -> bool:
         """Does the number of values per entry change from entry to entry?"""
-        return self.leaf.count is not None
+        return isinstance(self.column, Rows)
 
     @property
     def num_baskets(self) -> int:
         return len(self.record.basket_seek)
 
     def _refuse_if_unreadable(self) -> None:
-        if self.typename is None:
+        if isinstance(self.column, Refused):
             raise UnsupportedFeatureError(
-                f"{self.name!r} holds {self.leaf.reason}; this reader does the plain numeric "
-                f"and string leaves, and tree.unreadable lists the rest with the reason"
+                f"{self.name!r} holds {self.column.reason}; tree.unreadable lists every "
+                f"column this file has that cannot be read, each with its reason"
             )
         if self.is_jagged and len(self.record.leaves) > 1:
             raise UnsupportedFeatureError(
@@ -243,34 +240,43 @@ class Branch:
         """The values for a range of entries.
 
         Fixed-size columns come back as an :class:`array.array`, variable ones
-        as :class:`Jagged`, and character leaves as a list of strings.
+        as :class:`Jagged`, and anything that is neither - strings, lists of
+        lists, maps - as a list with one Python value per entry.
         """
         self._refuse_if_unreadable()
         start, stop = self._bounds(entry_start, entry_stop)
-        if self.leaf.classname == "TLeafC":
-            return self._strings(start, stop)
+        column = self.column
+        if isinstance(column, Values):
+            return self._objects(column, start, stop)
+        if isinstance(column, Rows):
+            return self._rows(column, start, stop)
+        assert isinstance(column, Flat)
+        return self._flat(column, start, stop)
 
-        leaf = self.leaf
-        size = leaf.length * leaf.itemsize
+    def _flat(self, column: Flat, start: int, stop: int) -> Any:
+        size = column.length * column.itemsize
+        offset = self.leaf.offset
+        content = bytearray()
+        for index, low, high in self._spans(start, stop):
+            basket = self.basket(index)
+            if not basket.offsets and offset == 0 and basket.nevsize == size:
+                content += basket.data[low * size : high * size]  # the whole run at once
+            else:
+                for entry in range(low, high):
+                    at = basket.start_of(entry, offset)
+                    content += basket.data[at : at + size]
+        return column.decode(bytes(content))
+
+    def _rows(self, column: Rows, start: int, stop: int) -> Jagged:
         content = bytearray()
         counts: list[int] = []
         for index, low, high in self._spans(start, stop):
             basket = self.basket(index)
-            if self.is_jagged:
-                for entry in range(low, high):
-                    at, end = basket.start_of(entry, leaf.offset), basket.end_of(entry)
-                    counts.append((end - at) // leaf.itemsize)
-                    content += basket.data[at:end]
-            elif not basket.offsets and leaf.offset == 0 and basket.nevsize == size:
-                content += basket.data[low * size : high * size]  # the whole run at once
-            else:
-                for entry in range(low, high):
-                    at = basket.start_of(entry, leaf.offset)
-                    content += basket.data[at : at + size]
-
-        values = to_native(array.array(leaf.typecode, bytes(content)))
-        if not self.is_jagged:
-            return values
+            for entry in range(low, high):
+                at, end = column.span(basket, entry, self.leaf.offset)
+                counts.append((end - at) // column.itemsize)
+                content += basket.data[at:end]
+        values = column.decode(bytes(content))
         offsets = array.array("q", [0]) * (len(counts) + 1)
         total = 0
         for row, count in enumerate(counts):
@@ -278,14 +284,14 @@ class Branch:
             offsets[row + 1] = total
         return Jagged(values, offsets)
 
-    def _strings(self, start: int, stop: int) -> list[str]:
+    def _objects(self, column: Values, start: int, stop: int) -> list[Any]:
         out = []
         for index, low, high in self._spans(start, stop):
             basket = self.basket(index)
             reader = Buffer(basket.data, basket.keylen)
             for entry in range(low, high):
-                reader.pos = basket.start_of(entry, self.leaf.offset) + basket.keylen
-                out.append(reader.string())
+                at = basket.start_of(entry, self.leaf.offset) + basket.keylen
+                out.append(column.value(reader, at))
         return out
 
 
@@ -322,9 +328,10 @@ class TTree:
                 many = len(record.leaves) > 1
                 for leaf in record.leaves:
                     label = f"{record.name}.{leaf.name}" if many else record.name
-                    self.branches[label] = Branch(label, record, leaf, source)
-                    if leaf.typename is None:
-                        self.unreadable[label] = leaf.reason
+                    column = build(record, leaf, source)
+                    self.branches[label] = Branch(label, record, leaf, column, source)
+                    if isinstance(column, Refused):
+                        self.unreadable[label] = column.reason
 
     def __repr__(self) -> str:
         return (

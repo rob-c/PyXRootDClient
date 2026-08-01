@@ -36,12 +36,27 @@ class Source:
     all have both.
     """
 
-    __slots__ = ("handle", "name", "owned")
+    __slots__ = ("handle", "name", "owned", "info", "_streamers")
 
     def __init__(self, handle: IO[bytes], name: str, owned: bool) -> None:
         self.handle = handle
         self.name = name
         self.owned = owned
+        #: Where the file keeps the description of its own classes.
+        self.info: tuple[int, int] = (0, 0)
+        self._streamers: dict[str, Any] | None = None
+
+    def streamers(self) -> dict[str, Any]:
+        """What the file says its classes look like, read once and kept.
+
+        Only a branch of split C++ members ever asks, so a tree of plain
+        numbers never pays for this read.
+        """
+        if self._streamers is None:
+            from .streamers import read_streamers
+
+            self._streamers = read_streamers(self)
+        return self._streamers
 
     def read(self, offset: int, size: int) -> bytes:
         self.handle.seek(offset)
@@ -290,11 +305,12 @@ class ROOTFile(Directory):
         version, begin = struct.unpack_from(">ii", header, 4)
         wide = version >= 1000000
         form = ">qqiiiBiqi" if wide else ">iiiiiBiii"
-        (_end, _free, _nfree_bytes, _nfree, nbytes_name, _units, compression, _info, _ninfo) = (
+        (_end, _free, _nfree_bytes, _nfree, nbytes_name, _units, compression, info, ninfo) = (
             struct.unpack_from(form, header, 12)
         )
         self.version = version % 1000000
         self.compression = compression
+        source.info = (info, ninfo)
         record = _directory_record(source, begin + nbytes_name)
         super().__init__(source, read_keys(source, record["seek_keys"], record["nbytes_keys"]))
 
