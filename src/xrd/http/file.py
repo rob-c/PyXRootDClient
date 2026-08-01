@@ -89,7 +89,10 @@ class HTTPRawIO(io.RawIOBase):
         return self._readable
 
     def fileno(self) -> int:
-        raise OSError("an HTTP file has no descriptor")
+        # UnsupportedOperation, not a bare OSError: on Python 3.10
+        # ``TextIOWrapper`` probes ``fileno()`` to look for a console encoding
+        # and only forgives that one exception, so text mode depends on it.
+        raise io.UnsupportedOperation("an HTTP file has no descriptor")
 
     def __repr__(self) -> str:
         return f"HTTPRawIO({str(self.url)!r}, mode={self.mode!r})"

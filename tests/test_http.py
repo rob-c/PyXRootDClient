@@ -243,7 +243,9 @@ def test_what_http_cannot_do_says_so(dav):
     with pytest.raises(ValueError):
         open_http(dav.url / "d/a.root", "r", buffering=0)
     raw = open_http(dav.url / "d/a.root", "rb", buffering=0)
-    with pytest.raises(OSError, match="descriptor"):
+    # The type matters, not just the message: Python 3.10's TextIOWrapper asks
+    # for a descriptor to look up a console encoding, and forgives only this.
+    with pytest.raises(io.UnsupportedOperation, match="descriptor"):
         raw.fileno()
     assert "HTTPRawIO" in repr(raw)
     raw.close()
