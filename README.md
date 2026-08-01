@@ -187,4 +187,5 @@ Full documentation is in [`docs/`](docs/) (`mkdocs serve` to read it), with
 
 ## Licence
 
-LGPL-3.0-or-later.
+LGPL-3.0-or-later: [`LICENSE`](LICENSE) is the Lesser terms, which apply on
+top of the GPL text in [`COPYING`](COPYING).

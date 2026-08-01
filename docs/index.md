@@ -78,4 +78,5 @@ and HTTP/2.
 
 ## Licence
 
-LGPL-3.0-or-later.
+LGPL-3.0-or-later: `LICENSE` in the repository carries the Lesser terms, which
+apply on top of the GPL text in `COPYING`.
