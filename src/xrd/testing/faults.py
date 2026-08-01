@@ -233,8 +233,10 @@ class FaultProxy:
                 _shutdown(client)
                 continue
             thread = threading.Thread(target=self._serve, args=(client,), daemon=True)
-            self._threads.append(thread)
+            # Started before it is recorded: `close` joins everything in the
+            # list, and joining a thread that has not started yet raises.
             thread.start()
+            self._threads.append(thread)
 
     def _serve(self, client: socket.socket) -> None:
         try:

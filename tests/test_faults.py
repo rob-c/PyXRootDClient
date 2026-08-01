@@ -369,3 +369,20 @@ def test_a_proxy_asked_to_stop_finishes_the_turn_it_is_in(broken):
         assert not thread.is_alive()
     finally:
         sock.close()
+
+
+def test_a_connection_is_recorded_only_once_its_thread_is_running(broken, monkeypatch):
+    """Anything that reaches into ``_threads`` - ``close``, or the test above -
+    joins what it finds there, and joining a thread that has not started yet is
+    a ``RuntimeError``. So the record has to come second."""
+    recorded_early = []
+    real_start = threading.Thread.start
+
+    def start(self: threading.Thread) -> None:
+        recorded_early.append(self in broken._threads)
+        real_start(self)
+
+    monkeypatch.setattr(threading.Thread, "start", start)
+    with FileSystem(broken.url) as fs:
+        fs.ping()
+    assert recorded_early and not any(recorded_early)

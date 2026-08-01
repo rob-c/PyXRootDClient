@@ -25,16 +25,16 @@ schedulable and several can run in parallel.
 
 ## Status — as built
 
-Phases 0–10 are **implemented**: 12.6 kLOC under `src/xrd/` against 9 kLOC of
-tests, **1112 tests green in ~93 s** with no third-party import anywhere —
+Phases 0–10 are **implemented**: 18 kLOC under `src/xrd/` against 18 kLOC of
+tests, **2335 tests green in ~65 s** with no third-party import anywhere —
 `root://` and `davs://` are peers, any endpoint copies to any other, both are
 awaitable, both are a URL scheme in pandas and a command in a shell, and the
-whole authentication ladder bar Kerberos is pure Python. Of the 1112, 47 are
+whole authentication ladder bar Kerberos is pure Python. Of the 2335, 47 are
 the interoperability and parity suites (a real `xrootd` daemon, and the
-official bindings alongside), 16 need the `[fsspec]` extra and one runs `mypy`
+official bindings alongside), 17 need the `[fsspec]` extra and one runs `mypy`
 over the public surface and checks the revealed types; the rest run
 against the stdlib alone. Coverage on `proto/`, `crypto/` and `client/` is
-**97%**, gated at 90%.
+**100%**, line and branch, and gated there.
 
 | Phase | State | Shipped as |
 |---|---|---|
