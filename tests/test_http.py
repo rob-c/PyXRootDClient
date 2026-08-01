@@ -376,6 +376,8 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.link("/d/a.root", "/d/second"),
         lambda: fs.readlink("/d/latest"),
         lambda: fs.lstat("/d/a.root"),
+        lambda: fs.utime("/d/a.root"),
+        lambda: fs.chown("/d/a.root", 0, 0),
         lambda: fs.checksum_cancel("/d/a.root"),
         lambda: fs.query_stats(),
         lambda: fs.query_space("/d"),
@@ -396,6 +398,7 @@ def test_the_unsupported_overrides_keep_the_signature_they_replace(fs):
         lambda: fs.query_stats("io"),
         lambda: fs.query_space(),
         lambda: fs.stat("/d/a.root", follow_symlinks=False),
+        lambda: fs.utime("/d/a.root", (1, 2), ns=None),
     ):
         with pytest.raises(UnsupportedError):
             call()

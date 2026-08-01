@@ -461,6 +461,50 @@ class FileSystem:
         target = self._abs(path)
         self._router.execute(r.Chmod(target, int(mode) & 0o777), path=target)
 
+    def utime(
+        self,
+        path: str,
+        times: tuple[float, float] | None = None,
+        *,
+        ns: tuple[int, int] | None = None,
+    ) -> None:
+        """``os.utime``: set the access and modification times.
+
+        ``times`` is ``(atime, mtime)`` in seconds, ``ns`` the same pair in
+        integer nanoseconds, and neither of them means "now" - the two are
+        mutually exclusive, as they are in ``os``. Nanoseconds survive the
+        round trip; the protocol carries seconds and nanoseconds separately.
+
+        A vendor extension (``kXR_setattr``), like the link family, and one
+        that never follows a final symbolic link - the server applies it the
+        way ``os.utime(..., follow_symlinks=False)`` would.
+        """
+        if times is not None and ns is not None:
+            raise ValueError("utime: specify either times or ns, not both")
+        if times is None and ns is None:
+            now = (0, c.UTIME_NOW)
+            atime, mtime = now, now
+        else:
+            pair = ns if ns is not None else times
+            assert pair is not None
+            if len(pair) != 2:
+                raise TypeError("utime: times/ns must be a pair (atime, mtime)")
+            scale = 1 if ns is not None else 10**9
+            atime, mtime = (divmod(round(v * scale), 10**9) for v in pair)
+        target = self._abs(path)
+        request = r.Setattr(target, c.kXR_sa_times, atime, mtime)
+        self._router.execute(request, path=target)
+
+    def chown(self, path: str, uid: int = -1, gid: int = -1) -> None:
+        """``os.chown``: change ownership. ``-1`` leaves an id alone.
+
+        The same vendor extension :meth:`utime` uses, with the same rule about
+        symbolic links: it changes the link, not what the link points at.
+        """
+        target = self._abs(path)
+        request = r.Setattr(target, c.kXR_sa_owner, uid=int(uid), gid=int(gid))
+        self._router.execute(request, path=target)
+
     def truncate(self, path: str, size: int) -> None:
         """Resize a file by path, without opening it."""
         target = self._abs(path)
@@ -472,9 +516,11 @@ class FileSystem:
         ``kXR_new`` is the only flag that creates without truncating, and a
         server refuses it when the file exists - which is precisely the case
         ``exist_ok`` is about, so it is caught rather than pre-checked. The
-        mtime of an existing file is left alone: no request in the protocol
-        moves it, and quietly rewriting the file to fake one would be worse
-        than not doing it.
+        mtime of an existing file is left alone, because XProtocol has no
+        request that moves it and rewriting the file to fake one would be
+        worse than not doing it; where the server speaks the vendor extension,
+        :meth:`utime` is the call that means ``touch`` on something that is
+        already there.
         """
         from .file import File
 

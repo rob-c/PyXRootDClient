@@ -489,6 +489,19 @@ def test_the_link_family_is_mirrored(server):
     assert server.contents("/data/harder") == BODY
 
 
+def test_the_times_and_the_owner_are_set_from_a_coroutine(server):
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            await fs.utime(
+                "/data/a.root", ns=(1_000_000_000_000_000_001, 2_000_000_000_000_000_002)
+            )
+            await fs.chown("/data/a.root", 1000, 1000)
+
+    run(main())
+    assert server.times["/data/a.root"] == (1_000_000_000_000_000_001, 2_000_000_000_000_000_002)
+    assert server.owners["/data/a.root"] == (1000, 1000)
+
+
 def test_lstat_describes_the_link_and_stat_what_it_points_at(server):
     async def main():
         async with AsyncFileSystem(server.url) as fs:

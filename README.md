@@ -56,7 +56,7 @@ with xrd.open("root://host//store/f.root", "rb") as fh:
 `prepare` (with `query_prepare` for how the staging is going and
 `archive_info` for where a file is now), `query_config`, extended attributes,
 and - where a server has been taught the vendor opcodes - `symlink`, `link`,
-`readlink`, `lstat` and `is_symlink`.
+`readlink`, `lstat`, `is_symlink`, `utime` and `chown`.
 
 ```python
 fs = xrd.FileSystem("davs://dav.example.org")
@@ -177,7 +177,7 @@ with FakeServer(files={"/data/a.root": b"hello"}) as server:
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 the copy engine, the CLI and the fsspec bindings are implemented and tested —
-2262 tests, of which the great majority need no network, no KDC and no
+2283 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

@@ -605,6 +605,34 @@ def test_chmod_changes_the_mode(url, server, capsys):
     assert server.modes["/data/a.root"] == 0o640
 
 
+def test_chown_takes_uid_gid_or_either_alone(url, server, capsys):
+    assert run(["chown", "1000:1000", url + "data/a.root"], capsys)[0] == 0
+    assert server.owners["/data/a.root"] == (1000, 1000)
+    assert run(["chown", ":42", url + "data/a.root"], capsys)[0] == 0
+    assert server.owners["/data/a.root"] == (-1, 42)
+    assert run(["chown", "7", url + "data/a.root"], capsys)[0] == 0
+    assert server.owners["/data/a.root"] == (7, -1)
+
+
+def test_chown_rejects_a_name_rather_than_guessing_an_id(url, capsys):
+    """The names live in the server's passwd file, not this machine's."""
+    with pytest.raises(SystemExit):
+        run(["chown", "alice", url + "data/a.root"], capsys)
+
+
+def test_touch_can_set_the_times_as_well_as_create(url, server, capsys):
+    assert run(["touch", "--time", "1000000000", url + "data/new.root"], capsys)[0] == 0
+    assert server.times["/data/new.root"] == (10**18, 10**18)
+    assert run(["touch", "--time", "now", url + "data/a.root"], capsys)[0] == 0
+    assert server.times["/data/a.root"][1] > 10**18
+
+
+def test_touch_without_a_time_only_creates(url, server, capsys):
+    assert run(["touch", url + "data/plain.root"], capsys)[0] == 0
+    assert server.contents("/data/plain.root") == b""
+    assert "/data/plain.root" not in server.times
+
+
 def test_truncate_resizes_without_opening(url, server, capsys):
     assert run(["truncate", "-s", "4", url + "data/a.root"], capsys)[0] == 0
     assert server.contents("/data/a.root") == b"hell"

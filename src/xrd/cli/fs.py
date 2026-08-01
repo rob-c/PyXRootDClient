@@ -362,6 +362,29 @@ def _touch(args: argparse.Namespace, endpoints: Endpoints) -> int:
     for url in args.url:
         filesystem, path = endpoints.at(url)
         filesystem.touch(path)
+        if args.time is not None:
+            filesystem.utime(path, None if args.time == "now" else (args.time, args.time))
+    return OK
+
+
+def _owner(text: str) -> tuple[int, int]:
+    """``uid``, ``uid:gid`` or ``:gid``, numeric - as ``chown`` takes them.
+
+    Numeric only: the names belong to the server's passwd file, and this
+    machine's is a different one that happens to be nearby.
+    """
+    uid, _, gid = text.partition(":")
+    try:
+        return int(uid) if uid else -1, int(gid) if gid else -1
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r}: expected uid, uid:gid or :gid") from None
+
+
+def _chown(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    uid, gid = args.owner
+    for url in args.url:
+        filesystem, path = endpoints.at(url)
+        filesystem.chown(path, uid, gid)
     return OK
 
 
@@ -527,6 +550,15 @@ def _parser() -> argparse.ArgumentParser:
 
     touch = command("touch", _touch, "create an empty file")
     touch.add_argument("url", nargs="+")
+    touch.add_argument(
+        "--time",
+        type=lambda text: text if text == "now" else float(text),
+        help="also set the times: 'now' or epoch seconds (a vendor extension)",
+    )
+
+    chown = command("chown", _chown, "change the owner of a path (a vendor extension)")
+    chown.add_argument("owner", type=_owner, help="uid, uid:gid or :gid, numeric")
+    chown.add_argument("url", nargs="+")
 
     df = command("df", _df, "space and utilisation")
     df.add_argument("url")

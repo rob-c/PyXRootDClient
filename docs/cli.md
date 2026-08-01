@@ -42,6 +42,8 @@ $ xrd-fs tail -n 20 root://host//store/log.txt
 $ xrd-fs tail -f root://host//store/running.log        # keep printing appends
 $ xrd-fs du root://host//store/run7
 $ xrd-fs chmod 640 root://host//store/f.root
+$ xrd-fs chown 1000:1000 root://host//store/f.root     # uid, uid:gid or :gid
+$ xrd-fs touch --time now root://host//store/f.root    # or epoch seconds
 $ xrd-fs truncate -s 0 root://host//store/scratch.bin
 $ xrd-fs prepare root://host//store/f.root             # stage it onto disk
 $ xrd-fs prepare --evict root://host//store/f.root     # drop the cached copy
@@ -57,9 +59,11 @@ answers `path: online`, `path: on tape` or `path: nowhere (no such file)`; over
 `state` word the site used. `tail -f` polls the size every `--interval` seconds and prints what appeared;
 a file that shrinks is a different file, and it stops. `du` counts from the
 listing, one request per directory, and falls back to one stat per entry when
-the server lists without sizes. `ln`, `ln -s` and `readlink` are a **vendor
-extension** - stock XRootD answers `kXR_Unsupported`, and HTTP has no verb for
-them at all; see [Interoperability](interop.md).
+the server lists without sizes. `ln`, `ln -s`, `readlink`, `chown` and
+`touch --time` are a **vendor extension** - stock XRootD answers
+`kXR_Unsupported`, and HTTP has no verb for them at all; see
+[Interoperability](interop.md). Plain `touch` is not: it creates a file and
+leaves an existing one alone, which every server understands.
 
 ## `xrd-cp`
 

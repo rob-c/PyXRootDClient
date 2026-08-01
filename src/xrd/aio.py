@@ -566,6 +566,18 @@ class AsyncFileSystem:
     async def chmod(self, path: str, mode: int) -> None:
         await _run(self._sync.chmod, path, mode)
 
+    async def utime(
+        self,
+        path: str,
+        times: tuple[float, float] | None = None,
+        *,
+        ns: tuple[int, int] | None = None,
+    ) -> None:
+        await _run(self._sync.utime, path, times, ns=ns)
+
+    async def chown(self, path: str, uid: int = -1, gid: int = -1) -> None:
+        await _run(self._sync.chown, path, uid, gid)
+
     async def truncate(self, path: str, size: int) -> None:
         await _run(self._sync.truncate, path, size)
 

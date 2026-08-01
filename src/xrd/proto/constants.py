@@ -51,9 +51,22 @@ kXR_1stRequest = 3000
 # Not in XProtocol.hh: the 3500 block is what XRootD.jl and XrdRust agreed on
 # for the link operations a POSIX namespace has and XRootD never grew. A stock
 # server answers kXR_Unsupported, which is what the client reports.
+kXR_setattr = 3500
 kXR_symlink = 3501
 kXR_readlink = 3502
 kXR_link = 3503
+
+# ``kXR_setattr`` selectors: which halves of the 44-byte attribute block the
+# server should apply. Mode is deliberately absent - kXR_chmod already carries
+# it - and an id of -1 leaves that id alone, as ``chown(2)`` has always done.
+kXR_sa_times = 0x01
+kXR_sa_owner = 0x02
+
+# ``utimensat(2)``'s two magic nanosecond values, which the one server
+# implementing kXR_setattr passes straight through: "now" is what ``os.utime``
+# means by no times at all, and "omit" is how one of a pair is left alone.
+UTIME_NOW = (1 << 30) - 1
+UTIME_OMIT = (1 << 30) - 2
 
 # ---- response status (ServerResponseHdr.status) ----
 kXR_ok = 0

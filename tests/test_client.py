@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import time
 
 import pytest
 
@@ -1311,3 +1312,87 @@ def test_a_server_without_the_link_extension_says_it_is_unsupported(server, conf
     with FileSystem(server.url, config) as filesystem:
         with pytest.raises(UnsupportedError):
             filesystem.symlink("/data/a.root", "/data/link.root")
+
+
+# ---------------------------------------------------------------------------
+# Times and ownership (vendor extension)
+# ---------------------------------------------------------------------------
+
+
+def test_utime_sets_both_times_to_the_second(fs, server):
+    fs.utime("/data/a.root", (1_000_000_000, 1_500_000_000))
+    assert server.times["/data/a.root"] == (1_000_000_000 * 10**9, 1_500_000_000 * 10**9)
+    assert fs.stat("/data/a.root").st_mtime == 1_500_000_000
+
+
+def test_utime_keeps_the_nanoseconds_it_was_given(fs, server):
+    """A float second would lose them, so the pair travels as two integers."""
+    fs.utime("/data/a.root", ns=(1_700_000_000_123_456_789, 1_700_000_000_987_654_321))
+    assert server.times["/data/a.root"] == (1_700_000_000_123_456_789, 1_700_000_000_987_654_321)
+
+
+def test_utime_with_a_fraction_of_a_second_survives_as_nanoseconds(fs, server):
+    fs.utime("/data/a.root", (1.5, 2.25))
+    assert server.times["/data/a.root"] == (1_500_000_000, 2_250_000_000)
+
+
+def test_utime_with_no_times_means_the_server_clock(fs, server):
+    """``os.utime(path)`` is "now", and whose now matters: the answer is the
+    server's, which is what ``UTIME_NOW`` on the wire is for."""
+    before = time.time_ns()
+    fs.utime("/data/a.root")
+    assert before <= server.times["/data/a.root"][1] <= time.time_ns()
+
+
+def test_utime_refuses_to_guess_between_seconds_and_nanoseconds(fs):
+    with pytest.raises(ValueError, match="not both"):
+        fs.utime("/data/a.root", (1, 2), ns=(1, 2))
+    with pytest.raises(TypeError, match="pair"):
+        fs.utime("/data/a.root", (1, 2, 3))  # type: ignore[arg-type]
+
+
+def test_a_time_the_request_asks_to_omit_is_left_alone(fs, server):
+    """Nothing in ``os.utime`` says "this one only", but the wire has a word
+    for it, and a server that gets it must not move the other."""
+    from xrd.proto import requests as r
+
+    fs.utime("/data/a.root", (1_000_000_000, 1_000_000_000))
+    fs._router.execute(
+        r.Setattr(
+            "/data/a.root",
+            c.kXR_sa_times,
+            atime=(5, 0),
+            mtime=(0, c.UTIME_OMIT),
+        )
+    )
+    assert server.times["/data/a.root"] == (5 * 10**9, 1_000_000_000 * 10**9)
+
+
+def test_chown_changes_the_ids_and_minus_one_leaves_one_alone(fs, server):
+    fs.chown("/data/a.root", 1000, 1000)
+    assert server.owners["/data/a.root"] == (1000, 1000)
+    fs.chown("/data/a.root", gid=42)
+    assert server.owners["/data/a.root"] == (-1, 42)
+    # The times were never named, so the server did not touch them.
+    assert "/data/a.root" not in server.times
+
+
+def test_setting_the_times_of_something_absent_raises(fs):
+    from xrd.errors import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        fs.utime("/data/absent.root")
+    with pytest.raises(NotFoundError):
+        fs.chown("/data/absent.root", 0, 0)
+
+
+def test_a_server_without_setattr_says_it_is_unsupported(server, config):
+    from xrd.errors import UnsupportedError, kXR_Unsupported
+
+    def refuse(conn, sid, params, body):
+        yield error(sid, kXR_Unsupported, "kXR_setattr is not supported")
+
+    server.handlers[c.kXR_setattr] = refuse
+    with FileSystem(server.url, config) as filesystem:
+        with pytest.raises(UnsupportedError):
+            filesystem.utime("/data/a.root")

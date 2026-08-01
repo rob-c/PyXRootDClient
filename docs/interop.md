@@ -70,7 +70,8 @@ per 4 KiB page and are implemented in full; older clients that still name
 
 ## Beyond the specification
 
-`symlink`, `link` and `readlink` are not in XProtocol at all. They are sent as
+`symlink`, `link`, `readlink`, `utime` and `chown` are not in XProtocol at all.
+The links are sent as
 `kXR_symlink` (3501), `kXR_readlink` (3502) and `kXR_link` (3503), framed like
 `kXR_mv` - the same numbers and framing XRootD.jl and XrdRust chose, so the
 three clients agree with each other and a server taught one of them
@@ -78,6 +79,15 @@ understands all three. A stock daemon answers `kXR_Unsupported`, which is the
 honest answer for a namespace with no links, and this client turns it into
 `UnsupportedError` rather than pretending. The HTTP and WebDAV backends raise
 the same exception without a round trip, because there is no verb to try.
+
+`utime` and `chown` share one opcode below them, `kXR_setattr` (3500): a
+44-byte big-endian block - flags, `atime` and `mtime` as second/nanosecond
+pairs, `uid`, `gid` - and then the path. The nanosecond fields carry
+`utimensat`'s `UTIME_NOW` and `UTIME_OMIT`, so "now" is the *server's* now, and
+an id of `-1` means "not this one", exactly as `chown(2)` has always read it.
+Mode is deliberately not in the block, because `kXR_chmod` already carries it.
+Neither call follows a final symbolic link: the server uses
+`AT_SYMLINK_NOFOLLOW`, so on a link they change the link.
 
 Two option bits are vendor extensions of standard requests rather than new
 requests. `kXR_statNoFollow` (`0x40` of the `kXR_stat` options byte, the value

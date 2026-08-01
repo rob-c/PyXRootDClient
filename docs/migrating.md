@@ -50,12 +50,13 @@ already know - see [Errors](errors.md).
 | `statx(...)`, read for the offline bit | `fs.archive_info(paths)` → `list[PrepareStatus]` |
 | `ping()` | `fs.ping()` |
 | `protocol()` | `fs.protocol()` |
-| (no equivalent) | `fs.walk`, `fs.glob`, `fs.exists`, `fs.isdir`, `fs.isfile`, `fs.getsize`, `fs.touch`, `fs.rmtree`, `fs.read_bytes`, `fs.write_bytes`, `fs.read_text`, `fs.write_text` |
+| (no equivalent) | `fs.walk`, `fs.glob`, `fs.exists`, `fs.isdir`, `fs.isfile`, `fs.getsize`, `fs.touch`, `fs.rmtree`, `fs.read_bytes`, `fs.write_bytes`, `fs.read_text`, `fs.write_text`, `fs.utime`, `fs.chown` |
 
 `stat` returns something that quacks like `os.stat_result` - `st_size`,
 `st_mtime`, `st_mode` - so code written against `os.stat` transfers unchanged.
 `os.lstat` and `os.path.islink` transfer too, as `fs.lstat` and
-`fs.is_symlink`; `pyxrootd` has neither.
+`fs.is_symlink`, and so do `os.utime` and `os.chown`; `pyxrootd` has none of
+them.
 
 ## Files
 

@@ -18,7 +18,7 @@ from .frames import Request, encode
 __all__ = [
     "Protocol", "Login", "Auth", "Ping", "EndSession", "Bind",
     "Stat", "StatVFS", "Statx", "Dirlist", "Locate", "Query", "Prepare",
-    "Mkdir", "Rm", "Rmdir", "Mv", "Symlink", "Link", "Readlink",
+    "Mkdir", "Rm", "Rmdir", "Mv", "Symlink", "Link", "Readlink", "Setattr",
     "Chmod", "Truncate", "Set",
     "Open", "Close", "Read", "Write", "Sync",
     "ReadV", "WriteV", "Clone", "PgRead", "PgWrite", "ChkPoint", "Fattr", "Sigver",
@@ -389,6 +389,52 @@ class Readlink(Request):
 
     def __repr__(self) -> str:
         return f"Readlink(path={self.path!r})"
+
+
+class Setattr(Request):
+    """``kXR_setattr`` (vendor extension) - timestamps and ownership.
+
+    The body is a 44-byte big-endian block - ``flags``, ``atime`` and ``mtime``
+    as ``(seconds, nanoseconds)`` pairs, ``uid``, ``gid`` - followed by the
+    path, the same layout XRootD.jl encodes and nginx-xrootd decodes. The
+    nanosecond fields carry ``utimensat``'s ``UTIME_NOW`` and ``UTIME_OMIT``,
+    which is how "now" and "leave that one alone" are said.
+    """
+
+    __slots__ = ("path", "flags", "atime", "mtime", "uid", "gid")
+    opcode = c.kXR_setattr
+    signed = True
+    idempotent = False
+
+    def __init__(
+        self,
+        path: str,
+        flags: int,
+        atime: tuple[int, int] = (0, 0),
+        mtime: tuple[int, int] = (0, 0),
+        uid: int = -1,
+        gid: int = -1,
+    ) -> None:
+        self.path = path
+        self.flags = flags
+        self.atime = atime
+        self.mtime = mtime
+        self.uid = uid
+        self.gid = gid
+
+    def payload(self) -> bytes:
+        w = Writer()
+        w.i32(self.flags)
+        for seconds, nanoseconds in (self.atime, self.mtime):
+            w.i64(seconds).i64(nanoseconds)
+        w.i32(self.uid).i32(self.gid)
+        return w.bytes() + _encode_path(self.path) + b"\x00"
+
+    def __repr__(self) -> str:
+        return (
+            f"Setattr(path={self.path!r}, flags=0x{self.flags:02x}, "
+            f"atime={self.atime!r}, mtime={self.mtime!r}, uid={self.uid}, gid={self.gid})"
+        )
 
 
 class Chmod(Request):

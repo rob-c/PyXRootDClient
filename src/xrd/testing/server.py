@@ -27,6 +27,7 @@ import socket
 import socketserver
 import struct
 import threading
+import time
 import zlib
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
@@ -134,6 +135,12 @@ class FakeServer:
         self.xattrs: dict[str, dict[str, bytes]] = {}
         #: Modes set by ``kXR_chmod``, per path.
         self.modes: dict[str, int] = {}
+        #: Times set by ``kXR_setattr``: ``path -> (atime_ns, mtime_ns)``. The
+        #: mtime is what a later stat reports, so a test can watch one move.
+        self.times: dict[str, tuple[int, int]] = {}
+        #: Owners set by ``kXR_setattr``: ``path -> (uid, gid)``. No stat field
+        #: carries them, so this is where a test looks.
+        self.owners: dict[str, tuple[int, int]] = {}
         #: Values ``kXR_query`` config lookups answer with.
         self.config_values: dict[str, str] = {"version": "v5.6.0", "role": "server"}
         #: The ``oss.*`` space token ``kXR_Qspace`` answers with.
@@ -447,7 +454,8 @@ class _Connection:
                 # A link describes itself: "something else", as long as its
                 # target's name. This is what kXR_statNoFollow asks for.
                 flags = c.kXR_other | c.kXR_readable
-                return f"{abs(hash(path)) % 10**9} {len(pointed_at)} {flags} 1700000000".encode()
+                stamp = self._mtime(path)
+                return f"{abs(hash(path)) % 10**9} {len(pointed_at)} {flags} {stamp}".encode()
             path = pointed_at
         if path in self.s.dirs:
             flags = c.kXR_isDir | c.kXR_readable | c.kXR_writable
@@ -459,7 +467,13 @@ class _Connection:
             size = len(self.s.files[path])
         else:
             raise _NotFound(path)
-        return f"{abs(hash(path)) % 10**9} {size} {flags} 1700000000".encode()
+        return f"{abs(hash(path)) % 10**9} {size} {flags} {self._mtime(path)}".encode()
+
+    def _mtime(self, path: str) -> int:
+        """Whole seconds, as the stat line carries them - a ``kXR_setattr``
+        moves this, and everything else keeps the one fixed stamp that makes
+        the rest of the suite's output reproducible."""
+        return self.s.times.get(path, (0, 1700000000 * 10**9))[1] // 10**9
 
     def _children(self, path: str) -> list[str]:
         if path not in self.s.dirs:
@@ -852,6 +866,29 @@ def _h_symlink(conn: _Connection, sid: int, params: bytes, body: bytes) -> Itera
     yield _frame(sid, c.kXR_ok)
 
 
+def _h_setattr(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
+    flags, at_s, at_ns, mt_s, mt_ns, uid, gid = struct.unpack(">iqqqqii", body[:44])
+    path = _clean(body[44:].split(b"\x00", 1)[0].decode())
+    if path not in conn.s.files and path not in conn.s.dirs and path not in conn.s.links:
+        raise _NotFound(path)
+    if flags & c.kXR_sa_times:
+        was = conn.s.times.get(path, (0, 1700000000 * 10**9))
+        kept = []
+        for (s, ns), before in zip(((at_s, at_ns), (mt_s, mt_ns)), was, strict=True):
+            if ns == c.UTIME_OMIT:
+                kept.append(before)
+            elif ns == c.UTIME_NOW:
+                # The server's clock, not the client's, which is the whole
+                # point of having a value that means "now".
+                kept.append(int(time.time() * 10**9))
+            else:
+                kept.append(s * 10**9 + ns)
+        conn.s.times[path] = (kept[0], kept[1])
+    if flags & c.kXR_sa_owner:
+        conn.s.owners[path] = (uid, gid)
+    yield _frame(sid, c.kXR_ok)
+
+
 def _h_link(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:
     src, dst = _two_paths(params, body)
     # A hard link is the same bytes under a second name, and a bytearray is
@@ -1021,6 +1058,7 @@ _HANDLERS = {
     c.kXR_locate: _h_locate,
     c.kXR_prepare: _h_prepare,
     c.kXR_fattr: _h_fattr,
+    c.kXR_setattr: _h_setattr,
     c.kXR_symlink: _h_symlink,
     c.kXR_link: _h_link,
     c.kXR_readlink: _h_readlink,

@@ -558,6 +558,20 @@ class HTTPFileSystem(FileSystem):
     def chmod(self, path: str, mode: int) -> None:
         raise self._unsupported("chmod")
 
+    def utime(
+        self,
+        path: str,
+        times: tuple[float, float] | None = None,
+        *,
+        ns: tuple[int, int] | None = None,
+    ) -> None:
+        # RFC 4918 makes getlastmodified a live property: the server owns it,
+        # and a PROPPATCH of one is within its rights to refuse.
+        raise self._unsupported("utime")
+
+    def chown(self, path: str, uid: int = -1, gid: int = -1) -> None:
+        raise self._unsupported("chown")
+
     def truncate(self, path: str, size: int) -> None:
         raise self._unsupported("truncate by path")
 

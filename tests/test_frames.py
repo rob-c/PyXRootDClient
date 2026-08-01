@@ -229,6 +229,22 @@ def test_every_query_code_the_protocol_defines_has_a_name():
     assert {int(code) for code in QueryCode} == defined
 
 
+def test_setattr_puts_a_44_byte_attribute_block_before_the_path():
+    """The offsets are a contract with the two implementations that speak it,
+    XRootD.jl's encoder and nginx-xrootd's decoder: flags, atime and mtime as
+    second/nanosecond pairs, then uid and gid, then the path."""
+    body = body_of(r.Setattr("/a", c.kXR_sa_times | c.kXR_sa_owner, (1, 2), (3, 4), 500, 501))
+    assert struct.unpack(">iqqqqii", body[:44]) == (3, 1, 2, 3, 4, 500, 501)
+    assert body[44:] == b"/a\x00"
+
+
+def test_setattr_leaves_an_unnamed_id_at_minus_one():
+    """``chown(2)``'s rule, and the one the server applies: -1 means "not this
+    one" - a zero there would hand the file to root."""
+    body = body_of(r.Setattr("/a", c.kXR_sa_owner, gid=42))
+    assert struct.unpack(">ii", body[36:44]) == (-1, 42)
+
+
 def test_prepare_joins_paths_with_newlines():
     assert body_of(r.Prepare(["/a", "/b"], options=c.kXR_stage)) == b"/a\n/b"
 
@@ -323,6 +339,7 @@ SAMPLES = [
     r.Symlink("/a", "/b"),
     r.Link("/a", "/b"),
     r.Readlink("/a"),
+    r.Setattr("/a", c.kXR_sa_times),
     r.Chmod("/a", 0o644),
     r.Truncate("/a", 1),
     r.Set("x=1"),
@@ -362,6 +379,7 @@ UNREPEATABLE = {
     "Rm",
     "Rmdir",
     "Set",
+    "Setattr",
     "Sync",
     "Truncate",
     "Write",

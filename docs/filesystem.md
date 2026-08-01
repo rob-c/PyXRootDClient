@@ -64,7 +64,19 @@ fs.rmdir("/store/empty")
 fs.rmtree("/store/user/me/scratch")
 fs.truncate("/store/f.root", 4096)
 fs.chmod("/store/f.root", 0o640)
+fs.utime("/store/f.root")                       # os.utime: both times, now
+fs.utime("/store/f.root", (atime, mtime))       # seconds, as floats
+fs.utime("/store/f.root", ns=(atime_ns, mtime_ns))
+fs.chown("/store/f.root", uid, gid)             # -1 leaves an id alone
 ```
+
+!!! warning "`utime` and `chown` are the same vendor extension the links are"
+    They travel as `kXR_setattr` (3500), a 44-byte attribute block followed by
+    the path - what XRootD.jl encodes and nginx-xrootd decodes. A stock daemon
+    answers `UnsupportedError`. Neither call follows a final symbolic link:
+    the server applies both the way `os.utime(..., follow_symlinks=False)` and
+    `os.lchown` do. Ids are numeric, because the names belong to the server's
+    passwd file rather than to yours.
 
 ### Links
 
