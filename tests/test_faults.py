@@ -435,9 +435,15 @@ def test_a_peer_that_stops_reading_is_dropped_instead_of_jamming_the_proxy():
                     quiet = quiet + 1 if proxy.bytes_from_server == seen else 0
                 done.set()
                 got = 0
-                while chunk := client.recv(65536):
-                    got += len(chunk)
-            assert 0 < got < len(blast)  # dropped part-way, not delivered whole
+                try:
+                    while chunk := client.recv(65536):
+                        got += len(chunk)
+                except ConnectionError:
+                    pass  # dropped with a reset rather than a shutdown; dropped
+            # How much arrived depends on the kernel's buffers; that the proxy
+            # gave up part-way rather than delivering the whole 2 MiB does not.
+            assert got < len(blast)
+            assert proxy.connections == 1 and proxy.bytes_from_server < len(blast)
 
             with socket.create_connection(proxy.address) as after:
                 assert after.recv(1)  # and the proxy is still serving
