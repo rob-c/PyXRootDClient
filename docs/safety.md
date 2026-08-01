@@ -98,6 +98,31 @@ the resulting `[3011] no such file or directory` is the single most common
 first hour of XRootD. [`xrd.parse`](api.md) normalises both to `/store/f.root`
 before anything is sent.
 
+## The first failure is named, rather than the last one
+
+Almost nothing about grid storage fails where it went wrong. A stat that says
+`no such file` may mean a proxy expired an hour ago and the server is
+answering as nobody; a transfer that hangs may be a firewall three hops away.
+The stock clients report the last symptom, and a beginner spends the afternoon
+on it.
+
+```console
+$ xrd-fs doctor root://eos.example.org//store/user/me
+```
+
+`doctor` asks every question a transfer would ask, in the order that makes
+each one meaningful, and prints a line for each: the interpreter, the settings
+in force, every authentication mechanism with what is missing and the command
+that would produce it, DNS, the port, the login, and how far down the path
+actually exists. The first `!!` is the thing to fix; everything below it is a
+consequence. It never prompts, changes nothing, and exits `1` if any line
+failed, so it belongs in a script and in a ticket. `xrd.diagnose()` is the
+same thing from Python, and returns the report rather than printing it.
+
+One detail is there for beginners specifically: `unix` and `host` are marked
+as saying who you are without proving it. Having them "work" is exactly what
+makes a permission error look like a missing file.
+
 ## What was already true
 
 Behaviour from elsewhere in the library that belongs on the same list:
@@ -114,6 +139,7 @@ Behaviour from elsewhere in the library that belongs on the same list:
 | Missing credentials are asked for at a terminal instead of failing obscurely | [Authentication](auth.md#being-asked-for-what-is-missing) |
 | A failed multipart upload is aborted rather than left billing | [S3](s3.md#writing) |
 | An interrupted transfer can be continued rather than restarted | [Copying](copying.md#resuming) |
+| `xrd-fs doctor` names the first thing that is wrong, not the last | above |
 
 ## What is deliberately not guarded
 

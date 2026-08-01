@@ -19,6 +19,7 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
+from ..doctor import diagnose
 from ..errors import XRootDError
 from ..types import DirEntry, StatInfo
 from . import (
@@ -469,6 +470,21 @@ def _ping(args: argparse.Namespace, endpoints: Endpoints) -> int:
     return OK
 
 
+def _doctor(args: argparse.Namespace, endpoints: Endpoints) -> int:
+    """Say what is wrong before a transfer has to fail to say it.
+
+    This one takes no endpoint from the pool: it opens its own connection so
+    that a login failure is a line in the report rather than an exception out
+    of here.
+    """
+    report = diagnose(args.url or "", config=config_from(args))
+    if args.json:
+        print(dumps({"url": report.url, "ok": report.ok, "checks": report.to_dict()}))
+    elif not args.quiet:
+        print(report)
+    return OK if report.ok else ERROR
+
+
 def _query(args: argparse.Namespace, endpoints: Endpoints) -> int:
     filesystem, _path = endpoints.at(args.url)
     values = filesystem.query_config(*args.name)
@@ -628,6 +644,11 @@ def _parser() -> argparse.ArgumentParser:
 
     ping = command("ping", _ping, "is the endpoint answering")
     ping.add_argument("url")
+
+    doctor = command("doctor", _doctor, "check everything a transfer needs, and say what is wrong")
+    doctor.add_argument(
+        "url", nargs="?", help="an endpoint or a whole path; without one, this machine alone"
+    )
 
     query = command("query", _query, "read server configuration values")
     query.add_argument("url")

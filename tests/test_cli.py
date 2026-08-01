@@ -180,6 +180,38 @@ def test_ping_times_the_round_trip(url, capsys):
     assert json.loads(payload)["ms"] >= 0
 
 
+def test_doctor_checks_the_machine_when_given_no_url(capsys):
+    code, out, _ = run(["doctor"], capsys)
+    assert code == 0
+    assert out.startswith("ok  python")
+    assert "auth:" in out
+
+
+def test_doctor_walks_a_whole_url_and_says_the_path_is_there(url, capsys):
+    code, out, _ = run(["doctor", url + "data/a.root"], capsys)
+    assert code == 0
+    assert "ok  connect" in out and "/data/a.root: 11 bytes" in out
+
+
+def test_doctor_fails_the_exit_code_on_something_that_would_stop_a_transfer(url, capsys):
+    code, out, _ = run(["doctor", url + "data/missing.root"], capsys)
+    assert code == 1
+    assert "!!  path" in out
+
+
+def test_doctor_says_the_same_thing_as_data(url, capsys):
+    _code, payload, _ = run(["doctor", "--json", url], capsys)
+    report = json.loads(payload)
+    assert report["ok"] is True
+    assert report["url"] == url
+    assert {"name", "state", "detail", "hint"} == set(report["checks"][0])
+
+
+def test_doctor_can_be_asked_to_say_nothing_and_answer_with_its_exit_code(url, capsys):
+    code, out, err = run(["doctor", "--quiet", url], capsys)
+    assert (code, out, err) == (0, "", "")
+
+
 def test_query_reads_server_configuration(server, url, capsys):
     server.config_values["version"] = "v5.6.0"
     code, out, _ = run(["query", url, "version"], capsys)

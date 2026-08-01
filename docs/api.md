@@ -159,6 +159,14 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.ml.numeric
 
+## Diagnosing
+
+::: xrd.diagnose
+
+::: xrd.Report
+
+::: xrd.Check
+
 ## Testing
 
 ::: xrd.testing.FakeServer

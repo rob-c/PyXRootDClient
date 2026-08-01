@@ -36,6 +36,7 @@ $ xrd-fs touch root://host//store/marker
 $ xrd-fs df root://host//store
 $ xrd-fs locate --deep root://host//store/f.root
 $ xrd-fs ping root://host
+$ xrd-fs doctor root://eos.example.org//store/user/me   # why will this not work?
 $ xrd-fs query root://host version role sitename
 $ xrd-fs xattr --set user.experiment=atlas root://host//store/f.root
 $ xrd-fs xattr -r root://host//store/run7               # names, whole subtree
@@ -67,6 +68,28 @@ the server lists without sizes. `ln`, `ln -s`, `readlink`, `chown` and
 `path: name` line per attribute found under a directory, and prints nothing
 at all on a server that does not implement it. Plain `touch` is not: it creates a file and
 leaves an existing one alone, which every server understands.
+
+`doctor` is the one to reach for when something will not work and the error
+does not say why. It walks the same ground a transfer would - the interpreter,
+the settings in force, every authentication mechanism in turn, DNS, the port,
+the login, and the path itself - and prints a line for each, so the first `!!`
+down the list is the thing to fix and everything below it is a consequence:
+
+```console
+$ xrd-fs doctor root://eos.example.org//store/user/me
+ok  python        3.13.5 on linux
+ok  settings      connect 30s, request 300s, TLS verified
+!!  auth:gsi      the proxy at /tmp/x509up_u1000 expired 4 hours ago
+                  -> voms-proxy-init -voms lhcb
+ok  connect       1094/tcp answered in 41 ms
+!!  path          /store/user/me: no such file or directory
+                  -> /store/user exists; check the spelling below it
+```
+
+With no URL it checks the machine alone, which is the useful thing to paste
+into a ticket. It never prompts for anything, exits `1` if any line failed,
+and `--json` gives the same report as data. `xrd.diagnose()` is the same thing
+from Python.
 
 `rm -r` is the one subcommand that asks before it acts: at a terminal it says
 what it is about to remove and how many entries are under it, and it refuses a

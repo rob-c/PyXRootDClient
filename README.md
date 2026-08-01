@@ -174,7 +174,12 @@ without `-f`; `xrd-fs rm -r` asks at a terminal, with a count of what is about
 to go, and refuses a path less than two components deep until `--yes`; and
 `root://host/store/f` means the same file as `root://host//store/f` rather
 than a confusing miss. Each has one flag that says "yes, I mean it".
-See [Safety](https://rob-c.github.io/PyXRootDClient/safety/).
+
+When something does go wrong, `xrd-fs doctor` (or `xrd.diagnose()`) asks every
+question a transfer would ask - settings, each authentication mechanism and
+what would fix it, DNS, the port, the login, how far down the path exists -
+and prints one line each, so the first `!!` is the cause rather than the last
+symptom. See [Safety](https://rob-c.github.io/PyXRootDClient/safety/).
 
 ## Command line
 
@@ -184,6 +189,7 @@ $ xrd-fs stat --json davs://dav.example.org/store/f.root
 $ xrd-fs checksum -a adler32 root://host//store/f.root
 $ xrd-fs tail -f root://host//store/running.log
 $ xrd-fs du root://host//store/run7
+$ xrd-fs doctor root://eos.example.org//store/user/me   # why will this not work?
 $ xrd-cp -r /tmp/results davs://dav.example.org/store/results
 $ xrd-cp -r --sync size --delete /tmp/results root://host//store/results/
 $ xrd-cp --tpc root://a//store/f.root root://b//store/f.root
@@ -226,7 +232,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader are implemented and tested —
-2561 tests, of which the great majority need no network, no KDC and no
+2594 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

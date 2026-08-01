@@ -24,6 +24,7 @@ from __future__ import annotations
 from .client import Checkpoint, File, FileSystem
 from .config import Config, configure, current, find_config_file, override
 from .copy import CopyResult, SyncMode, copy, copy_tree, third_party
+from .doctor import Check, Report, diagnose
 from .errors import (
     AttrNotFoundError,
     AuthenticationError,
@@ -113,6 +114,10 @@ __all__ = [
     "third_party",
     "CopyResult",
     "SyncMode",
+    # diagnosing
+    "diagnose",
+    "Check",
+    "Report",
     # files and paths
     "open",
     "XRootDPath",
