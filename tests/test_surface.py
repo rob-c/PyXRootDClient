@@ -91,6 +91,11 @@ def _fs_readlink(fs):
     return fs.readlink("pointer.root")
 
 
+def _fs_lstat(fs):
+    fs.symlink("f.root", "lstat-me.root")
+    return fs.lstat("lstat-me.root")
+
+
 def _fs_removexattr(fs):
     fs.setxattr("f.root", "user.k", b"v")
     return fs.removexattr("f.root", "user.k")
@@ -144,6 +149,8 @@ FILESYSTEM = {
     "set_property": lambda fs: fs.set_property("appid surface-test"),
     "symlink": lambda fs: fs.symlink("f.root", "soft.root"),
     "stat": lambda fs: fs.stat("f.root"),
+    "lstat": _fs_lstat,
+    "is_symlink": lambda fs: fs.is_symlink("f.root"),
     "statvfs": lambda fs: fs.statvfs("."),
     "statx": lambda fs: fs.statx(["f.root", "sub"]),
     "touch": lambda fs: fs.touch("touched.root"),
@@ -273,6 +280,8 @@ PATH = {
     "rglob": lambda p: list(p.parent.rglob("*.root")),
     "rmdir": lambda p: (p.parent / "empty").rmdir(),
     "stat": lambda p: p.stat(),
+    "lstat": lambda p: p.lstat(),
+    "is_symlink": lambda p: p.is_symlink(),
     "stem": lambda p: p.stem,
     "suffix": lambda p: p.suffix,
     "suffixes": lambda p: p.suffixes,

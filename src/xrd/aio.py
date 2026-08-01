@@ -438,8 +438,15 @@ class AsyncFileSystem:
         """Capabilities of the endpoint, from the connection's negotiation."""
         return await _run(self._sync.protocol)
 
-    async def stat(self, path: str) -> StatInfo:
-        return await _run(self._sync.stat, path)
+    async def stat(self, path: str, *, follow_symlinks: bool = True) -> StatInfo:
+        return await _run(self._sync.stat, path, follow_symlinks=follow_symlinks)
+
+    async def lstat(self, path: str) -> StatInfo:
+        """``os.lstat``: stat a symbolic link rather than what it points at."""
+        return await _run(self._sync.lstat, path)
+
+    async def is_symlink(self, path: str) -> bool:
+        return bool(await _run(self._sync.is_symlink, path))
 
     async def statvfs(self, path: str = "/") -> VFSInfo:
         return await _run(self._sync.statvfs, path)

@@ -237,8 +237,8 @@ p / "runs" / "run1.root"
 p.with_suffix(".txt")
 p.relative_to("root://host//store")
 
-p.exists(), p.is_dir(), p.is_file()
-p.stat().st_size
+p.exists(), p.is_dir(), p.is_file(), p.is_symlink()
+p.stat().st_size, p.lstat(), p.stat(follow_symlinks=False)
 p.iterdir(), p.glob("**/*.root"), p.rglob("*.root"), p.walk()
 p.mkdir(parents=True, exist_ok=True)
 p.touch(), p.unlink(), p.rmdir(), p.rename(other), p.replace(other)

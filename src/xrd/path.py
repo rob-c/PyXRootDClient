@@ -171,8 +171,15 @@ class XRootDPath:
             self._fs = FileSystem(self._url.with_path("/"), self._config)
         return self._fs
 
-    def stat(self) -> StatInfo:
-        return self.fs.stat(self._url.path)
+    def stat(self, *, follow_symlinks: bool = True) -> StatInfo:
+        return self.fs.stat(self._url.path, follow_symlinks=follow_symlinks)
+
+    def lstat(self) -> StatInfo:
+        """``pathlib``'s ``lstat``: the link itself, not what it points at."""
+        return self.fs.lstat(self._url.path)
+
+    def is_symlink(self) -> bool:
+        return self.fs.is_symlink(self._url.path)
 
     def exists(self) -> bool:
         return self.fs.exists(self._url.path)

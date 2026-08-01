@@ -112,6 +112,10 @@ kXR_dcksm = 0x04
 
 # ---- kXR_stat options ----
 kXR_vfs = 0x01
+# Another vendor bit: XProtocol.hh's stat options stop at kXR_vfs, and 0x40 is
+# what nginx-xrootd reads for "describe the link, not its target". A server
+# without it ignores the bit and follows the link, as it always did.
+kXR_statNoFollow = 0x40
 
 # ---- kXR_open options (u16) ----
 kXR_compress = 0x0001

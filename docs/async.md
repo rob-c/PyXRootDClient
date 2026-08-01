@@ -70,6 +70,8 @@ async with xrd.aio.open(url, "r+b") as fh:
 
 await fs.symlink("/store/f.root", "/store/latest")
 await fs.readlink("/store/latest")
+await fs.is_symlink("/store/latest")
+await fs.lstat("/store/latest")
 ```
 
 So are server-side range copies, which take either an `AsyncFile` or the

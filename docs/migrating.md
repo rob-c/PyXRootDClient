@@ -54,6 +54,8 @@ already know - see [Errors](errors.md).
 
 `stat` returns something that quacks like `os.stat_result` - `st_size`,
 `st_mtime`, `st_mode` - so code written against `os.stat` transfers unchanged.
+`os.lstat` and `os.path.islink` transfer too, as `fs.lstat` and
+`fs.is_symlink`; `pyxrootd` has neither.
 
 ## Files
 

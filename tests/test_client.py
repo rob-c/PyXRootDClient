@@ -20,7 +20,7 @@ from xrd.errors import (
     ProtocolError,
     UnsupportedError,
 )
-from xrd.flags import Access, DirListFlags, OpenFlags
+from xrd.flags import Access, DirListFlags, OpenFlags, StatInfoFlags
 from xrd.proto import constants as c
 from xrd.testing import FakeServer, error, frame
 from xrd.types import CloneRange, ReadRange, WriteChunk
@@ -1259,6 +1259,30 @@ def test_reading_a_link_that_is_not_one_raises(fs):
 
     with pytest.raises(NotFoundError):
         fs.readlink("/data/a.root")
+
+
+def test_stat_follows_a_link_and_lstat_describes_it(fs):
+    """``os.stat`` answers about the file, ``os.lstat`` about the link, and
+    this is the same distinction one option bit down."""
+    fs.symlink("/data/a.root", "/data/link.root")
+    followed, itself = fs.stat("/data/link.root"), fs.lstat("/data/link.root")
+    assert followed.size == fs.stat("/data/a.root").size
+    assert itself.size == len("/data/a.root")
+    assert StatInfoFlags.OTHER in itself.flags
+    assert StatInfoFlags.OTHER not in followed.flags
+
+
+def test_lstat_is_stat_with_the_option_off(fs, server):
+    fs.symlink("/data/a.root", "/data/link.root")
+    assert fs.lstat("/data/link.root") == fs.stat("/data/link.root", follow_symlinks=False)
+
+
+def test_is_symlink_asks_the_only_question_with_an_unambiguous_answer(fs):
+    """A followed stat of a link is indistinguishable from a stat of its
+    target, so the link-ness comes from ``readlink`` rather than from flags."""
+    fs.symlink("/data/a.root", "/data/link.root")
+    assert fs.is_symlink("/data/link.root") is True
+    assert fs.is_symlink("/data/a.root") is False
 
 
 def test_a_server_without_the_link_extension_says_it_is_unsupported(server, config):

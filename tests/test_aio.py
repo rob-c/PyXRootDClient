@@ -489,6 +489,20 @@ def test_the_link_family_is_mirrored(server):
     assert server.contents("/data/harder") == BODY
 
 
+def test_lstat_describes_the_link_and_stat_what_it_points_at(server):
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            await fs.symlink("/data/a.root", "/data/soft")
+            assert await fs.is_symlink("/data/soft")
+            assert not await fs.is_symlink("/data/a.root")
+            followed = await fs.stat("/data/soft")
+            return followed, await fs.lstat("/data/soft")
+
+    followed, itself = run(main())
+    assert followed.st_size == len(BODY)
+    assert itself.st_size == len("/data/a.root")
+
+
 def test_a_checkpoint_commits_what_the_block_wrote(server):
     from xrd.proto import constants as c
 

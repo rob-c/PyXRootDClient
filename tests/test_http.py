@@ -375,6 +375,7 @@ def test_what_webdav_has_no_answer_for_says_so(fs):
         lambda: fs.symlink("/d/a.root", "/d/latest"),
         lambda: fs.link("/d/a.root", "/d/second"),
         lambda: fs.readlink("/d/latest"),
+        lambda: fs.lstat("/d/a.root"),
         lambda: fs.checksum_cancel("/d/a.root"),
         lambda: fs.query_stats(),
         lambda: fs.query_space("/d"),
@@ -394,9 +395,16 @@ def test_the_unsupported_overrides_keep_the_signature_they_replace(fs):
         lambda: fs.statvfs(),
         lambda: fs.query_stats("io"),
         lambda: fs.query_space(),
+        lambda: fs.stat("/d/a.root", follow_symlinks=False),
     ):
         with pytest.raises(UnsupportedError):
             call()
+
+
+def test_nothing_over_webdav_is_a_symbolic_link(fs, dav):
+    """The question is answerable - the answer is simply always no."""
+    assert fs.is_symlink("/d/a.root") is False
+    assert fs.is_symlink("/d/absent.root") is False
 
 
 def test_statx_is_a_stat_per_path(fs):

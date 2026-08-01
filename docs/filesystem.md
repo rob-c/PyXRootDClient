@@ -72,7 +72,19 @@ fs.chmod("/store/f.root", 0o640)
 fs.symlink("/store/f.root", "/store/latest")    # os.symlink order: target, link
 fs.readlink("/store/latest")                    # '/store/f.root'
 fs.link("/store/f.root", "/store/second")       # os.link order; also fs.hardlink
+
+fs.is_symlink("/store/latest")                  # True
+fs.lstat("/store/latest")                       # the link, not its target
+fs.stat("/store/latest", follow_symlinks=False) # the same thing, spelled os's way
 ```
+
+`is_symlink` asks the server for a `readlink` rather than comparing two
+stats, because that is the question with an unambiguous answer: a stat that
+followed a link is indistinguishable from a stat of a file that never was
+one. `lstat` sets `kXR_statNoFollow`, another vendor bit (`0x40`, what
+nginx-xrootd reads); a server without it follows the link as it always did
+and says nothing about having done so - so where the distinction matters,
+ask `is_symlink` first.
 
 !!! warning "A vendor extension, not XProtocol"
     XProtocol has no link opcodes. These use `kXR_symlink` (3501),

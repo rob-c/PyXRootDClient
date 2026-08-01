@@ -26,6 +26,7 @@ from ..config import Config
 from ..errors import (
     AttrNotFoundError,
     ExistsError,
+    InvalidArgumentError,
     IOError_,
     NotFoundError,
     PermissionError_,
@@ -216,11 +217,35 @@ class FileSystem:
         assert isinstance(info, ProtocolInfo)
         return info
 
-    def stat(self, path: str) -> StatInfo:
-        """``kXR_stat``. Raises :class:`FileNotFoundError` if absent."""
+    def stat(self, path: str, *, follow_symlinks: bool = True) -> StatInfo:
+        """``kXR_stat``. Raises :class:`FileNotFoundError` if absent.
+
+        ``follow_symlinks=False`` asks for the link itself, as ``os.lstat``
+        does. That is a vendor option: a server that does not know it follows
+        the link as usual, and the reply does not say which happened, so
+        :meth:`is_symlink` is the reliable question to ask.
+        """
         target = self._abs(path)
-        res = self._router.execute(r.Stat(target), path=target)
+        options = 0 if follow_symlinks else c.kXR_statNoFollow
+        res = self._router.execute(r.Stat(target, options), path=target)
         return rp.parse_stat(res.data, target)
+
+    def lstat(self, path: str) -> StatInfo:
+        """``os.lstat``: stat a symbolic link rather than what it points at."""
+        return self.stat(path, follow_symlinks=False)
+
+    def is_symlink(self, path: str) -> bool:
+        """Whether ``path`` is a symbolic link.
+
+        Asked as a :meth:`readlink`, because that is the question the server
+        can answer without ambiguity: a stat that followed the link looks
+        exactly like a stat of a file that never was one.
+        """
+        try:
+            self.readlink(path)
+        except (NotFoundError, InvalidArgumentError):
+            return False
+        return True
 
     def statvfs(self, path: str = "/") -> VFSInfo:
         """Space and staging utilisation, in ``os.statvfs`` spirit."""

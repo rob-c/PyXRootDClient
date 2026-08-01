@@ -370,8 +370,12 @@ class HTTPFileSystem(FileSystem):
         """``OPTIONS``: does the endpoint answer, and does it speak DAV?"""
         self.client.request("OPTIONS", self._url("/"), expect=(200, 204))
 
-    def stat(self, path: str) -> StatInfo:
+    def stat(self, path: str, *, follow_symlinks: bool = True) -> StatInfo:
         """``PROPFIND`` with ``Depth: 0``, falling back to ``HEAD``."""
+        if not follow_symlinks:
+            # WebDAV has no links to not follow: a collection member is what
+            # the server says it is, and there is nothing behind it.
+            raise self._unsupported("stat(follow_symlinks=False)")
         target = self._url(path)
         try:
             found = propfind(target, depth=0, client=self.client)
@@ -565,6 +569,13 @@ class HTTPFileSystem(FileSystem):
 
     def readlink(self, path: str) -> str:
         raise self._unsupported("readlink")
+
+    def lstat(self, path: str) -> StatInfo:
+        raise self._unsupported("lstat")
+
+    def is_symlink(self, path: str) -> bool:
+        """Nothing a WebDAV server exposes is a link, so nothing is."""
+        return False
 
     def locate(
         self, path: str, *, flags: LocateFlags = LocateFlags.NONE

@@ -436,7 +436,15 @@ class _Connection:
             return self.handles[handle]
         raise _NotFound("", 3001, "no path and no handle")
 
-    def _stat_line(self, path: str) -> bytes:
+    def _stat_line(self, path: str, *, follow: bool = True) -> bytes:
+        pointed_at = self.s.links.get(path)
+        if pointed_at is not None:
+            if not follow:
+                # A link describes itself: "something else", as long as its
+                # target's name. This is what kXR_statNoFollow asks for.
+                flags = c.kXR_other | c.kXR_readable
+                return f"{abs(hash(path)) % 10**9} {len(pointed_at)} {flags} 1700000000".encode()
+            path = pointed_at
         if path in self.s.dirs:
             flags = c.kXR_isDir | c.kXR_readable | c.kXR_writable
             size = 4096
@@ -529,7 +537,8 @@ def _h_stat(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator
         yield _frame(sid, c.kXR_ok, b"1 1000000 50 1 500000 20\x00")
         return
     path = conn._path(params, body)
-    yield _frame(sid, c.kXR_ok, conn._stat_line(path) + b"\x00")
+    follow = not params[0] & c.kXR_statNoFollow
+    yield _frame(sid, c.kXR_ok, conn._stat_line(path, follow=follow) + b"\x00")
 
 
 def _h_statx(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator[bytes]:

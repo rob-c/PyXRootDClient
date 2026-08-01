@@ -55,8 +55,8 @@ with xrd.open("root://host//store/f.root", "rb") as fh:
 `rmtree`, `truncate`, `chmod`, `touch`, `checksum`, `locate`, `deep_locate`,
 `prepare` (with `query_prepare` for how the staging is going and
 `archive_info` for where a file is now), `query_config`, extended attributes,
-and - where a server has been taught the vendor opcodes - `symlink`, `link`
-and `readlink`.
+and - where a server has been taught the vendor opcodes - `symlink`, `link`,
+`readlink`, `lstat` and `is_symlink`.
 
 ```python
 fs = xrd.FileSystem("davs://dav.example.org")
