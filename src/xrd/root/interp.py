@@ -19,7 +19,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from .buffer import Buffer, as_datetime, to_native
-from .cxx import Mapping, Prim, Seq, Str, parse, py_name
+from .cxx import SEQUENCES, Mapping, Prim, Seq, Str, parse, py_name
 from .errors import FormatError, UnsupportedFeatureError
 
 if TYPE_CHECKING:
@@ -45,6 +45,33 @@ OFFSET_P = 40  # a pointer to a counted one, ``x[n]``
 #: The streamer types that are a class instance written into the entry: a base
 #: class, and a member held by value with or without a dictionary of its own.
 OBJECTS = (0, 61, 62)
+
+#: The streamer types that are a pointer: the ones the class promises are
+#: always there, which ROOT writes in place, and the ones that may be null and
+#: so carry the name of the class they point at - or, for an object written
+#: earlier in the same entry, a reference back to where it was written.
+OBJECTS_HELD = (63, 68)
+OBJECTS_POINTED = (64, 69)
+
+#: The collections that stream themselves rather than by the members they
+#: declare, each holding objects that say which class they are: a list, which
+#: keeps beside each object the option it was added under, and an array, which
+#: keeps its length instead.
+LISTS = ("TList", "THashList", "TSortedList")
+OBJECT_ARRAYS = ("TObjArray",)
+
+#: The arrays ROOT's own kit keeps numbers in - the contents of a histogram is
+#: one - each of which streams itself as a count and then that many values,
+#: with no record round it and nothing of the base class it inherits.
+ARRAYS = {
+    "TArrayC": Prim("int8", "b", 1),
+    "TArrayS": Prim("int16", "h", 2),
+    "TArrayI": Prim("int32", "i", 4),
+    "TArrayL": Prim("int64", "q", 8),
+    "TArrayL64": Prim("int64", "q", 8),
+    "TArrayF": Prim("float32", "f", 4),
+    "TArrayD": Prim("float64", "d", 8),
+}
 
 #: The two bases ROOT gives its own classes, which stream themselves rather
 #: than being written out the way the streamer information describes them.
@@ -494,14 +521,97 @@ def _run(prim: Prim, unpack: Unpack | None, length: int) -> Step:
     return lambda buf, _row: _numbers(prim, unpack, buf, length)
 
 
-def _pointer(prim: Prim, unpack: Unpack | None, count: str) -> Step:
-    """A counted array, ``x[n]``, behind the marker byte that says it is there."""
+def _pointer(prim: Prim, unpack: Unpack | None, count: tuple[str, ...]) -> Step:
+    """A counted array, ``x[n]``, behind the marker byte that says it is there.
+
+    ``count`` is where in the entry read so far the length is, which is a
+    member of the same class or one of a base it inherits - ``TArrayD`` holds
+    as many values as the ``fN`` its ``TArray`` base declares.
+    """
 
     def step(buf: Buffer, row: dict[str, Any]) -> Any:
         buf.u8()  # the marker saying the pointer was not null when it was written
-        return _numbers(prim, unpack, buf, int(row[count]))
+        where: Any = row
+        for key in count:
+            where = where[key]
+        return _numbers(prim, unpack, buf, int(where))
 
     return step
+
+
+class _Described(dict[str, Any]):
+    """The classes this file describes, each made into a reader when first met.
+
+    An object written with its class name in front of it may be of any class at
+    all, and a file describes hundreds; building a reader for every one of them
+    to read a histogram would cost more than the histogram does. A class this
+    file does not describe, or one this reader cannot walk, is left out, and
+    then the stream steps over it by the length written in front of it and it
+    comes back as the name of its class rather than as a wrong shape.
+    """
+
+    def __init__(self, source: Source, seen: tuple[str, ...]) -> None:
+        super().__init__()
+        self.source, self.seen = source, seen
+
+    def get(self, name: str, default: Any = None) -> Any:
+        if name not in self:
+            try:
+                self[name] = _embedded(name, self.source, self.seen)
+            except _Unreadable:
+                self[name] = default
+        return self[name]
+
+
+def _embedded(name: str, source: Source, seen: tuple[str, ...]) -> Callable[[Buffer], Any]:
+    """A whole object written where it stands, rather than pointed at.
+
+    Nearly every class is written out by the file's streamer information, and
+    walking the members it declares is the whole of it. A collection is the
+    exception: it streams itself, and what it holds is objects that each say
+    which class they are.
+    """
+    if name in LISTS:
+        classes = _Described(source, seen)
+        return lambda buf: buf.tlist(classes)
+    if name in OBJECT_ARRAYS:
+        held = _Described(source, seen)
+        return lambda buf: buf.objarray(held)
+    if name in ARRAYS:
+        prim = ARRAYS[name]
+        return lambda buf: _numbers(prim, None, buf, buf.i32())
+    return _streamed(_members(name, source, seen))
+
+
+def _class_held(typename: str) -> tuple[str, bool] | None:
+    """The class a container holds one of, and whether it holds it by pointer.
+
+    ``None`` for anything else, including a container of a container: what a
+    ``vector<vector<TObject>>`` looks like on the wire is not something any
+    file this reader has met has ever written.
+    """
+    head, angle, rest = typename.replace("std::", "").strip().partition("<")
+    if not angle or not rest.endswith(">") or head not in SEQUENCES:
+        return None
+    inside = rest[:-1].strip()
+    if "<" in inside or not inside:
+        return None
+    return inside.rstrip("*").strip(), inside.endswith("*")
+
+
+def _objects(one: Callable[[Buffer], Any]) -> Callable[[Buffer], list[Any]]:
+    """A container of whole objects, each written the way its own class is."""
+
+    def read(buf: Buffer) -> list[Any]:
+        version, _end = buf.header()
+        if version & MEMBER_WISE:
+            raise UnsupportedFeatureError(
+                "this container was written field by field, which happens for a "
+                "container of C++ objects and is not a shape this reader decodes"
+            )
+        return [one(buf) for _ in range(buf.u32())]
+
+    return read
 
 
 def _plainly(read: Callable[[Buffer], Any]) -> Step:
@@ -580,7 +690,9 @@ def _reader(node: Any) -> Callable[[Buffer], Any]:
     return _sequence(node.item)
 
 
-def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str]) -> Step:
+def _step(
+    member: Member, source: Source, seen: tuple[str, ...], before: dict[str, tuple[str, ...]]
+) -> Step:
     """How to read one member, or a refusal to read the class it belongs to."""
     for base in (0, OFFSET_L, OFFSET_P):
         kind = member.stype - base
@@ -598,13 +710,14 @@ def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str
                 )
             prim, unpack = found
         if base == OFFSET_P:
-            if member.count not in before:
+            where = before.get(member.count)
+            if where is None:
                 raise _Unreadable(
                     f"{member.name!r}, which says it holds as many values as "
                     f"{member.count or 'a member with no name'} but is written "
                     f"before it"
                 )
-            return _pointer(prim, unpack, member.count)
+            return _pointer(prim, unpack, where)
         if base == OFFSET_L:
             return _run(prim, unpack, member.length)
         return _one(prim, unpack)
@@ -614,13 +727,31 @@ def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str
         return _plainly(_bookkeeping)
     if member.stype == TNAMED:
         return _plainly(_titled)
+    if member.stype - OFFSET_L in (61, 62):
+        # A fixed-size array of a class, written one object after another.
+        one = _embedded(member.typename, source, seen)
+        return _plainly(lambda buf: [one(buf) for _ in range(member.length)])
     if member.stype in OBJECTS:
         # A base class is declared under its own name, with ``BASE`` for a type.
         inside = member.name if member.stype == 0 else member.typename
-        return _plainly(_streamed(_members(inside, source, seen)))
+        return _plainly(_embedded(inside, source, seen))
+    if member.stype in OBJECTS_HELD:
+        # A pointer the class promises is never null, so ROOT writes what it
+        # points at where it stands, with no class name in front of it.
+        return _plainly(_embedded(member.typename.rstrip("*"), source, seen))
+    if member.stype in OBJECTS_POINTED:
+        classes = _Described(source, seen)
+        return _plainly(lambda buf: buf.any(classes))
     node = parse(member.typename)
     if node is not None:
         return _plainly(_reader(node))
+    held = _class_held(member.typename)
+    if held is not None:
+        name, pointed = held
+        if pointed:
+            classes = _Described(source, seen)
+            return _plainly(_objects(lambda buf: buf.any(classes)))
+        return _plainly(_objects(_embedded(name, source, seen)))
     raise _Unreadable(
         f"{member.name!r}, which is {KINDS.get(member.stype, 'of a kind')} that "
         f"this reader does not decode inside an entry"
@@ -640,10 +771,13 @@ def _members(
             f"information does not describe"
         )
     steps: list[tuple[str, Step]] = []
-    before: set[str] = set()
+    before: dict[str, tuple[str, ...]] = {}
     for member in described.values():
         steps.append((member.name, _step(member, source, (*seen, name), before)))
-        before.add(member.name)
+        if member.stype == 0:  # a base, whose own members are inside its own name
+            for inner in source.streamers().get(member.name) or ():
+                before[inner] = (member.name, inner)
+        before[member.name] = (member.name,)
 
     def read(buf: Buffer) -> dict[str, Any]:
         row: dict[str, Any] = {}

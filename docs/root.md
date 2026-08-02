@@ -42,18 +42,64 @@ f["Events;1"]        # an older cycle, when a file kept several
 what a name is without reading any of it.
 
 A name that is not a tree is read too, when the file describes the class it
-holds — which is the usual case for a C++ class somebody wrote, and the usual
-*not* case for a histogram or a canvas out of ROOT's own kit:
+holds — which is the usual case for a C++ class somebody wrote, and for most of
+ROOT's own kit as well:
 
 ```python
 f["tlv"]                # {'TObject': {...}, 'fP': {'fX': 10.0, ...}, 'fE': 40.0}
 f["FileSummaryRecord"]  # a std::string key is a str
 f["written"]            # a TDatime is a datetime.datetime
+f["h1d"]                # a histogram is a Histogram, see below
 ```
+
+Objects held by pointer are followed, whether the class promises they are there
+or writes the name of the class in front of them; a `TList`, `TObjArray` or
+`TArray` member is read the way it streams itself rather than by the members it
+declares; and a container of objects is read one object after another. A class
+inside an entry that this reader cannot walk — one the file does not describe,
+or one that streams itself some way of its own — comes back as the name of its
+class, because the length written in front of it says how to step over it
+without touching anything else.
 
 The bytes have to account for themselves: a class that streams itself in some
 way of its own leaves the object a different length than the layout says, and
 that is refused by name rather than read into a plausible wrong answer.
+
+## Histograms
+
+A `TH1`, `TH2` or `TH3` of any bin type comes back as a `Histogram`: bins,
+edges and what is in them, counted the way Python counts.
+
+```python
+h = f["h1d"]
+h.name, h.title, h.shape          # ('h1d', 'h1d', (10,))
+h.values()                        # array('d', [6.6, 72.6, 543.4, ...])
+h.errors()                        # the same shape, from the sums of squared weights
+h.edges()                         # 11 edges for 10 bins
+h.axes[0].centers()               # where a point would be drawn
+h.sum(), h.entries                # 11000.0, 10004.0
+len(h), len(h.axes[0])            # 10, 10
+```
+
+`values()[0]` is the first bin of the axis, not the underflow. ROOT keeps two
+extra bins per axis for what fell off each end, and `values(flow=True)` gives
+them back at the ends where ROOT keeps them — so `sum(flow=True)` is everything
+that was ever filled and `sum()` is what landed on the axis.
+
+A two-dimensional histogram gives a row per bin along x, so `values()[ix][iy]`
+is the bin ROOT calls `GetBinContent(ix+1, iy+1)`, and a three-dimensional one
+nests once more. Everything is an `array.array`, which `numpy.asarray` takes
+without copying and which needs nothing installed to use as it is.
+
+A histogram filled with weights keeps the sum of their squares, and that is
+where `errors()` comes from; one filled without them keeps no such sum, and
+then the error on a count of *n* is its square root, which is what ROOT itself
+would give. An unevenly binned axis keeps every edge and those are given back
+exactly; an evenly binned one keeps none, and they are worked out from the ends.
+
+Every member the histogram was written with is still there under `h.members`,
+under the name of the class that declared it, so nothing is hidden by being
+tidied away.
 
 ## Columns
 
@@ -277,8 +323,9 @@ What is named that way:
 
 - a class whose layout the file's streamer information does not describe, so
   that reading it whole would be a guess;
-- a member of an unsplit object of a kind this reader has no reader for, such
-  as a pointer to another object, which stops the entry it is in;
+- a member of an unsplit object of a kind this reader has no reader for, which
+  stops the entry it is in, because an unsplit entry is read from first byte to
+  last and there is no length in front of a member to step over it by;
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;
 - a container written field by field rather than value by value;

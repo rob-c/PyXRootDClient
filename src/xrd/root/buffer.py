@@ -273,13 +273,15 @@ class Buffer:
         The option is a string nobody reading data wants, written after the
         object it belongs to, so it has to be stepped over one at a time.
         """
-        _version, end = self.header()
+        version, end = self.header()
+        if version <= 3:
+            raise FormatError(f"a TList of version {version} is older than any that names itself")
         self.tobject()
         self.string()
         items = []
         for _ in range(self.i32()):
             items.append(self.any(classes))
-            self.take(self.u8())
+            self.string()  # the option it was added under, which is drawing, not data
         self.resume(end)
         return items
 

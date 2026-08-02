@@ -17,6 +17,7 @@ from ..url import parse
 from .buffer import Buffer, as_datetime
 from .compression import decompress
 from .errors import FormatError, UnsupportedFeatureError
+from .hist import HISTOGRAMS, Histogram
 
 if TYPE_CHECKING:
     from ..config import Config
@@ -249,6 +250,8 @@ class Directory:
                 f"was read the way this file describes the class, so it streams itself "
                 f"its own way and reading it would be a guess"
             )
+        if key.classname in HISTOGRAMS:
+            return Histogram(key.classname, value)
         return value
 
     def _subdirectory(self, key: Key) -> Directory:

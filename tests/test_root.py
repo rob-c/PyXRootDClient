@@ -12,6 +12,7 @@ from __future__ import annotations
 import array
 import datetime
 import io
+import math
 import pathlib
 import struct
 import zlib
@@ -32,7 +33,8 @@ from xrd.root import (
 from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
 from xrd.root.compression import _lz4, algorithm, decompress
 from xrd.root.file import Source, _directory_record
-from xrd.root.interp import Refused, build
+from xrd.root.hist import Histogram
+from xrd.root.interp import Refused, _class_held, _Described, build
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
 from xrd.root.streamers import Member
 from xrd.root.tree import Basket
@@ -517,8 +519,7 @@ def test_a_directory_holding_no_tree_says_so_when_asked_for_one():
         assert root.trees() == []
         with pytest.raises(KeyError, match="holds 0 trees"):
             root.tree()
-        with pytest.raises(UnsupportedFeatureError, match="is a TH1F"):
-            root["dir1/dir11/h1"]
+        assert root.classnames() == dict.fromkeys(("dir1", "dir2", "dir3"), "TDirectory")
 
 
 def keyed(payload: bytes, classname: str, classes: dict) -> Directory:
@@ -578,6 +579,193 @@ def test_a_key_with_bytes_left_over_is_a_class_that_streams_itself():
     directory = keyed(record(1, struct.pack(">i", 5)) + bytes(4), "Thing", described)
     with pytest.raises(UnsupportedFeatureError, match="left 4 bytes over"):
         directory["thing"]
+
+
+# -- the objects ROOT's own kit writes ------------------------------------
+
+#: What ROOT put in the ten bins of ``h1d``, and the sums of squared weights
+#: beside them, as go-hep's own reader of the same file gives them back.
+GAUSS = [6.6, 72.6, 543.4, 1708.3, 3130.6, 3136.1, 1753.4, 540.1, 101.2, 7.7]
+GAUSS_W2 = [7.26, 79.86, 597.74, 1879.13, 3443.66, 3449.71, 1928.74, 594.11, 111.32, 8.47]
+
+
+def test_a_histogram_is_its_bins_its_edges_and_its_axes():
+    with opened("gauss-h1") as root:
+        hist = root["h1d"]
+        assert repr(hist) == "<TH1D 'h1d' of 10 bins, 10004 entries>"
+        assert (hist.name, hist.title, hist.classname) == ("h1d", "h1d", "TH1D")
+        assert (hist.shape, len(hist), hist.entries) == ((10,), 10, 10004.0)
+        assert [round(value, 4) for value in hist.values()] == GAUSS
+        assert [round(value, 4) for value in hist.errors()] == [
+            round(math.sqrt(w2), 4) for w2 in GAUSS_W2
+        ]
+        # The two ROOT keeps at the ends are what the bins fell out of.
+        assert list(hist.values(flow=True))[:1] == [2.0]
+        assert round(hist.sum(flow=True) - hist.sum(), 4) == 6.0
+        assert round(hist.sum(flow=True), 4) == 11006.0
+        assert len(hist.edges()) == 11
+        assert hist.edges()[0] == -4.0 and hist.edges()[-1] == 4.0
+        assert hist.axes[0].centers()[0] == -3.6
+        assert repr(hist.axes[0]) == "<Axis 'xaxis' of 10 bins from -4 to 4>"
+
+
+def test_a_histogram_binned_unevenly_keeps_every_edge_it_was_written_with():
+    """An evenly binned axis writes no edges at all: the two ends say where they are."""
+    with opened("gauss-h1") as root:
+        assert root["h1d"].axes[0]._edges == array.array("d")
+        uneven = root["h1d-var"].axes[0]
+        assert len(uneven._edges) == 11
+        assert (uneven.low, uneven.high, len(uneven)) == (-4.0, 4.0, 10)
+        # Written exactly, where working them out from the ends would drift.
+        assert list(uneven.edges())[3] == -1.6
+        assert -4.0 + 0.8 * 3 != -1.6
+
+
+def test_a_two_dimensional_histogram_gives_a_row_of_bins_for_each_bin_along_x():
+    with opened("gauss-h2") as root:
+        for name in ("h2d", "h2f"):
+            hist = root[name]
+            assert hist.shape == (3, 3)
+            assert len(hist) == 9
+            assert [list(row) for row in hist.values()] == [
+                [501.0, 488.0, 314.0],
+                [385.0, 379.0, 221.0],
+                [228.0, 232.0, 164.0],
+            ]
+            assert hist.sum() == 2912.0
+            assert hist.errors()[0][0] == math.sqrt(501.0)
+            assert len(hist.values(flow=True)) == 5
+            assert len(hist.values(flow=True)[0]) == 5
+            assert list(hist.edges(1)) == [0.0, 1.0, 2.0, 3.0]
+
+
+def test_a_histogram_filled_without_weights_takes_its_error_from_the_count():
+    """No sum of squared weights was kept, so the error on *n* counts is its root."""
+    with opened("dirs-6.14.00") as root:
+        hist = root["dir1/dir11/h1"]
+        assert hist.members["TH1"]["fSumw2"] == array.array("d")
+        assert list(hist.values())[:4] == [3.0, 1.0, 0.0, 1.0]
+        assert list(hist.errors())[:4] == [math.sqrt(3.0), 1.0, 0.0, 1.0]
+        assert (hist.sum(), hist.entries) == (5.0, 5.0)
+
+
+def crafted_histogram(classname: str, bins: list[float], *shape: int) -> Histogram:
+    """A histogram of any shape at all, without the file that would hold one."""
+    axes = {
+        f"f{letter}axis": {
+            "TNamed": {"fName": f"{letter.lower()}axis", "fTitle": ""},
+            "fNbins": count,
+            "fXmin": 0.0,
+            "fXmax": float(count),
+            "fXbins": array.array("d"),
+        }
+        for letter, count in zip("XYZ", shape, strict=False)
+    }
+    core = {
+        "TNamed": {"fName": "h", "fTitle": ""},
+        "fNcells": len(bins),
+        "fEntries": 0.0,
+        "fSumw2": [],
+        **axes,
+    }
+    return Histogram(classname, {"TH1": core, "TArrayD": array.array("d", bins)})
+
+
+def test_a_histogram_of_three_dimensions_nests_its_rows_once_more():
+    hist = crafted_histogram("TH3D", [float(cell) for cell in range(3 * 3 * 4)], 1, 1, 2)
+    assert hist.shape == (1, 1, 2)
+    assert [[list(row) for row in plane] for plane in hist.values()] == [[[13.0, 22.0]]]
+    assert hist.sum() == 35.0
+    assert hist.values(flow=True)[0][0][0] == 0.0
+    assert repr(hist) == "<TH3D 'h' of 1 x 1 x 2 bins, 0 entries>"
+
+
+def test_a_histogram_without_its_bins_or_its_axes_is_not_one():
+    with pytest.raises(FormatError, match="without its bins or its axes"):
+        Histogram("TH1D", {"TArrayD": array.array("d", [1.0])})  # no axes to lie on
+    with pytest.raises(FormatError, match="without its bins or its axes"):
+        # The drawing attributes are searched through and are not it either.
+        Histogram("TH1D", {"TAttLine": {"fLineColor": 1}, "TH1": {"fNcells": 1}})
+    with pytest.raises(FormatError, match="holds only 3 values"):
+        crafted_histogram("TH1D", [1.0, 2.0, 3.0], 3)
+
+
+def test_an_object_pointed_at_rather_than_held_is_read_where_it_points():
+    """A member that may be null carries the class it points at, or nothing."""
+    with opened("streamers") as root:
+        event = root["evt"]
+        assert event["P3Ptr"] == {"Px": 0, "Py": 0.0, "Pz": 1}
+        assert event["ObjStrPtr"]["fString"] == "obj-ptr-000"
+        assert [point["Px"] for point in event["ArrayP3s"]] == list(range(10))
+        assert [held["fString"] for held in event["ArrayObjStr"]][:2] == ["obj-000", "obj-001"]
+        assert event["StdStr"] == "std-000"
+
+
+def test_an_array_of_objects_that_streams_itself_is_read_by_its_own_kind():
+    """A ``TObjArray`` member is written the way the array itself says, not the class."""
+    with opened("tconfidence-level") as root:
+        source = root["dsrc"]
+        assert source["fSignal"] == []
+        assert list(source) == [
+            "TObject",
+            "fSignal",
+            "fBackground",
+            "fCandidates",
+            "fErrorOnSignal",
+            "fErrorOnBackground",
+            "fIds",
+            "fDummyTA",
+            "fDummyIds",
+        ]
+        with pytest.raises(UnsupportedFeatureError, match="does not describe its layout"):
+            root["limit"]
+        with pytest.raises(UnsupportedFeatureError, match="fBeta_bin_params"):
+            root["eff"]
+
+
+def test_a_container_of_objects_is_read_one_object_after_another():
+    """``fFunctions`` is a ``vector<TF1*>``: a count, then each object named."""
+    with opened("tformula") as root:
+        summed = root["fnorm"]
+        assert [held["TNamed"]["fName"] for held in summed["fFunctions"]] == ["func1", "func2"]
+        assert list(summed["fCoeffs"]) == [10.0, 20.0]
+        assert summed["fParNames"] == ["Coeff0", "Coeff1", "p01", "p11", "p02", "p12"]
+
+
+def test_a_member_of_a_class_this_reader_cannot_walk_comes_back_as_its_name():
+    """Stepping over it by the length in front of it beats guessing at its shape."""
+    with opened("tformula") as root:
+        formula = root["func1"]
+        assert formula["fFormula"] == "TFormula"
+        assert formula["fComposition"] is None  # a null pointer is nothing at all
+        assert list(formula["fParErrors"]) == [0.0, 0.0]
+
+
+def test_a_container_of_objects_written_field_by_field_is_refused():
+    with opened("tgme") as root:
+        with pytest.raises(UnsupportedFeatureError, match="written field by field"):
+            root["gme"]
+
+
+def test_a_class_the_file_says_nothing_about_is_stepped_over_inside_a_list():
+    """A list holds whatever it holds, and one class of it being a mystery is not fatal."""
+    described = _Described(source_over(b""), ())
+    assert described.get("Nothing") is None
+    assert described.get("Nothing") is None  # asked once, remembered after that
+
+
+def test_a_list_older_than_any_that_names_itself_is_refused():
+    with pytest.raises(FormatError, match="version 3 is older"):
+        Buffer(record(3)).tlist({})
+
+
+def test_a_container_of_a_container_of_objects_is_not_a_shape_this_reads():
+    assert _class_held("vector<TArrayD>") == ("TArrayD", False)
+    assert _class_held("std::vector<TF1*>") == ("TF1", True)
+    assert _class_held("vector<vector<TArrayD> >") is None
+    assert _class_held("vector<>") is None
+    assert _class_held("map<int,TArrayD>") is None
+    assert _class_held("TArrayD") is None
 
 
 def test_the_only_tree_in_a_file_opens_without_being_named():

@@ -658,8 +658,8 @@ def test_a_counted_member_written_before_its_count_is_refused():
 
 
 def test_a_member_of_a_kind_this_reader_does_not_decode_is_named_in_the_refusal():
-    source = Layout(Event=declared("obj", 63, "P3*"))
-    assert "'obj', which is a pointer to an object that this reader does not decode" in (
+    source = Layout(Event=declared("obj", 500, "Widget"))
+    assert "'obj', which is a class with a streamer of its own that this reader does not" in (
         column_of("Event", source=source).reason
     )
 
