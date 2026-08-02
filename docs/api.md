@@ -145,6 +145,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.Branch
 
+::: xrd.root.Group
+
 ::: xrd.root.Jagged
 
 ::: xrd.root.ml.to_tensor

@@ -28,10 +28,12 @@ KEY_WINDOW = 512
 class Member:
     """One data member of one class, as the file describes it."""
 
-    __slots__ = ("name", "stype", "typename", "length")
+    __slots__ = ("name", "title", "stype", "typename", "length")
 
-    def __init__(self, name: str, stype: int, typename: str, length: int) -> None:
+    def __init__(self, name: str, title: str, stype: int, typename: str, length: int) -> None:
         self.name = name
+        #: The declaration's trailing comment, where a packed float keeps its range.
+        self.title = title
         self.stype = stype
         self.typename = typename
         self.length = length
@@ -53,7 +55,7 @@ def read_element(buf: Buffer, depth: int = 1) -> Member:
     for _ in range(depth - 1):
         buf.header()
     base, inner = buf.header()
-    name, _title = buf.named()
+    name, title = buf.named()
     stype = buf.i32()
     buf.i32()  # how many bytes the member takes in memory
     length = buf.i32()
@@ -62,7 +64,7 @@ def read_element(buf: Buffer, depth: int = 1) -> Member:
     typename = buf.string()
     buf.resume(inner)
     buf.resume(end)
-    return Member(name, stype, typename, length)
+    return Member(name, title, stype, typename, length)
 
 
 def read_info(buf: Buffer) -> tuple[str, dict[str, Member]]:

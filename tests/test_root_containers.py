@@ -28,6 +28,7 @@ from xrd.root.objects import (
     read_derived_branch,
 )
 from xrd.root.streamers import Member, read_element, read_info, read_streamers
+from xrd.root.tree import TTree
 
 DATA = pathlib.Path(__file__).parent / "data"
 
@@ -431,3 +432,131 @@ def test_a_packed_slice_is_rows_of_doubles():
     column = _packed(leaf)
     assert isinstance(column, Rows)
     assert column.itemsize == 3
+
+
+# -- a packed float split out of a class ----------------------------------
+
+
+class Described:
+    """A source that describes one class, the way a real file's streamers do."""
+
+    def __init__(self, **members: Member) -> None:
+        self.classes = {"Event": members}
+
+    def streamers(self) -> dict[str, dict[str, Member]]:
+        return self.classes
+
+
+def packed_member(title: str, ltype: int, *, length: int = 1, stype: int = 9):
+    """The column a ``Double32_t`` or ``Float16_t`` member of ``Event`` becomes."""
+    record_ = BranchRecord()
+    record_.name = record_.classname = "Event"
+    leaf = LeafRecord("TLeafElement")
+    leaf.name, leaf.ltype, leaf.length = "D", ltype, length
+    record_.leaves = [leaf]
+    source = Described(D=Member("D", title, stype, "Double32_t", length))
+    return build(record_, leaf, source)
+
+
+def test_a_streamer_element_keeps_the_comment_its_range_is_written_in():
+    member = read_element(Buffer(element_bytes(4, "D", "Double32_t")))
+    assert (member.name, member.title, member.typename) == ("D", "", "Double32_t")
+
+
+def test_a_split_double32_member_is_unpacked_by_the_range_the_class_declares():
+    column = packed_member("[0,4,2]", 9)
+    assert isinstance(column, Flat)
+    assert (column.typename, column.itemsize, column.length) == ("float64", 4, 1)
+    assert list(column.decode(struct.pack(">3I", 0, 2, 4))) == [0.0, 2.0, 4.0]
+
+
+def test_a_split_double32_member_with_no_range_is_the_float_it_was_written_as():
+    column = packed_member("", 9)
+    assert isinstance(column, Flat)
+    assert column.itemsize == 4
+    assert list(column.decode(struct.pack(">2f", 1.5, -2.5))) == [1.5, -2.5]
+
+
+def test_a_split_float16_member_with_no_range_keeps_only_its_top_bits():
+    column = packed_member("", 19, stype=19)
+    assert isinstance(column, Flat)
+    assert column.itemsize == 3  # an exponent byte and two of mantissa
+    assert list(column.decode(struct.pack(">BH", 128, 0))) == [2.0]
+
+
+def test_a_fixed_array_of_packed_floats_is_as_wide_as_the_class_says():
+    column = packed_member("[0,4,2]", 9 + 20, length=10)
+    assert isinstance(column, Flat)
+    assert column.length == 10
+
+
+def test_a_counted_run_of_packed_floats_is_rows_behind_one_marker_byte():
+    column = packed_member("[0,4,2]", 9 + 40)
+    assert isinstance(column, Rows)
+    assert (column.header, column.counted, column.itemsize) == (1, False, 4)
+
+
+def test_a_packed_member_of_a_class_the_file_does_not_describe_is_refused():
+    reason = column_of("Event", member="D", ltype=9).reason
+    assert "the range it was squeezed into is not knowable" in reason
+
+
+def test_a_packed_member_whose_range_makes_no_sense_is_refused_by_its_spelling():
+    reason = packed_member("[a,b]", 9).reason
+    assert "not a spelling this reader can turn into numbers" in reason
+
+
+# -- a split object, put back together ------------------------------------
+
+
+def test_a_split_object_is_a_branch_that_gives_back_the_object(event):
+    group = event["evt"]
+    assert repr(group) == "<Group 'evt' of 39 members>"
+    assert event.groups() == ["evt", "P3"]
+    # What the C++ that wrote this file put in entry 1, member for member.
+    row = group.array(1, 2)[0]
+    assert row["Beg"] == "beg-001"
+    assert (row["I16"], row["U64"], row["F64"]) == (1, 1, 1.0)
+    assert row["Str"] == "evt-001"
+    assert list(row["ArrayF32[10]"]) == [1.0] * 10
+    assert row["StlVecI16"].tolist() == [1]
+
+
+def test_an_object_inside_an_object_is_a_dictionary_inside_a_dictionary(event):
+    assert event["evt"].array(1, 2)[0]["P3"] == {"Px": 0, "Py": 1.0, "Pz": 0}
+    assert event["P3"].array(2, 3) == [{"Px": 1, "Py": 2.0, "Pz": 1}]
+
+
+def test_the_members_are_the_columns_and_the_object_is_not_read_twice(event):
+    assert "evt" in event.keys() and "evt" not in event.readable()
+    assert event.unreadable == {}
+    assert event.typenames()["evt"] == "dict"
+    assert len(event["evt"]) == len(event) == 100
+    assert event["evt"].array(5, 2) == []
+
+
+def test_a_member_this_reader_will_not_decode_is_named_rather_than_dropped(event):
+    event.branches["I16"].column = Refused("a shape no file has written")
+    group = event["evt"]
+    assert group.unreadable == {"I16": "a shape no file has written"}
+    assert "I16" not in group.array(0, 1)[0]
+
+
+def test_a_branch_holding_data_keeps_its_children_as_columns_beside_it():
+    """A branch can have baskets of its own and branches under it as well.
+
+    Only the ones holding nothing are the split objects, so this one stays a
+    column and its child becomes a second column rather than a member of it.
+    """
+    parent, child = BranchRecord(), BranchRecord()
+    parent.name = "top"
+    parent.basket_seek = [0]
+    for record_, name in ((parent, "top"), (child, "top.sub")):
+        record_.name = name
+        leaf = LeafRecord("TLeafI")
+        leaf.name = name
+        record_.leaves = [leaf]
+    parent.branches = [child]
+    tree = TTree("t", "", 0, [parent], Nothing())
+    assert tree.keys() == ["top", "top.sub"]
+    assert tree.groups() == []

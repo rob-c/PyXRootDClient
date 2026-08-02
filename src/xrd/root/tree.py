@@ -16,13 +16,13 @@ from typing import TYPE_CHECKING, Any
 from .buffer import Buffer
 from .compression import decompress
 from .errors import UnsupportedFeatureError
-from .interp import Column, Flat, Refused, Rows, Values, build
+from .interp import Column, Flat, Members, Refused, Rows, Values, build
 
 if TYPE_CHECKING:
     from .file import Source
     from .objects import BranchRecord, LeafRecord
 
-__all__ = ["Jagged", "Branch", "TTree"]
+__all__ = ["Jagged", "Branch", "Group", "TTree"]
 
 #: Entries per step when iterating, if nobody says otherwise.
 DEFAULT_STEP = 10_000
@@ -295,6 +295,68 @@ class Branch:
         return out
 
 
+class Group(Branch):
+    """A split C++ object, put back together from the branches under it.
+
+        >>> tree["evt"].array(0, 1)                # doctest: +SKIP
+        [{'I32': -1, 'Str': 'evt-000', 'P3': {'Px': -1, 'Py': -1.0, 'Pz': -1}}]
+
+    ROOT splits an object into one branch per member and leaves the object
+    itself holding nothing at all. Every member is readable on its own - and
+    reading them on their own is what makes a large file cheap to walk - so
+    this is a convenience rather than the only way in: it reads the same
+    baskets and pays the same price, and gives back the object per entry
+    instead of the columns across entries.
+
+    A member this reader will not decode is left out of the dictionary and
+    named in :attr:`unreadable`, which is the same sentence ``tree.unreadable``
+    gives for it under its own name.
+    """
+
+    __slots__ = ("members", "_branches")
+
+    def __init__(
+        self,
+        name: str,
+        record: BranchRecord,
+        leaf: LeafRecord,
+        source: Source,
+        branches: dict[str, Branch],
+    ) -> None:
+        super().__init__(name, record, leaf, Members(), source)
+        #: The member's own name, against the branch name it is kept under.
+        self.members: dict[str, str] = {}
+        self._branches = branches
+
+    def __repr__(self) -> str:
+        return f"<Group {self.name!r} of {len(self.members)} members>"
+
+    @property
+    def unreadable(self) -> dict[str, str]:
+        """The members left out of each dictionary, and why."""
+        return {
+            member: column.reason
+            for member, label in self.members.items()
+            if isinstance(column := self._branches[label].column, Refused)
+        }
+
+    def array(self, entry_start: int = 0, entry_stop: int | None = None) -> list[dict[str, Any]]:
+        """One dictionary per entry, a key for each member that reads."""
+        start, stop = self._bounds(entry_start, entry_stop)
+        rows: list[dict[str, Any]] = [{} for _ in range(max(stop - start, 0))]
+        for member, label in self.members.items():
+            branch = self._branches[label]
+            if isinstance(branch.column, Refused):
+                continue
+            values = branch.array(start, stop)
+            width = branch.length
+            for index, row in enumerate(rows):
+                row[member] = (
+                    values[index * width : (index + 1) * width] if width > 1 else values[index]
+                )
+        return rows
+
+
 class TTree:
     """A tree, and the columns in it.
 
@@ -324,14 +386,41 @@ class TTree:
         self.branches: dict[str, Branch] = {}
         self.unreadable: dict[str, str] = {}
         for top in records:
-            for record in top.walk():
-                many = len(record.leaves) > 1
-                for leaf in record.leaves:
-                    label = f"{record.name}.{leaf.name}" if many else record.name
-                    column = build(record, leaf, source)
-                    self.branches[label] = Branch(label, record, leaf, column, source)
-                    if isinstance(column, Refused):
-                        self.unreadable[label] = column.reason
+            self._add(top, source)
+
+    def _add(self, record: BranchRecord, source: Source) -> list[str]:
+        """Take in one branch and everything below it; say what it is called.
+
+        A branch that holds no baskets but has branches under it is ROOT's
+        way of writing a split object: nothing of it is in the file except
+        its members, so it becomes a :class:`Group` over them rather than a
+        column that cannot be read.
+        """
+        from .objects import LeafRecord
+
+        labels = []
+        many = len(record.leaves) > 1
+        for leaf in record.leaves:
+            label = f"{record.name}.{leaf.name}" if many else record.name
+            column = build(record, leaf, source)
+            self.branches[label] = Branch(label, record, leaf, column, source)
+            if isinstance(column, Refused):
+                self.unreadable[label] = column.reason
+            labels.append(label)
+        split = record.branches and not record.basket_seek and not many
+        if not split:
+            for child in record.branches:
+                self._add(child, source)
+            return labels
+        leaf = record.leaves[0] if record.leaves else LeafRecord("TLeafElement")
+        group = Group(record.name, record, leaf, source, self.branches)
+        self.branches[record.name] = group  # in place, where its own leaf was
+        self.unreadable.pop(record.name, None)
+        prefix = f"{record.name}."
+        for child in record.branches:
+            for label in self._add(child, source):
+                group.members[label.removeprefix(prefix)] = label
+        return [record.name]
 
     def __repr__(self) -> str:
         return (
@@ -362,8 +451,20 @@ class TTree:
         return list(self.branches)
 
     def readable(self) -> list[str]:
-        """The columns this reader can decode, which is what ``arrays`` defaults to."""
-        return [name for name in self.branches if name not in self.unreadable]
+        """The columns this reader can decode, which is what ``arrays`` defaults to.
+
+        A split object is not one of them: its members are already here under
+        their own names, and taking both would read every basket twice.
+        """
+        return [
+            name
+            for name, branch in self.branches.items()
+            if name not in self.unreadable and not isinstance(branch, Group)
+        ]
+
+    def groups(self) -> list[str]:
+        """The split objects: branches whose members are the branches under them."""
+        return [name for name, branch in self.branches.items() if isinstance(branch, Group)]
 
     def typenames(self) -> dict[str, str]:
         """What each column holds, in Python's words."""

@@ -13,20 +13,22 @@ ROOT's compression algorithms - with nothing but the standard library, and it
 reads it a basket at a time, so a tree on the other side of the world costs
 the entries you asked for rather than the file.
 
-What it does not do is every ROOT class ever written: histograms, split C++
-objects and the truncated float types are refused by name, with the class in
-the message, because a plausible misreading of physics data is worse than a
-refusal. Plain numeric and string branches - which is what a training set
-looks like - are read, jagged rows and all.
+Numbers, strings, jagged rows, STL containers and the members ROOT splits a
+C++ class into are all read, and a split object can be asked for whole. What
+it does not do is every ROOT class ever written: a histogram, or a class with
+no layout the file describes, is refused by name with the class in the
+message, because a plausible misreading of physics data is worse than a
+refusal.
 
-:mod:`xrd.root.ml` turns what comes out into tensors, if PyTorch is there.
+:mod:`xrd.root.ml` turns what comes out into tensors, if PyTorch or
+TensorFlow is there.
 """
 
 from __future__ import annotations
 
 from .errors import FormatError, ROOTError, UnsupportedFeatureError
 from .file import Directory, Key, ROOTFile, open_root
-from .tree import Branch, Jagged, TTree
+from .tree import Branch, Group, Jagged, TTree
 
 __all__ = [
     # opening
@@ -37,6 +39,7 @@ __all__ = [
     # data
     "TTree",
     "Branch",
+    "Group",
     "Jagged",
     # errors
     "ROOTError",

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from .objects import BranchRecord, LeafRecord
     from .tree import Basket
 
-__all__ = ["Column", "Flat", "Rows", "Values", "Refused", "build"]
+__all__ = ["Column", "Flat", "Rows", "Values", "Members", "Refused", "build"]
 
 #: Set in a record's version when a container was written field by field
 #: rather than object by object: all the keys, then all the values.
@@ -39,6 +39,11 @@ RECORD = 6
 #: ``fType`` is the fundamental type plus one of these.
 OFFSET_L = 20  # a fixed-size array, ``x[10]``
 OFFSET_P = 40  # a pointer to a counted one, ``x[n]``
+
+#: The two fundamental types that are not their own width: a float squeezed
+#: into a range the declaration's comment spells out. ``True`` for the one
+#: that is a ``double`` when the comment asks for nothing in particular.
+PACKED = {9: True, 19: False}
 
 #: The fundamental types, as ROOT numbers them in a streamer.
 BASIC: dict[int, Prim] = {
@@ -64,9 +69,7 @@ BASIC: dict[int, Prim] = {
 KINDS = {
     0: "a base class written into the entry",
     7: "a C string pointer",
-    9: "a Double32_t, packed to a range this reader does not unpack",
     10: "a legacy char",
-    19: "a Float16_t, packed to a range this reader does not unpack",
     61: "an object",
     62: "an object without a dictionary",
     63: "a pointer to an object",
@@ -196,6 +199,23 @@ class Values(Column):
     def value(self, buf: Buffer, at: int) -> Any:
         buf.pos = at
         return self._read(buf)
+
+
+class Members(Column):
+    """A branch with no bytes of its own, whose members are the branches under it.
+
+    This is what ROOT leaves behind when it splits a C++ object: the object
+    itself is a branch holding nothing, and each member is a branch of its own
+    beneath it. There is nothing here to decode - the values come from the
+    members - so this class carries only the name of the shape they go back
+    into, which is a plain :class:`dict` per entry.
+    """
+
+    __slots__ = ()
+    kind = "members"
+
+    def __init__(self) -> None:
+        super().__init__("dict")
 
 
 class Refused(Column):
@@ -367,23 +387,65 @@ def _widened(raw: bytes) -> array.array[Any]:
     return array.array("d", to_native(array.array("f", raw)))
 
 
-def _packed(leaf: LeafRecord) -> Column:
-    """A ``Double32_t`` or ``Float16_t``, whose title says how it was squeezed."""
-    spec = _range(leaf.title)
+def _packing(title: str, double32: bool) -> tuple[Prim, Unpack] | None:
+    """How wide a packed float is on disk and how it comes back out.
+
+    ``None`` means the title says something about the packing that this reader
+    cannot turn into numbers, which is worth refusing over: the alternative is
+    a column of plausible wrong values.
+    """
+    spec = _range(title)
     if spec is None:
-        return Refused(
-            f"a packed float whose range is written {leaf.title!r}, which is not a "
-            f"spelling this reader can turn into numbers"
-        )
+        return None
     xmin, _xmax, factor = spec
     if factor:
-        prim, unpack = Prim("float64", "d", 4), _scaled(factor, xmin)
-    elif int(xmin) == 0 and leaf.classname == "TLeafD32":
-        prim, unpack = Prim("float64", "d", 4), _widened
-    else:
-        prim, unpack = Prim("float64", "d", 3), _truncated(int(xmin) or 12)
+        return Prim("float64", "d", 4), _scaled(factor, xmin)
+    if int(xmin) == 0 and double32:
+        return Prim("float64", "d", 4), _widened
+    return Prim("float64", "d", 3), _truncated(int(xmin) or 12)
+
+
+def _unreadable_range(title: str) -> Refused:
+    return Refused(
+        f"a packed float whose range is written {title!r}, which is not a "
+        f"spelling this reader can turn into numbers"
+    )
+
+
+def _packed(leaf: LeafRecord) -> Column:
+    """A ``Double32_t`` or ``Float16_t``, whose title says how it was squeezed."""
+    found = _packing(leaf.title, leaf.classname == "TLeafD32")
+    if found is None:
+        return _unreadable_range(leaf.title)
+    prim, unpack = found
     if leaf.count is not None:
         return Rows(prim, 0, False, unpack)
+    return Flat(prim, leaf.length, unpack)
+
+
+def _packed_member(
+    branch: BranchRecord, leaf: LeafRecord, source: Source, kind: int, counted: bool
+) -> Column:
+    """A packed float split out of a class, whose range the streamer holds.
+
+    A branch of its own carries the recipe in the leaf's title; a member does
+    not, because ROOT put it in the declaration's trailing comment instead.
+    Without that comment there is no honest way to read the bytes, so a class
+    the file does not describe is refused rather than read at a guess.
+    """
+    member = source.streamers().get(branch.classname, {}).get(leaf.name)
+    if member is None:
+        return Refused(
+            f"a packed float member of {branch.classname or 'a class'} that this file's "
+            f"streamer information does not describe, so the range it was squeezed into "
+            f"is not knowable"
+        )
+    found = _packing(member.title, PACKED[kind])
+    if found is None:
+        return _unreadable_range(member.title)
+    prim, unpack = found
+    if counted:
+        return Rows(prim, 1, False, unpack)  # one marker byte, then the packed values
     return Flat(prim, leaf.length, unpack)
 
 
@@ -447,8 +509,11 @@ def build(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
     if leaf.ltype == 65:
         return Values("str", _string)  # a TString member, written with no header
     for base in (0, OFFSET_L, OFFSET_P):
-        prim = BASIC.get(leaf.ltype - base)
+        kind = leaf.ltype - base
+        prim = BASIC.get(kind)
         if prim is None:
+            if kind in PACKED:
+                return _packed_member(branch, leaf, source, kind, base == OFFSET_P)
             continue
         if base == OFFSET_P:
             return Rows(prim, 1, False)  # one marker byte, then the counted values

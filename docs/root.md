@@ -99,6 +99,23 @@ tree.keys()             # ['Muon.pt', 'Muon.eta', 'evt.N', 'evt.StlVecF64', ...]
 tree["evt.StlVecF64"].array(0, 100)   # <Jagged 100 rows of ...>
 ```
 
+The object itself is a branch too, holding nothing at all — every byte of it
+is in the members — so asking for it gives back one dictionary per entry, and
+an object nested inside it is a dictionary inside that:
+
+```python
+tree.groups()                  # ['evt', 'P3'] - the objects that were split
+tree["evt"].array(1, 2)
+# [{'I32': 1, 'Str': 'evt-001', 'P3': {'Px': 0, 'Py': 1.0, 'Pz': 0}, ...}]
+```
+
+This reads exactly the same baskets as asking for the members, and costs the
+same; it is a shape, not a shortcut. `tree.arrays()` and `tree.iterate()`
+leave the split objects out, because their members are already there under
+their own names and taking both would read every basket twice. A member this
+reader will not decode is absent from the dictionary and named in
+`tree["evt"].unreadable`, with the same sentence `tree.unreadable` gives it.
+
 A member that is an STL container comes back as the Python thing it most
 nearly is, one per entry:
 
@@ -111,10 +128,14 @@ nearly is, one per entry:
 | `std::string`, `TString` | a `list[str]` |
 | `std::vector<bool>` | rows of 0 and 1, a byte an element, which is how ROOT wrote it |
 
-`Double32_t` and `Float16_t` members are floats squeezed into three or four
-bytes by a recipe written in the leaf title (`[xmin,xmax,nbits]`, where the
-ends may be written in units of `pi`). They are unpacked back to `float64`, so
-`typenames()` says `float64` and nothing about the packing reaches you.
+`Double32_t` and `Float16_t` are floats squeezed into three or four bytes by a
+recipe written as `[xmin,xmax,nbits]`, where the ends may be given in units of
+`pi`. A branch of its own keeps the recipe in the leaf title; a member of a
+split class keeps it in the trailing comment on the declaration, which is in
+the file's streamer information — either way it is unpacked back to `float64`,
+so `typenames()` says `float64` and nothing about the packing reaches you. A
+packed member of a class the file does not describe is refused rather than
+read at the default, because the wrong recipe gives plausible wrong numbers.
 
 ## Into PyTorch and TensorFlow
 
@@ -183,14 +204,15 @@ with the same sentence if it is asked for:
 
 ```python
 >>> tree.unreadable
-{'evt': 'Event, which is a C++ type this reader does not decode; '
+{'vtx': 'TLorentzVector, which is a C++ type this reader does not decode; '
         'a split file has its members as branches of their own'}
 ```
 
 What is named that way:
 
 - a whole object written per entry rather than split into members — for a
-  split file the members are branches, and those read;
+  split file the members are branches, and those read, and the object reads
+  as well;
 - a class with no layout this reader knows, such as `TLorentzVector`;
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;

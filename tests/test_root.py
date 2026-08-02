@@ -31,7 +31,7 @@ from xrd.root import (
 from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
 from xrd.root.compression import _lz4, algorithm, decompress
 from xrd.root.file import Source, _directory_record
-from xrd.root.interp import build
+from xrd.root.interp import Refused, build
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
 from xrd.root.tree import Basket
 
@@ -587,13 +587,12 @@ def test_an_ntuple_is_a_tree_with_something_after_it():
 
 
 def test_a_column_this_reader_cannot_decode_is_named_with_the_reason():
-    with opened("std-map-split1") as root:
-        tree = root["tree"]
-        assert "evt" not in tree.readable()
-        assert "C++ type this reader does not decode" in tree.unreadable["evt"]
-        assert tree.typenames()["evt"] == "? (TLeafElement)"
-        with pytest.raises(UnsupportedFeatureError, match="unreadable lists every column"):
-            tree["evt"].array()
+    record, leaf = BranchRecord(), LeafRecord("TLeafObject")
+    record.name = leaf.name = "obj"
+    branch = Branch("obj", record, leaf, Refused("a shape no file has written"), None)
+    assert branch.typename is None
+    with pytest.raises(UnsupportedFeatureError, match="unreadable lists every column"):
+        branch.array()
 
 
 def test_a_vector_member_of_a_split_object_is_read_as_rows():
@@ -610,7 +609,8 @@ def test_a_split_object_shows_every_sub_branch_and_reads_the_maps():
     with opened("std-map-split1") as root:
         tree = root["tree"]
         assert len(tree.keys()) == 6
-        assert set(tree.unreadable) == {"evt"}
+        assert tree.unreadable == {}
+        assert tree.groups() == ["evt"]  # the object the five maps were split out of
         # What go-hep reads out of entry 1 of this same file, map for map.
         assert tree["mi32"].array(1, 2) == [{0: 0}]
         assert tree["msi32"].array(1, 2) == [{"key-000": 0}]
