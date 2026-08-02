@@ -500,12 +500,12 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of thirty-eight. `xrd.root.datasets` converts the sets machine
+MNIST is one of eighty-eight. `xrd.root.datasets` converts the sets machine
 learning is actually taught and benchmarked with, all of them the same way —
 one tree per class, the label beside the data, and the row's place in the
-original file so any number can be traced back to where it came from. The ten
-that have a number to predict rather than a class to sort into get one tree of
-every row instead, and the number to predict is a column like any other. What
+original file so any number can be traced back to where it came from. The
+eighteen that have a number to predict rather than a class to sort into get one
+tree of every row instead, and the number to predict is a column like any other. What
 ships here is the converter, not the data: no dataset is redistributed in this
 repository, and `datasets/` is where the files it writes are meant to go.
 
@@ -561,11 +561,61 @@ datasets.convert("iris", "iris.root")
 | `energy_efficiency` | 768 simulated buildings and the heating and cooling they need | CC BY 4.0 | 12 kB |
 | `real_estate` | 414 flats sold in Taipei and what a unit of floor cost | CC BY 4.0 | 16 kB |
 | `student` | 1,044 pupils, 32 answers each, and the mark they finished on | CC BY 4.0 | 32 kB |
+| `airfoil` | 1,503 wind tunnel runs and how loud the aerofoil was | CC BY 4.0 | 15 kB |
+| `automobile` | 205 cars imported into America in 1985 and what they cost | CC BY 4.0 | 14 kB |
+| `balance_scale` | 625 balances and which way each one tips, 3 classes | CC BY 4.0 | 10 kB |
+| `bank_marketing` | 45,211 sales calls and whether the customer took the deposit | CC BY 4.0 | 476 kB |
+| `blood_transfusion` | 748 blood donors and whether each gave again, 2 classes | CC BY 4.0 | 11 kB |
+| `climate_crashes` | 540 runs of an ocean model and whether each one finished | CC BY 4.0 | 83 kB |
+| `computer_hardware` | 209 mainframes of the 1980s and how fast each one was | CC BY 4.0 | 10 kB |
+| `concrete_slump` | 103 concrete mixes and how each one flowed and held | CC BY 4.0 | 9 kB |
+| `contraceptive` | 1,473 Indonesian couples and what they used, 3 classes | CC BY 4.0 | 20 kB |
+| `dermatology` | 366 patients with one of 6 red scaly skin diseases | CC BY 4.0 | 49 kB |
+| `diabetes_risk` | 520 patients asked about 14 symptoms, 2 classes | CC BY 4.0 | 14 kB |
+| `ecoli` | 336 E. coli proteins measured 7 ways, 8 places in the cell | CC BY 4.0 | 28 kB |
+| `fertility` | 100 men, 9 questions each, and their semen analysis | CC BY 4.0 | 9 kB |
+| `forest_fires` | 517 fires in a Portuguese park and how far each one spread | CC BY 4.0 | 16 kB |
+| `garment_productivity` | 1,197 team-days in a clothing factory and what each got done | CC BY 4.0 | 26 kB |
+| `german_credit` | 1,000 loan applications judged good or bad, 2 classes | CC BY 4.0 | 25 kB |
+| `haberman` | 306 breast cancer operations and who was alive 5 years on | CC BY 4.0 | 8 kB |
+| `heart_failure` | 299 heart failure patients and who survived the follow-up | CC BY 4.0 | 14 kB |
+| `hepatitis` | 155 hepatitis patients, 19 findings each, 2 classes | CC BY 4.0 | 14 kB |
+| `image_segmentation` | 2,310 patches of outdoor photographs, 7 things they are of | CC BY 4.0 | 211 kB |
+| `indian_liver` | 583 patients from Andhra Pradesh, 2 classes | CC BY 4.0 | 19 kB |
+| `liver_disorders` | 345 blood tests and the drinking to predict from them | CC BY 4.0 | 9 kB |
+| `lymphography` | 148 lymph node X-rays read 18 ways, 4 classes | CC BY 4.0 | 19 kB |
+| `mammographic_mass` | 961 lumps seen on a mammogram, benign or malignant | CC BY 4.0 | 11 kB |
+| `maternal_health` | 1,014 pregnancies seen in rural clinics, 3 degrees of risk | CC BY 4.0 | 14 kB |
+| `nursery` | 12,960 nursery applications ranked 5 ways | CC BY 4.0 | 45 kB |
+| `occupancy` | 20,560 minutes in an office and whether anyone was in it | CC BY 4.0 | 327 kB |
+| `online_shoppers` | 12,330 shopping sessions and which of them ended in a sale | CC BY 4.0 | 295 kB |
+| `parkinsons` | 195 voice recordings, 22 measurements each, 2 classes | CC BY 4.0 | 42 kB |
+| `parkinsons_telemonitoring` | 5,875 recordings made at home and the two scores to predict | CC BY 4.0 | 395 kB |
+| `pendigits` | 10,992 digits written on a tablet, 8 points each, 10 classes | CC BY 4.0 | 277 kB |
+| `phishing` | 11,055 websites scored 30 ways, phishing or legitimate | CC BY 4.0 | 101 kB |
+| `power_plant` | 9,568 hours of a gas turbine and the power it put out | CC BY 4.0 | 139 kB |
+| `qsar_aquatic` | 546 chemicals and the dose that kills half the water fleas | CC BY 4.0 | 18 kB |
+| `qsar_fish` | 908 chemicals and the dose that kills half the minnows | CC BY 4.0 | 21 kB |
+| `raisin` | 900 raisins measured off a photograph, 2 varieties | CC BY 4.0 | 46 kB |
+| `rice` | 3,810 grains of rice measured off a photograph, 2 varieties | CC BY 4.0 | 103 kB |
+| `satellite` | 6,435 Landsat neighbourhoods of 9 pixels, 6 kinds of ground | CC BY 4.0 | 290 kB |
+| `seismic` | 2,584 shifts in a Polish coal mine, 2 classes | CC BY 4.0 | 48 kB |
+| `servo` | 167 servomechanisms and how long each took to settle | CC BY 4.0 | 7 kB |
+| `solar_flare` | 1,066 active regions on the sun, 7 modified Zurich classes | CC BY 4.0 | 25 kB |
+| `sonar` | 208 sonar returns off a rock or a mine, 60 bands each | CC BY 4.0 | 105 kB |
+| `soybean` | 683 diseased soybean plants, 19 diseases | CC BY 4.0 | 254 kB |
+| `statlog_heart` | 270 patients from the Cleveland heart study, 2 classes | CC BY 4.0 | 14 kB |
+| `steel_industry` | 35,040 quarter hours in a steel plant, 3 kinds of load | CC BY 4.0 | 479 kB |
+| `tic_tac_toe` | 958 finished games and whether x had won, 2 classes | CC BY 4.0 | 12 kB |
+| `vertebral_column` | 310 lower spines measured 6 ways, 3 classes | CC BY 4.0 | 18 kB |
+| `wifi_localisation` | 2,000 readings of 7 wifi points, taken in 4 rooms | CC BY 4.0 | 26 kB |
+| `yacht` | 308 towing tank runs and the resistance each hull made | CC BY 4.0 | 8 kB |
+| `zoo` | 101 animals described 16 ways, 7 kinds of animal | CC BY 4.0 | 26 kB |
 
-The last ten have a number to predict rather than a class; the rest sort rows
-into classes. The last column is one file holding every split, written with the
-default `zlib`, as measured on a conversion of all thirty-eight — every split of a set
-that has them, a tree a class, and the `about` key beside them.
+Eighteen of them have a number to predict rather than a class; the rest sort
+rows into classes. The last column is one file holding every split, written with
+the default `zlib`, as measured on a conversion of all eighty-eight — every split of a
+set that has them, a tree a class, and the `about` key beside them.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
 on the machine doing the converting, and the licences above are what those
@@ -589,6 +639,13 @@ Python one, on purpose: the Python one is a pickle, and unpickling a download
 is a way to run somebody else's code. Every archive here — IDX, tar, zip, a zip
 inside a zip, gzip, WAV, ARFF, CSV, and the XML a spreadsheet keeps inside its
 own zip — is read with the standard library and nothing else.
+
+A table that gives its names in a header takes them from the first line that is
+neither blank nor a comment, because a file is as likely to name its columns
+after a preamble as before one. A column of dates holds the days since 1970; a
+column of timestamps holds the seconds, so a set recorded every quarter of an
+hour — `occupancy`, `steel_industry` — keeps its clock rather than collapsing
+onto the day it was taken. Either way a missing value is `-1`.
 
 Images come out exactly as the archive laid them: CIFAR is 3072 bytes an
 entry, 1024 red then 1024 green then 1024 blue, which is what PyTorch wants,

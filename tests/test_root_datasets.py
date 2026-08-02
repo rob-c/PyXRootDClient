@@ -399,6 +399,18 @@ def test_the_datasets_asked_for_are_all_there():
         "ionosphere", "glass", "abalone", "banknote",
         "magic", "htru2", "auto_mpg", "bike_sharing", "energy_efficiency",
         "real_estate", "student", "heart_disease", "car_evaluation", "yeast",
+        "airfoil", "automobile", "balance_scale", "bank_marketing",
+        "blood_transfusion", "climate_crashes", "computer_hardware",
+        "concrete_slump", "contraceptive", "dermatology", "diabetes_risk",
+        "ecoli", "fertility", "forest_fires", "garment_productivity",
+        "german_credit", "haberman", "heart_failure", "hepatitis",
+        "image_segmentation", "indian_liver", "liver_disorders", "lymphography",
+        "mammographic_mass", "maternal_health", "nursery", "occupancy",
+        "online_shoppers", "parkinsons", "parkinsons_telemonitoring",
+        "pendigits", "phishing", "power_plant", "qsar_aquatic", "qsar_fish",
+        "raisin", "rice", "satellite", "seismic", "servo", "solar_flare",
+        "sonar", "soybean", "statlog_heart", "steel_industry", "tic_tac_toe",
+        "vertebral_column", "wifi_localisation", "yacht", "zoo",
     }
 
 
@@ -446,7 +458,7 @@ def test_covertype_has_the_fifty_four_features_and_the_label_the_paper_describes
 def test_every_table_names_a_code_for_every_category_it_will_meet():
     for spec in DATASETS.values():
         if isinstance(spec, Table):
-            plain = {"d", "i", "label", "text", "date", "target"}
+            plain = {"d", "i", "label", "text", "date", "time", "target"}
             assert {role for _, role in spec.fields} - plain == set(spec.codes), spec.name
 
 
@@ -1482,3 +1494,216 @@ def test_a_table_written_as_an_arff_is_read_as_one(registry):
     spec = replace(CARS, arff=True)
     _, _, rows = spec.rows({"table": b"@relation cars\n@data\n18.0,8,chevelle\n"}, "all")
     assert [row["mpg"] for _, row in rows] == [18.0]
+
+
+# --- a column that keeps the clock as well as the day ------------------------
+
+
+def test_a_time_becomes_the_seconds_since_1970_and_a_gap_becomes_minus_one():
+    spec = replace(PRICES, fields=(("when", "time"), ("price", "target")),
+                   dates="%Y-%m-%d %H:%M:%S")
+    _, columns, rows = spec.rows(
+        {"table": zipped({"north.csv": b"2011-01-01 00:15:00,1\n?,2\n"})}, "north"
+    )
+    assert columns["when"] == "q"
+    assert [row["when"] for _, row in rows] == [1293840900, -1]
+
+
+def test_a_time_written_some_other_way_says_how_this_one_is_written():
+    spec = replace(PRICES, fields=(("when", "time"), ("price", "target")),
+                   dates="%d/%m/%Y %H:%M")
+    _, _, rows = spec.rows({"table": zipped({"north.csv": b"2011-01-01,1\n"})}, "north")
+    with pytest.raises(ValueError, match=r"row 0 of Prices has '2011-01-01' in when, and the "
+                                         r"dates in it are written %d/%m/%Y %H:%M"):
+        list(rows)
+
+
+def test_a_time_and_a_date_count_from_the_same_midnight():
+    spec = replace(PRICES, fields=(("when", "time"), ("price", "target")))
+    _, _, rows = spec.rows({"table": zipped({"north.csv": b"2011-01-01,1\n"})}, "north")
+    assert [row["when"] for _, row in rows] == [14975 * 86400]
+
+
+def test_a_set_that_keeps_a_clock_writes_it_into_a_tree_like_any_other(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    spec = replace(PRICES, fields=(("when", "time"), ("price", "target")))
+    monkeypatch.setitem(DATASETS, spec.name, spec)
+    counts, raw = written("prices", zipped({"north.csv": b"1970-01-02,1\n"}), "table",
+                          split="north")
+    assert counts == {"north_rows": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        assert list(back["north_rows"]["when"].array()) == [86400]
+
+
+# --- a header that comes after the preamble rather than before it ------------
+
+
+def test_a_header_is_the_first_line_that_is_neither_blank_nor_a_comment():
+    spec = replace(PRICES, header=True, comment=";")
+    held = zipped({"north.csv": b"; what this is\n\n;; and more\nwhen,price\n1970-01-02,1\n"})
+    _, _, rows = spec.rows({"table": held}, "north")
+    assert [row["when"] for _, row in rows] == [1]
+
+
+def test_a_header_that_is_all_there_is_leaves_a_table_with_no_rows_in_it():
+    spec = replace(PRICES, header=True, comment=";")
+    _, _, rows = spec.rows({"table": zipped({"north.csv": b";only\nwhen,price\n"})}, "north")
+    assert list(rows) == []
+
+
+# --- what the fifty teaching sets say ---------------------------------------
+
+#: The sets added to round the shelf out, all of them from the UCI archive.
+TEACHING = (
+    "airfoil", "automobile", "balance_scale", "bank_marketing", "blood_transfusion",
+    "climate_crashes", "computer_hardware", "concrete_slump", "contraceptive",
+    "dermatology", "diabetes_risk", "ecoli", "fertility", "forest_fires",
+    "garment_productivity", "german_credit", "haberman", "heart_failure", "hepatitis",
+    "image_segmentation", "indian_liver", "liver_disorders", "lymphography",
+    "mammographic_mass", "maternal_health", "nursery", "occupancy", "online_shoppers",
+    "parkinsons", "parkinsons_telemonitoring", "pendigits", "phishing", "power_plant",
+    "qsar_aquatic", "qsar_fish", "raisin", "rice", "satellite", "seismic", "servo",
+    "solar_flare", "sonar", "soybean", "statlog_heart", "steel_industry", "tic_tac_toe",
+    "vertebral_column", "wifi_localisation", "yacht", "zoo",
+)
+
+
+def test_the_fifty_teaching_sets_are_all_the_archives_own_download():
+    assert len(TEACHING) == 50
+    for name in TEACHING:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.licence == "CC BY 4.0"
+        number, slug = spec.source.removeprefix("https://archive.ics.uci.edu/dataset/").split("/")
+        assert number.isdigit()
+        assert spec.url == f"https://archive.ics.uci.edu/static/public/{number}/{slug}.zip"
+
+
+def test_thirteen_of_the_teaching_sets_have_a_number_to_predict():
+    numbers = {name for name in TEACHING if not DATASETS[name].classes}
+    assert numbers == {
+        "airfoil", "automobile", "computer_hardware", "concrete_slump", "forest_fires",
+        "garment_productivity", "liver_disorders", "parkinsons_telemonitoring",
+        "power_plant", "qsar_aquatic", "qsar_fish", "servo", "yacht",
+    }
+
+
+def test_bank_marketing_reads_the_longer_file_out_of_the_zip_inside_the_zip():
+    spec = DATASETS["bank_marketing"]
+    assert isinstance(spec, Table)
+    assert spec.inner == "bank.zip" and spec.member == "bank-full.csv"
+    assert spec.delimiter == ";" and spec.header and spec.quoted
+    assert spec.classes == ("no_deposit", "deposit") and spec.codes["month"]["may"] == 5
+
+
+def test_the_two_sets_that_watch_a_room_and_a_mill_keep_the_time_of_day():
+    for name in ("occupancy", "steel_industry"):
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert ("when", "time") in spec.fields
+        assert ":" in spec.dates and "%M" in spec.dates
+
+
+def test_occupancy_comes_in_the_three_files_its_authors_split_it_into():
+    spec = DATASETS["occupancy"]
+    assert isinstance(spec, Table)
+    assert spec.splits == ("train", "test", "second_test")
+    assert spec.files == {
+        "train": "datatraining.txt",
+        "test": "datatest.txt",
+        "second_test": "datatest2.txt",
+    }
+    assert spec.header and spec.quoted and spec.classes == ("empty", "occupied")
+
+
+def test_image_segmentation_reads_the_names_that_come_after_its_preamble():
+    spec = DATASETS["image_segmentation"]
+    assert isinstance(spec, Table)
+    assert spec.comment == ";" and spec.header
+    assert spec.files == {"train": "segmentation.data", "test": "segmentation.test"}
+    assert spec.fields[0] == ("label", "label") and len(spec.classes) == 7
+
+
+def test_solar_flare_marks_the_lines_it_does_not_mean_with_a_star():
+    spec = DATASETS["solar_flare"]
+    assert isinstance(spec, Table)
+    assert spec.comment == "*" and spec.delimiter is None
+    assert spec.member == "flare.data2" and not spec.classes[0].isdigit()
+
+
+def test_the_teaching_sets_that_arrive_as_a_spreadsheet_or_an_arff_say_so():
+    power, raisin = DATASETS["power_plant"], DATASETS["raisin"]
+    assert isinstance(power, Table) and isinstance(raisin, Table)
+    assert power.xlsx and power.member == "CCPP/Folds5x2_pp.xlsx" and power.header
+    assert raisin.arff and raisin.inner == "Raisin_Dataset.zip"
+    assert raisin.member == "Raisin_Dataset/Raisin_Dataset.arff"
+
+
+def test_the_three_teaching_sets_that_come_ready_split_name_both_files():
+    for name, held in (
+        ("pendigits", ("pendigits.tra", "pendigits.tes")),
+        ("satellite", ("sat.trn", "sat.tst")),
+        ("soybean", ("soybean-large.data", "soybean-large.test")),
+    ):
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.splits == ("train", "test")
+        assert tuple(spec.files.values()) == held
+
+
+def test_liver_disorders_predicts_the_drinks_and_not_the_column_after_them():
+    spec = DATASETS["liver_disorders"]
+    assert isinstance(spec, Table)
+    assert not spec.classes
+    assert ("drinks", "target") in spec.fields
+    assert ("selector", "i") in spec.fields
+
+
+def test_the_teaching_sets_that_are_labelled_by_a_word_say_which_word():
+    assert DATASETS["german_credit"].labels == {"1": 0, "2": 1}
+    assert DATASETS["sonar"].labels == {"R": 0, "M": 1}
+    assert DATASETS["tic_tac_toe"].labels == {"negative": 0, "positive": 1}
+    assert DATASETS["balance_scale"].labels == {"B": 0, "L": 1, "R": 2}
+    assert DATASETS["haberman"].labels == {"1": 0, "2": 1}
+
+
+def test_the_medical_teaching_sets_name_the_condition_rather_than_number_it():
+    assert DATASETS["dermatology"].classes[0] == "psoriasis"
+    assert DATASETS["hepatitis"].classes == ("died", "lived")
+    assert DATASETS["lymphography"].classes[1] == "metastases"
+    assert DATASETS["statlog_heart"].classes == ("absent", "present")
+    assert DATASETS["vertebral_column"].classes == ("disc_hernia", "spondylolisthesis", "normal")
+    assert DATASETS["mammographic_mass"].classes == ("benign", "malignant")
+
+
+def test_the_seed_and_grain_sets_are_labelled_with_the_variety_they_hold():
+    assert DATASETS["rice"].classes == ("cammeo", "osmancik")
+    assert DATASETS["raisin"].classes == ("kecimen", "besni")
+    assert DATASETS["soybean"].classes[0] == "diaporthe_stem_canker"
+    assert len(DATASETS["soybean"].classes) == 19
+
+
+def test_zoo_names_the_seven_kinds_of_creature_it_was_labelled_with():
+    spec = DATASETS["zoo"]
+    assert isinstance(spec, Table)
+    assert spec.classes == (
+        "mammal", "bird", "reptile", "fish", "amphibian", "insect", "invertebrate"
+    )
+    assert spec.fields[0] == ("animal", "text")
+
+
+def test_the_pen_strokes_and_the_satellite_bands_are_numbered_in_order():
+    pen, sat = DATASETS["pendigits"], DATASETS["satellite"]
+    assert isinstance(pen, Table) and isinstance(sat, Table)
+    assert pen.fields[0] == ("x1", "i") and pen.fields[15] == ("y8", "i")
+    assert len(sat.fields) == 37 and sat.fields[0] == ("pixel1_band1", "i")
+    assert pen.classes == tuple("0123456789") and len(sat.classes) == 6
+
+
+def test_garment_productivity_reads_its_dates_the_way_that_file_writes_them():
+    spec = DATASETS["garment_productivity"]
+    assert isinstance(spec, Table)
+    assert spec.dates == "%m/%d/%Y" and ("when", "date") in spec.fields
+    assert spec.codes["weekday"]["Thursday"] == 4
+    assert spec.header and not spec.classes

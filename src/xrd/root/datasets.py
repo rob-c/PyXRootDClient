@@ -111,6 +111,9 @@ XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 #: The day a ``"date"`` column counts from, as an ordinal: 1970-01-01.
 EPOCH = date(1970, 1, 1).toordinal()
 
+#: The moment a ``"time"`` column counts from: midnight starting that day.
+MIDNIGHT = datetime(1970, 1, 1)
+
 #: One row on its way to a tree: which class it belongs to, and its columns.
 Rows = Iterator[tuple[int, dict[str, Any]]]
 
@@ -167,9 +170,10 @@ def read_table(
     """Every row of a delimited text file, as stripped strings, blanks dropped.
 
     ``delimiter`` is what separates the fields, or ``None`` for any run of
-    whitespace, which is how the older sets are written. ``header`` drops the
-    first line, and ``comment`` drops every line that starts with it.
-    ``quoted`` is whether a double quote groups a field, as it does in a CSV;
+    whitespace, which is how the older sets are written. ``comment`` drops
+    every line that starts with it, and ``header`` drops the first line that
+    survives that - the names are as likely to come after a preamble as before
+    one. ``quoted`` is whether a double quote groups a field, as it does in a CSV;
     a file of English sentences means its quotes literally, and setting this
     ``False`` keeps them rather than reading them as punctuation.
 
@@ -189,10 +193,12 @@ def read_table(
             quoting=csv.QUOTE_MINIMAL if quoted else csv.QUOTE_NONE,
         )
     )
-    if header:
-        next(rows, None)
+    naming = header
     for row in rows:
         if not any(cell.strip() for cell in row) or (comment and row[0].startswith(comment)):
+            continue
+        if naming:
+            naming = False
             continue
         cells = [cell.strip() for cell in row]
         if tail and quoted:
@@ -337,6 +343,11 @@ def _numbered(kinds: Mapping[str, int] | Sequence[str]) -> Mapping[str, int]:
     if isinstance(kinds, Mapping):
         return kinds
     return {name: at for at, name in enumerate(kinds)}
+
+
+def _plain(names: Sequence[str], role: str = "i") -> tuple[tuple[str, str], ...]:
+    """A run of fields that all hold the same sort of value, named in order."""
+    return tuple((name, role) for name in names)
 
 
 def _tidy(text: str) -> tuple[str, ...]:
@@ -684,8 +695,10 @@ class Table(Dataset):
     #: How many fields a whitespace-separated row has when the last of them is
     #: free text with spaces in it. Zero splits on every run of whitespace.
     tail: int = 0
-    #: How a ``"date"`` field is written, in :func:`~datetime.datetime.strptime`
-    #: terms. What such a column holds is the days since 1970.
+    #: How a ``"date"`` or ``"time"`` field is written, in
+    #: :func:`~datetime.datetime.strptime` terms. A ``"date"`` column holds the
+    #: days since 1970 and a ``"time"`` column the seconds, so a set that
+    #: measures something every quarter of an hour keeps its clock.
     dates: str = "%Y-%m-%d"
     #: Whether a double quote groups a field. A table of sentences means its
     #: quotes literally and sets this ``False``.
@@ -695,8 +708,8 @@ class Table(Dataset):
     #: column beside it; anything longer is refused rather than cut short.
     text_size: int = 0
     #: The fields in the order the file writes them: a name, and either a
-    #: typecode, ``"label"``, ``"text"``, ``"date"``, ``"target"``, or the name
-    #: of an entry in :attr:`codes`. A set with no ``"label"`` field and no
+    #: typecode, ``"label"``, ``"text"``, ``"date"``, ``"time"``, ``"target"``,
+    #: or the name of an entry in :attr:`codes`. A set with no ``"label"`` and no
     #: :attr:`classes` is a regression set: it has a ``"target"`` to predict
     #: instead of a class to sort into, and its rows go to one tree.
     fields: tuple[tuple[str, str], ...]
@@ -733,8 +746,12 @@ class Table(Dataset):
             if role == "text":
                 columns[name] = ("B", self.text_size)
                 columns[f"{name}_length"] = "i"
+            elif role in ("d", "target"):
+                columns[name] = "d"
+            elif role == "time":
+                columns[name] = "q"
             else:
-                columns[name] = "d" if role in ("d", "target") else "i"
+                columns[name] = "i"
         if self.classes:
             columns["label"] = "i"
         columns["index"] = "i"
@@ -750,16 +767,23 @@ class Table(Dataset):
             )
         return written + bytes(self.text_size - len(written))
 
-    def _day(self, cell: str, name: str, index: int) -> int:
-        """One date as the days since 1970 its column holds."""
+    def _when(self, cell: str, name: str, index: int) -> datetime:
+        """One field read as the moment it is written as."""
         try:
-            when = datetime.strptime(cell, self.dates)
+            return datetime.strptime(cell, self.dates)
         except ValueError:
             raise ValueError(
                 f"row {index} of {self.label} has {cell!r} in {name}, and the dates in it are "
                 f"written {self.dates}"
             ) from None
-        return when.date().toordinal() - EPOCH
+
+    def _day(self, cell: str, name: str, index: int) -> int:
+        """One date as the days since 1970 its column holds."""
+        return self._when(cell, name, index).date().toordinal() - EPOCH
+
+    def _moment(self, cell: str, name: str, index: int) -> int:
+        """One timestamp as the whole seconds since 1970 its column holds."""
+        return int((self._when(cell, name, index) - MIDNIGHT).total_seconds())
 
     def _cell(
         self, cell: str, name: str, role: str, index: int, coded: Mapping[str, Mapping[str, int]]
@@ -769,6 +793,8 @@ class Table(Dataset):
             return nan if cell in MISSING else _number(cell, float, name, index, self.label)
         if role == "date":
             return -1 if cell in MISSING else self._day(cell, name, index)
+        if role == "time":
+            return -1 if cell in MISSING else self._moment(cell, name, index)
         if role == "i":
             return -1 if cell in MISSING else _number(cell, int, name, index, self.label)
         if cell in MISSING:
@@ -1417,6 +1443,580 @@ _STUDENT_CODES: dict[str, Mapping[str, int] | Sequence[str]] = {
 
 
 #: Every dataset this module knows, by the name :func:`convert` takes.
+#: The months a table spells with the first three letters of their name, and
+#: the days a week is written the same way. A ``"date"`` column would be
+#: better, but these files hold the month without the year to put it in.
+_MONTHS: dict[str, int] = {
+    name: at
+    for at, name in enumerate(
+        ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1
+    )
+}
+_DAYS: dict[str, int] = {
+    name: at for at, name in enumerate(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), 1)
+}
+
+#: The days a table spells out in full, Monday first, the way ISO numbers them.
+_WEEKDAYS: dict[str, int] = {
+    name: at
+    for at, name in enumerate(
+        ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"), 1
+    )
+}
+
+#: How the medical sets write down a patient's sex, and how the two of them
+#: that ask a yes-or-no question with a capital letter write the answer.
+_SEXES: tuple[str, ...] = ("Female", "Male")
+_YES_NO_CAPS: tuple[str, ...] = ("No", "Yes")
+
+#: The aerofoil in a wind tunnel, and the noise it made.
+_AIRFOIL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("frequency", "i"), ("angle", "d"), ("chord", "d"), ("velocity", "d"),
+    ("thickness", "d"), ("sound_pressure", "target"),
+)
+
+#: How a 1985 import was described in the trade press, and what it cost. The
+#: make is text because there are twenty-two of them and no code for any.
+_AUTOMOBILE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("symboling", "i"), ("normalised_losses", "i"), ("make", "text"), ("fuel_type", "fuel"),
+    ("aspiration", "aspiration"), ("doors", "doors"), ("body_style", "body"),
+    ("drive_wheels", "drive"), ("engine_location", "where"), ("wheel_base", "d"),
+    ("length", "d"), ("width", "d"), ("height", "d"), ("curb_weight", "i"),
+    ("engine_type", "engine"), ("cylinders", "cylinders"), ("engine_size", "i"),
+    ("fuel_system", "fuel_system"), ("bore", "d"), ("stroke", "d"),
+    ("compression_ratio", "d"), ("horsepower", "i"), ("peak_rpm", "i"),
+    ("city_mpg", "i"), ("highway_mpg", "i"), ("price", "target"),
+)
+_AUTOMOBILE_CODES: dict[str, tuple[str, ...] | dict[str, int]] = {
+    "fuel": ("diesel", "gas"),
+    "aspiration": ("std", "turbo"),
+    "doors": {"two": 2, "four": 4},
+    "body": ("convertible", "hardtop", "hatchback", "sedan", "wagon"),
+    "drive": ("4wd", "fwd", "rwd"),
+    "where": ("front", "rear"),
+    "engine": ("dohc", "dohcv", "l", "ohc", "ohcf", "ohcv", "rotor"),
+    "cylinders": {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8, "twelve": 12},
+    "fuel_system": ("1bbl", "2bbl", "4bbl", "idi", "mfi", "mpfi", "spdi", "spfi"),
+}
+
+#: Weights on the two arms of a balance, and which way it tipped.
+_BALANCE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"), ("left_weight", "i"), ("left_distance", "i"),
+    ("right_weight", "i"), ("right_distance", "i"),
+)
+
+#: One telephone call of a Portuguese bank's campaign, and whether it sold
+#: anything. ``pdays`` is -1 when nobody had called before.
+_BANK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"), ("job", "job"), ("marital", "marital"), ("education", "education"),
+    ("credit_default", "yesno"), ("balance", "i"), ("housing", "yesno"), ("loan", "yesno"),
+    ("contact", "contact"), ("day", "i"), ("month", "month"), ("duration", "i"),
+    ("campaign", "i"), ("pdays", "i"), ("previous", "i"), ("outcome", "outcome"),
+    ("label", "label"),
+)
+_BANK_CODES: dict[str, tuple[str, ...] | dict[str, int]] = {
+    "job": (
+        "admin.", "blue-collar", "entrepreneur", "housemaid", "management", "retired",
+        "self-employed", "services", "student", "technician", "unemployed", "unknown",
+    ),
+    "marital": ("divorced", "married", "single"),
+    "education": ("primary", "secondary", "tertiary", "unknown"),
+    "yesno": _YES_NO,
+    "contact": ("cellular", "telephone", "unknown"),
+    "month": _MONTHS,
+    "outcome": ("failure", "other", "success", "unknown"),
+}
+
+#: How often a donor gave blood, and whether they gave again in March 2007.
+_BLOOD_FIELDS: tuple[tuple[str, str], ...] = (
+    ("recency", "i"), ("frequency", "i"), ("volume", "i"), ("time", "i"), ("label", "label"),
+)
+
+#: The eighteen knobs on an ocean model, and whether the run finished. Two
+#: columns say which of the Latin hypercube studies the run belongs to.
+_CLIMATE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("study", "i"), ("run", "i"),
+    *_plain(
+        (
+            "vconst_corr", "vconst_2", "vconst_3", "vconst_4", "vconst_5", "vconst_7",
+            "ah_corr", "ah_bolus", "slm_corr", "efficiency_factor", "tidal_mix_max",
+            "vertical_decay_scale", "convect_corr", "bckgrnd_vdc1", "bckgrnd_vdc_ban",
+            "bckgrnd_vdc_eq", "bckgrnd_vdc_psim", "prandtl",
+        ),
+        "d",
+    ),
+    ("label", "label"),
+)
+
+#: A 1987 mainframe, its published relative performance to predict, and the
+#: estimate the paper that came with the data published beside it.
+_HARDWARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("vendor", "text"), ("model", "text"), ("cycle_time", "i"), ("min_memory", "i"),
+    ("max_memory", "i"), ("cache", "i"), ("min_channels", "i"), ("max_channels", "i"),
+    ("performance", "target"), ("estimated_performance", "d"),
+)
+
+#: What went into a batch of concrete, and the three things measured of it.
+_SLUMP_FIELDS: tuple[tuple[str, str], ...] = (
+    ("number", "i"), ("cement", "d"), ("slag", "d"), ("fly_ash", "d"), ("water", "d"),
+    ("superplasticiser", "d"), ("coarse_aggregate", "d"), ("fine_aggregate", "d"),
+    ("slump", "target"), ("flow", "target"), ("compressive_strength", "target"),
+)
+
+#: A 1987 Indonesian survey. Every answer is already a number, so the codes
+#: are the file's own: education and standard of living run low to high.
+_CMC_FIELDS: tuple[tuple[str, str], ...] = (
+    ("wife_age", "i"), ("wife_education", "i"), ("husband_education", "i"),
+    ("children", "i"), ("wife_islam", "i"), ("wife_working", "i"),
+    ("husband_occupation", "i"), ("living_standard", "i"), ("media_exposure", "i"),
+    ("label", "label"),
+)
+
+#: Thirty-three signs a dermatologist or a microscope found, then the age.
+_DERM_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        (
+            "erythema", "scaling", "definite_borders", "itching", "koebner_phenomenon",
+            "polygonal_papules", "follicular_papules", "oral_mucosal_involvement",
+            "knee_and_elbow_involvement", "scalp_involvement", "family_history",
+            "melanin_incontinence", "eosinophils_in_infiltrate", "pnl_infiltrate",
+            "fibrosis_of_papillary_dermis", "exocytosis", "acanthosis", "hyperkeratosis",
+            "parakeratosis", "clubbing_of_rete_ridges", "elongation_of_rete_ridges",
+            "thinning_of_suprapapillary_epidermis", "spongiform_pustule", "munro_microabcess",
+            "focal_hypergranulosis", "disappearance_of_granular_layer",
+            "vacuolisation_and_damage_of_basal_layer", "spongiosis",
+            "saw_tooth_appearance_of_retes", "follicular_horn_plug",
+            "perifollicular_parakeratosis", "inflammatory_mononuclear_infiltrate",
+            "band_like_infiltrate", "age",
+        )
+    ),
+    ("label", "label"),
+)
+
+#: Sixteen symptoms a patient was asked about, and the two they were not.
+_DIABETES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"), ("sex", "sex"),
+    *_plain(
+        (
+            "polyuria", "polydipsia", "sudden_weight_loss", "weakness", "polyphagia",
+            "genital_thrush", "visual_blurring", "itching", "irritability", "delayed_healing",
+            "partial_paresis", "muscle_stiffness", "alopecia", "obesity",
+        ),
+        "yesno",
+    ),
+    ("label", "label"),
+)
+
+#: Seven scores a program gave a protein, and the accession number it has in
+#: SWISS-PROT, which is text because it names the protein rather than measures
+#: anything about it.
+_ECOLI_FIELDS: tuple[tuple[str, str], ...] = (
+    ("sequence", "text"), ("mcg", "d"), ("gvh", "d"), ("lip", "d"), ("chg", "d"),
+    ("aac", "d"), ("alm1", "d"), ("alm2", "d"), ("label", "label"),
+)
+
+#: Nine answers about a man's health and habits, each already normalised to
+#: run from -1 to 1, and whether his semen analysis came back normal.
+_FERTILITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("season", "d"), ("age", "d"), ("childhood_diseases", "i"), ("accident", "i"),
+    ("surgery", "i"), ("high_fevers", "i"), ("alcohol", "d"), ("smoking", "i"),
+    ("hours_sitting", "d"), ("label", "label"),
+)
+
+#: Where in the park a fire started, when, what the Canadian fire weather
+#: indices said that day, and how many hectares went up.
+_FIRE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("x", "i"), ("y", "i"), ("month", "month"), ("day", "day"), ("ffmc", "d"),
+    ("dmc", "d"), ("dc", "d"), ("isi", "d"), ("temperature", "d"), ("humidity", "i"),
+    ("wind", "d"), ("rain", "d"), ("burnt_area", "target"),
+)
+
+#: A day's work by one team in a Bangladeshi clothing factory. ``wip`` is
+#: blank for the finishing teams, who have no work in progress to count.
+_GARMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("when", "date"), ("quarter", "quarter"), ("department", "department"),
+    ("day", "weekday"), ("team", "i"), ("targeted_productivity", "d"), ("smv", "d"),
+    ("work_in_progress", "d"), ("over_time", "i"), ("incentive", "d"), ("idle_time", "d"),
+    ("idle_men", "i"), ("style_changes", "i"), ("workers", "d"), ("productivity", "target"),
+)
+
+#: Twenty things a German bank knew about an applicant in 1994. The
+#: categorical ones are written as the file's own A-codes, and each is
+#: numbered in the order the documentation lists it.
+_GERMAN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("checking_account", "checking"), ("duration", "i"), ("credit_history", "history"),
+    ("purpose", "purpose"), ("amount", "i"), ("savings", "savings"),
+    ("employment", "employment"), ("instalment_rate", "i"), ("personal_status", "personal"),
+    ("other_debtors", "debtors"), ("residence_since", "i"), ("property", "property"),
+    ("age", "i"), ("other_instalments", "instalments"), ("housing", "housing"),
+    ("existing_credits", "i"), ("job", "job"), ("dependents", "i"),
+    ("telephone", "telephone"), ("foreign_worker", "foreign"), ("label", "label"),
+)
+_GERMAN_CODES: dict[str, tuple[str, ...]] = {
+    "checking": ("A11", "A12", "A13", "A14"),
+    "history": ("A30", "A31", "A32", "A33", "A34"),
+    "purpose": (
+        "A40", "A41", "A42", "A43", "A44", "A45", "A46", "A47", "A48", "A49", "A410",
+    ),
+    "savings": ("A61", "A62", "A63", "A64", "A65"),
+    "employment": ("A71", "A72", "A73", "A74", "A75"),
+    "personal": ("A91", "A92", "A93", "A94", "A95"),
+    "debtors": ("A101", "A102", "A103"),
+    "property": ("A121", "A122", "A123", "A124"),
+    "instalments": ("A141", "A142", "A143"),
+    "housing": ("A151", "A152", "A153"),
+    "job": ("A171", "A172", "A173", "A174"),
+    "telephone": ("A191", "A192"),
+    "foreign": ("A201", "A202"),
+}
+
+#: A breast cancer operation at Billings Hospital, and whether the patient
+#: was still alive five years later.
+_HABERMAN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"), ("year", "i"), ("nodes", "i"), ("label", "label"),
+)
+
+#: Blood work from a heart failure clinic in Faisalabad, and ``time``, the
+#: days the patient was followed for before the study ended.
+_FAILURE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "d"), ("anaemia", "i"), ("creatinine_phosphokinase", "i"), ("diabetes", "i"),
+    ("ejection_fraction", "i"), ("high_blood_pressure", "i"), ("platelets", "d"),
+    ("serum_creatinine", "d"), ("serum_sodium", "i"), ("sex", "i"), ("smoking", "i"),
+    ("time", "i"), ("label", "label"),
+)
+
+#: Nineteen things asked of a hepatitis patient. The yes-or-no answers are
+#: written 1 for no and 2 for yes, which is the file's own numbering.
+_HEPATITIS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"), ("age", "i"),
+    *_plain(
+        (
+            "sex", "steroid", "antivirals", "fatigue", "malaise", "anorexia", "liver_big",
+            "liver_firm", "spleen_palpable", "spiders", "ascites", "varices",
+        )
+    ),
+    ("bilirubin", "d"), ("alkaline_phosphate", "i"), ("sgot", "i"), ("albumin", "d"),
+    ("prothrombin_time", "i"), ("histology", "i"),
+)
+
+#: Blood work from 583 patients in Andhra Pradesh. Four rows never had the
+#: albumin to globulin ratio worked out and leave it blank.
+_ILPD_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"), ("sex", "sex"), ("total_bilirubin", "d"), ("direct_bilirubin", "d"),
+    ("alkaline_phosphotase", "i"), ("alamine_aminotransferase", "i"),
+    ("aspartate_aminotransferase", "i"), ("total_proteins", "d"), ("albumin", "d"),
+    ("albumin_globulin_ratio", "d"), ("label", "label"),
+)
+
+#: Nineteen numbers describing a 3x3 patch cut out of an outdoor photograph.
+_SEGMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"),
+    *_plain(
+        (
+            "region_centroid_col", "region_centroid_row", "region_pixel_count",
+            "short_line_density_5", "short_line_density_2", "vedge_mean", "vedge_sd",
+            "hedge_mean", "hedge_sd", "intensity_mean", "rawred_mean", "rawblue_mean",
+            "rawgreen_mean", "exred_mean", "exblue_mean", "exgreen_mean", "value_mean",
+            "saturation_mean", "hue_mean",
+        ),
+        "d",
+    ),
+)
+
+#: Five blood tests and the drinking to predict from them. The seventh column
+#: is not a class: whoever made the file used it to split the rows in two, and
+#: reading it as a diagnosis is the mistake this dataset is known for.
+_BUPA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("mcv", "i"), ("alkaline_phosphotase", "i"), ("sgpt", "i"), ("sgot", "i"),
+    ("gamma_glutamyl_transpeptidase", "i"), ("drinks", "target"), ("selector", "i"),
+)
+
+#: Eighteen findings from a lymph node X-ray, each already numbered by where
+#: it comes in the list the documentation gives for that field.
+_LYMPH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"),
+    *_plain(
+        (
+            "lymphatics", "block_of_afferent", "block_of_lymph_c", "block_of_lymph_s",
+            "bypass", "extravasates", "regeneration", "early_uptake",
+            "lymph_nodes_diminished", "lymph_nodes_enlarged", "changes_in_lymph",
+            "defect_in_node", "changes_in_node", "changes_in_structure", "special_forms",
+            "dislocation", "exclusion_of_node", "number_of_nodes",
+        )
+    ),
+)
+
+#: What a radiologist wrote down about a lump on a mammogram.
+_MAMMOGRAM_FIELDS: tuple[tuple[str, str], ...] = (
+    ("birads", "i"), ("age", "i"), ("shape", "i"), ("margin", "i"), ("density", "i"),
+    ("label", "label"),
+)
+
+#: Six readings taken in rural Bangladeshi clinics, and the risk given.
+_MATERNAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"), ("systolic_bp", "i"), ("diastolic_bp", "i"), ("blood_sugar", "d"),
+    ("body_temperature", "d"), ("heart_rate", "i"), ("label", "label"),
+)
+
+#: Eight things a Ljubljana nursery asked about a family, and the ranking the
+#: application got. Every combination of the eight is in the file once.
+_NURSERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("parents", "parents"), ("has_nursery", "nursery"), ("form", "form"),
+    ("children", "children"), ("housing", "housing"), ("finance", "finance"),
+    ("social", "social"), ("health", "health"), ("label", "label"),
+)
+_NURSERY_CODES: dict[str, tuple[str, ...] | dict[str, int]] = {
+    "parents": ("usual", "pretentious", "great_pret"),
+    "nursery": ("proper", "less_proper", "improper", "critical", "very_crit"),
+    "form": ("complete", "completed", "incomplete", "foster"),
+    "children": {"1": 1, "2": 2, "3": 3, "more": 4},
+    "housing": ("convenient", "less_conv", "critical"),
+    "finance": ("convenient", "inconv"),
+    "social": ("nonprob", "slightly_prob", "problematic"),
+    "health": ("recommended", "priority", "not_recom"),
+}
+
+#: A minute in an office, and whether anyone was in it. The first column is
+#: the row's number in the file, which the file itself writes out.
+_OCCUPANCY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("number", "i"), ("when", "time"), ("temperature", "d"), ("humidity", "d"),
+    ("light", "d"), ("carbon_dioxide", "d"), ("humidity_ratio", "d"), ("label", "label"),
+)
+
+#: A session on a shopping site, and whether it ended in a sale.
+_SHOPPER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("administrative", "i"), ("administrative_duration", "d"), ("informational", "i"),
+    ("informational_duration", "d"), ("product_related", "i"),
+    ("product_related_duration", "d"), ("bounce_rate", "d"), ("exit_rate", "d"),
+    ("page_value", "d"), ("special_day", "d"), ("month", "month"),
+    ("operating_system", "i"), ("browser", "i"), ("region", "i"), ("traffic_type", "i"),
+    ("visitor_type", "visitor"), ("weekend", "truefalse"), ("label", "label"),
+)
+_SHOPPER_CODES: dict[str, tuple[str, ...] | dict[str, int]] = {
+    "month": {
+        "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "June": 6, "Jul": 7,
+        "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
+    },
+    "visitor": ("New_Visitor", "Other", "Returning_Visitor"),
+    "truefalse": {"FALSE": 0, "TRUE": 1},
+}
+
+#: Twenty-two measurements of one sustained vowel, and whose voice it was.
+#: The recording is named rather than measured, so it is text.
+_PARKINSONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("recording", "text"), ("fo", "d"), ("fhi", "d"), ("flo", "d"),
+    ("jitter_percent", "d"), ("jitter_absolute", "d"), ("rap", "d"), ("ppq", "d"),
+    ("jitter_ddp", "d"), ("shimmer", "d"), ("shimmer_db", "d"), ("apq3", "d"),
+    ("apq5", "d"), ("apq", "d"), ("shimmer_dda", "d"), ("nhr", "d"), ("hnr", "d"),
+    ("label", "label"), ("rpde", "d"), ("dfa", "d"), ("spread1", "d"), ("spread2", "d"),
+    ("d2", "d"), ("ppe", "d"),
+)
+
+#: The same voice measurements taken at home over six months, with the two
+#: halves of the clinician's score to predict from them.
+_TELEMONITORING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("subject", "i"), ("age", "i"), ("sex", "i"), ("test_time", "d"),
+    ("motor_updrs", "target"), ("total_updrs", "target"), ("jitter_percent", "d"),
+    ("jitter_absolute", "d"), ("rap", "d"), ("ppq5", "d"), ("jitter_ddp", "d"),
+    ("shimmer", "d"), ("shimmer_db", "d"), ("apq3", "d"), ("apq5", "d"), ("apq11", "d"),
+    ("shimmer_dda", "d"), ("nhr", "d"), ("hnr", "d"), ("rpde", "d"), ("dfa", "d"),
+    ("ppe", "d"),
+)
+
+#: Eight points off a pen's path across a tablet, resampled so that every
+#: digit is written with the same number of them.
+_PENDIGIT_FIELDS: tuple[tuple[str, str], ...] = (
+    *tuple(
+        field for at in range(1, 9) for field in ((f"x{at}", "i"), (f"y{at}", "i"))
+    ),
+    ("label", "label"),
+)
+
+#: Thirty rules of thumb for spotting a phishing site. Each is -1, 0 or 1:
+#: suspicious, in between, or fine.
+_PHISHING_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        (
+            "having_ip_address", "url_length", "shortening_service", "having_at_symbol",
+            "double_slash_redirecting", "prefix_suffix", "having_sub_domain",
+            "ssl_final_state", "domain_registration_length", "favicon", "port", "https_token",
+            "request_url", "url_of_anchor", "links_in_tags", "server_form_handler",
+            "submitting_to_email", "abnormal_url", "redirect", "on_mouseover", "right_click",
+            "popup_window", "iframe", "age_of_domain", "dns_record", "web_traffic",
+            "page_rank", "google_index", "links_pointing_to_page", "statistical_report",
+        )
+    ),
+    ("label", "label"),
+)
+
+#: The ambient conditions a gas turbine ran in, and the megawatts it made.
+_POWER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("temperature", "d"), ("exhaust_vacuum", "d"), ("ambient_pressure", "d"),
+    ("relative_humidity", "d"), ("power_output", "target"),
+)
+
+#: Molecular descriptors, and the concentration that killed half of a
+#: population in 48 hours - Daphnia magna here, fathead minnow below.
+_AQUATIC_FIELDS: tuple[tuple[str, str], ...] = (
+    ("tpsa", "d"), ("saacc", "d"), ("h_050", "i"), ("mlogp", "d"), ("rdchi", "d"),
+    ("gats1p", "d"), ("nitrogen_atoms", "i"), ("c_040", "i"), ("lc50", "target"),
+)
+_FISH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("cic0", "d"), ("sm1_dz", "d"), ("gats1i", "d"), ("ndsch", "i"), ("ndssc", "i"),
+    ("mlogp", "d"), ("lc50", "target"),
+)
+
+#: The shape of one grain, measured off a photograph of it.
+_RAISIN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("area", "i"), ("major_axis", "d"), ("minor_axis", "d"), ("eccentricity", "d"),
+    ("convex_area", "i"), ("extent", "d"), ("perimeter", "d"), ("label", "label"),
+)
+_RICE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("area", "i"), ("perimeter", "d"), ("major_axis", "d"), ("minor_axis", "d"),
+    ("eccentricity", "d"), ("convex_area", "i"), ("extent", "d"), ("label", "label"),
+)
+
+#: Four Landsat bands for each of the nine pixels around one, read out left
+#: to right and top to bottom, so the middle pixel is the fifth of the nine.
+_SATELLITE_FIELDS: tuple[tuple[str, str], ...] = (
+    *tuple(
+        (f"pixel{at}_band{band}", "i") for at in range(1, 10) for band in range(1, 5)
+    ),
+    ("label", "label"),
+)
+
+#: A shift in a Polish coal mine, and whether the seismometers went off.
+_SEISMIC_FIELDS: tuple[tuple[str, str], ...] = (
+    ("seismic", "hazard"), ("seismoacoustic", "hazard"), ("shift", "shift"),
+    ("genergy", "d"), ("gpuls", "d"), ("gdenergy", "d"), ("gdpuls", "d"),
+    ("ghazard", "hazard"),
+    *_plain(("bumps", "bumps2", "bumps3", "bumps4", "bumps5", "bumps6", "bumps7", "bumps89")),
+    ("energy", "d"), ("max_energy", "d"), ("label", "label"),
+)
+
+#: How a servomechanism was set up, and how long it took to settle.
+_SERVO_FIELDS: tuple[tuple[str, str], ...] = (
+    ("motor", "part"), ("screw", "part"), ("pgain", "i"), ("vgain", "i"),
+    ("rise_time", "target"),
+)
+
+#: An active region on the sun, and how many flares of each size came out of
+#: it in the next 24 hours.
+_FLARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"), ("spot_size", "spots"), ("spot_distribution", "spread"),
+    ("activity", "i"), ("evolution", "i"), ("previous_activity", "i"),
+    ("historically_complex", "i"), ("became_complex", "i"), ("area", "i"),
+    ("largest_spot_area", "i"), ("c_flares", "i"), ("m_flares", "i"), ("x_flares", "i"),
+)
+
+#: Sixty energies off a sonar chirp, and what it bounced off.
+_SONAR_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        tuple(f"band_{at}" for at in range(1, 61)), "d"
+    ),
+    ("label", "label"),
+)
+
+#: Thirty-five things a farmer could see, already numbered by the file.
+_SOYBEAN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("label", "label"),
+    *_plain(
+        (
+            "date", "plant_stand", "precipitation", "temperature", "hail", "crop_history",
+            "area_damaged", "severity", "seed_treatment", "germination", "plant_growth",
+            "leaves", "leafspots_halo", "leafspots_margin", "leafspot_size", "leaf_shread",
+            "leaf_malformation", "leaf_mildew", "stem", "lodging", "stem_cankers",
+            "canker_lesion", "fruiting_bodies", "external_decay", "mycelium",
+            "internal_discolouration", "sclerotia", "fruit_pods", "fruit_spots", "seed",
+            "mould_growth", "seed_discolouration", "seed_size", "shrivelling", "roots",
+        )
+    ),
+)
+_SOYBEAN_DISEASES: tuple[str, ...] = (
+    "diaporthe-stem-canker", "charcoal-rot", "rhizoctonia-root-rot", "phytophthora-rot",
+    "brown-stem-rot", "powdery-mildew", "downy-mildew", "brown-spot", "bacterial-blight",
+    "bacterial-pustule", "purple-seed-stain", "anthracnose", "phyllosticta-leaf-spot",
+    "alternarialeaf-spot", "frog-eye-leaf-spot", "diaporthe-pod-&-stem-blight",
+    "cyst-nematode", "2-4-d-injury", "herbicide-injury",
+)
+
+#: The thirteen columns Statlog kept of the Cleveland heart study, all of
+#: them written as decimals however whole the number is.
+_STATLOG_HEART_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        (
+            "age", "sex", "chest_pain", "resting_bp", "cholesterol", "fasting_sugar",
+            "resting_ecg", "max_heart_rate", "exercise_angina", "st_depression", "st_slope",
+            "vessels", "thal",
+        ),
+        "d",
+    ),
+    ("label", "label"),
+)
+
+#: A quarter of an hour in a South Korean steel plant. ``seconds_from_midnight``
+#: is the file's own NSM column, and says the same thing as the time of day in
+#: ``when``.
+_STEEL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("when", "time"), ("usage", "d"), ("lagging_reactive_power", "d"),
+    ("leading_reactive_power", "d"), ("carbon_dioxide", "d"),
+    ("lagging_power_factor", "d"), ("leading_power_factor", "d"),
+    ("seconds_from_midnight", "i"), ("week_status", "week"), ("day", "weekday"),
+    ("label", "label"),
+)
+
+#: The nine squares of a finished game, x first. A square is 1 for x, -1 for
+#: o and 0 for blank, so that a board adds up the way a player would read it.
+_TICTACTOE_FIELDS: tuple[tuple[str, str], ...] = (
+    *tuple(
+        (f"{row}_{column}", "square")
+        for row in ("top", "middle", "bottom")
+        for column in ("left", "middle", "right")
+    ),
+    ("label", "label"),
+)
+
+#: Six angles and distances measured off a lower spine.
+_VERTEBRAL_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        (
+            "pelvic_incidence", "pelvic_tilt", "lumbar_lordosis_angle", "sacral_slope",
+            "pelvic_radius", "spondylolisthesis_grade",
+        ),
+        "d",
+    ),
+    ("label", "label"),
+)
+
+#: How strong each of seven wifi points was, and which room that was in.
+_WIFI_FIELDS: tuple[tuple[str, str], ...] = (
+    *_plain(
+        tuple(f"signal_{at}" for at in range(1, 8))
+    ),
+    ("label", "label"),
+)
+
+#: The hull of a sailing yacht, and the resistance the tank measured.
+_YACHT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("longitudinal_position", "d"), ("prismatic_coefficient", "d"),
+    ("length_displacement_ratio", "d"), ("beam_draught_ratio", "d"),
+    ("length_beam_ratio", "d"), ("froude_number", "d"), ("residuary_resistance", "target"),
+)
+
+#: Sixteen things an animal either does or has, then how many legs.
+_ZOO_FIELDS: tuple[tuple[str, str], ...] = (
+    ("animal", "text"),
+    *_plain(
+        (
+            "hair", "feathers", "eggs", "milk", "airborne", "aquatic", "predator",
+            "toothed", "backbone", "breathes", "venomous", "fins", "legs", "tail",
+            "domestic", "catsize",
+        )
+    ),
+    ("label", "label"),
+)
+
+
 DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
     "mnist": Images(
         name="mnist",
@@ -1979,6 +2579,695 @@ DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
         text_size=16,
         fields=_YEAST_FIELDS,
         labels=_YEAST_SITES,
+    ),
+    "airfoil": Table(
+        name="airfoil",
+        label="Airfoil Self-Noise",
+        title="1,503 wind tunnel runs and how loud the aerofoil was",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/291/airfoil+self+noise",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/291/airfoil+self+noise.zip",
+        member="airfoil_self_noise.dat",
+        delimiter=None,
+        fields=_AIRFOIL_FIELDS,
+    ),
+    "automobile": Table(
+        name="automobile",
+        label="Automobile",
+        title="205 cars imported into America in 1985 and what they cost",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/10/automobile",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/10/automobile.zip",
+        member="automobile/imports-85.data",
+        text_size=16,
+        fields=_AUTOMOBILE_FIELDS,
+        codes=_AUTOMOBILE_CODES,
+    ),
+    "balance_scale": Table(
+        name="balance_scale",
+        label="Balance Scale",
+        title="625 balances and which way each one tips, 3 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/12/balance+scale",
+        classes=("balanced", "left", "right"),
+        url="https://archive.ics.uci.edu/static/public/12/balance+scale.zip",
+        member="balance-scale.data",
+        fields=_BALANCE_FIELDS,
+        labels={"B": 0, "L": 1, "R": 2},
+    ),
+    "bank_marketing": Table(
+        name="bank_marketing",
+        label="Bank Marketing",
+        title="45,211 sales calls and whether the customer took the deposit",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/222/bank+marketing",
+        classes=("no_deposit", "deposit"),
+        url="https://archive.ics.uci.edu/static/public/222/bank+marketing.zip",
+        inner="bank.zip",
+        member="bank-full.csv",
+        delimiter=";",
+        header=True,
+        fields=_BANK_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes=_BANK_CODES,
+    ),
+    "blood_transfusion": Table(
+        name="blood_transfusion",
+        label="Blood Transfusion",
+        title="748 blood donors and whether each gave again, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/176/blood+transfusion+service+center",
+        classes=("did_not_give", "gave"),
+        url="https://archive.ics.uci.edu/static/public/176/blood+transfusion+service+center.zip",
+        member="transfusion.data",
+        header=True,
+        fields=_BLOOD_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "climate_crashes": Table(
+        name="climate_crashes",
+        label="Climate Model Crashes",
+        title="540 runs of an ocean model and whether each one finished",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/252/climate+model+simulation+crashes",
+        classes=("crashed", "finished"),
+        url="https://archive.ics.uci.edu/static/public/252/climate+model+simulation+crashes.zip",
+        member="pop_failures.dat",
+        delimiter=None,
+        header=True,
+        fields=_CLIMATE_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "computer_hardware": Table(
+        name="computer_hardware",
+        label="Computer Hardware",
+        title="209 mainframes of the 1980s and how fast each one was",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/29/computer+hardware",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/29/computer+hardware.zip",
+        member="machine.data",
+        text_size=24,
+        fields=_HARDWARE_FIELDS,
+    ),
+    "concrete_slump": Table(
+        name="concrete_slump",
+        label="Concrete Slump Test",
+        title="103 concrete mixes and how each one flowed and held",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/182/concrete+slump+test",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/182/concrete+slump+test.zip",
+        member="slump_test.data",
+        header=True,
+        fields=_SLUMP_FIELDS,
+    ),
+    "contraceptive": Table(
+        name="contraceptive",
+        label="Contraceptive Method Choice",
+        title="1,473 Indonesian couples and what they used, 3 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/30/contraceptive+method+choice",
+        classes=("none", "long_term", "short_term"),
+        url="https://archive.ics.uci.edu/static/public/30/contraceptive+method+choice.zip",
+        member="cmc.data",
+        fields=_CMC_FIELDS,
+        labels={"1": 0, "2": 1, "3": 2},
+    ),
+    "dermatology": Table(
+        name="dermatology",
+        label="Dermatology",
+        title="366 patients with one of 6 red scaly skin diseases",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/33/dermatology",
+        classes=(
+            "psoriasis", "seboreic_dermatitis", "lichen_planus", "pityriasis_rosea",
+            "chronic_dermatitis", "pityriasis_rubra_pilaris",
+        ),
+        url="https://archive.ics.uci.edu/static/public/33/dermatology.zip",
+        member="dermatology.data",
+        fields=_DERM_FIELDS,
+        labels={str(which): which - 1 for which in range(1, 7)},
+    ),
+    "diabetes_risk": Table(
+        name="diabetes_risk",
+        label="Early Stage Diabetes Risk",
+        title="520 patients asked about 14 symptoms, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/529/early+stage+diabetes+risk+prediction+dataset",
+        classes=("negative", "positive"),
+        url="https://archive.ics.uci.edu/static/public/529/early+stage+diabetes+risk+prediction+dataset.zip",
+        member="diabetes_data_upload.csv",
+        header=True,
+        fields=_DIABETES_FIELDS,
+        labels={"Negative": 0, "Positive": 1},
+        codes={"sex": _SEXES, "yesno": _YES_NO_CAPS},
+    ),
+    "ecoli": Table(
+        name="ecoli",
+        label="Ecoli",
+        title="336 E. coli proteins measured 7 ways, 8 places in the cell",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/39/ecoli",
+        classes=(
+            "cytoplasm", "inner_membrane_no_signal", "periplasm",
+            "inner_membrane_uncleaved_signal", "outer_membrane",
+            "outer_membrane_lipoprotein", "inner_membrane_lipoprotein",
+            "inner_membrane_cleaved_signal",
+        ),
+        url="https://archive.ics.uci.edu/static/public/39/ecoli.zip",
+        member="ecoli.data",
+        delimiter=None,
+        text_size=16,
+        fields=_ECOLI_FIELDS,
+        labels={
+            name: at
+            for at, name in enumerate(("cp", "im", "pp", "imU", "om", "omL", "imL", "imS"))
+        },
+    ),
+    "fertility": Table(
+        name="fertility",
+        label="Fertility",
+        title="100 men, 9 questions each, and their semen analysis",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/244/fertility",
+        classes=("normal", "altered"),
+        url="https://archive.ics.uci.edu/static/public/244/fertility.zip",
+        member="fertility_Diagnosis.txt",
+        fields=_FERTILITY_FIELDS,
+        labels={"N": 0, "O": 1},
+    ),
+    "forest_fires": Table(
+        name="forest_fires",
+        label="Forest Fires",
+        title="517 fires in a Portuguese park and how far each one spread",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/162/forest+fires",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/162/forest+fires.zip",
+        member="forestfires.csv",
+        header=True,
+        fields=_FIRE_FIELDS,
+        codes={"month": _MONTHS, "day": _DAYS},
+    ),
+    "garment_productivity": Table(
+        name="garment_productivity",
+        label="Garment Worker Productivity",
+        title="1,197 team-days in a clothing factory and what each got done",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/597/productivity+prediction+of+garment+employees",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/597/productivity+prediction+of+garment+employees.zip",
+        member="garments_worker_productivity.csv",
+        header=True,
+        dates="%m/%d/%Y",
+        fields=_GARMENT_FIELDS,
+        codes={
+            "quarter": ("Quarter1", "Quarter2", "Quarter3", "Quarter4", "Quarter5"),
+            "department": ("finishing", "sweing"),
+            "weekday": _WEEKDAYS,
+        },
+    ),
+    "german_credit": Table(
+        name="german_credit",
+        label="Statlog German Credit",
+        title="1,000 loan applications judged good or bad, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
+        classes=("good", "bad"),
+        url="https://archive.ics.uci.edu/static/public/144/statlog+german+credit+data.zip",
+        member="german.data",
+        delimiter=None,
+        fields=_GERMAN_FIELDS,
+        labels={"1": 0, "2": 1},
+        codes=_GERMAN_CODES,
+    ),
+    "haberman": Table(
+        name="haberman",
+        label="Haberman's Survival",
+        title="306 breast cancer operations and who was alive 5 years on",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/43/haberman+s+survival",
+        classes=("survived", "died"),
+        url="https://archive.ics.uci.edu/static/public/43/haberman+s+survival.zip",
+        member="haberman.data",
+        fields=_HABERMAN_FIELDS,
+        labels={"1": 0, "2": 1},
+    ),
+    "heart_failure": Table(
+        name="heart_failure",
+        label="Heart Failure Clinical Records",
+        title="299 heart failure patients and who survived the follow-up",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records",
+        classes=("survived", "died"),
+        url="https://archive.ics.uci.edu/static/public/519/heart+failure+clinical+records.zip",
+        member="heart_failure_clinical_records_dataset.csv",
+        header=True,
+        fields=_FAILURE_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "hepatitis": Table(
+        name="hepatitis",
+        label="Hepatitis",
+        title="155 hepatitis patients, 19 findings each, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/46/hepatitis",
+        classes=("died", "lived"),
+        url="https://archive.ics.uci.edu/static/public/46/hepatitis.zip",
+        member="hepatitis.data",
+        fields=_HEPATITIS_FIELDS,
+        labels={"1": 0, "2": 1},
+    ),
+    "image_segmentation": Table(
+        name="image_segmentation",
+        label="Image Segmentation",
+        title="2,310 patches of outdoor photographs, 7 things they are of",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/50/image+segmentation",
+        classes=("brickface", "sky", "foliage", "cement", "window", "path", "grass"),
+        splits=("train", "test"),
+        url="https://archive.ics.uci.edu/static/public/50/image+segmentation.zip",
+        files={"train": "segmentation.data", "test": "segmentation.test"},
+        comment=";",
+        header=True,
+        fields=_SEGMENT_FIELDS,
+        labels={
+            name.upper(): at
+            for at, name in enumerate(
+                ("brickface", "sky", "foliage", "cement", "window", "path", "grass")
+            )
+        },
+    ),
+    "indian_liver": Table(
+        name="indian_liver",
+        label="Indian Liver Patient",
+        title="583 patients from Andhra Pradesh, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/225/ilpd+indian+liver+patient+dataset",
+        classes=("liver_patient", "not_a_patient"),
+        url="https://archive.ics.uci.edu/static/public/225/ilpd+indian+liver+patient+dataset.zip",
+        member="Indian Liver Patient Dataset (ILPD).csv",
+        fields=_ILPD_FIELDS,
+        labels={"1": 0, "2": 1},
+        codes={"sex": _SEXES},
+    ),
+    "liver_disorders": Table(
+        name="liver_disorders",
+        label="Liver Disorders",
+        title="345 blood tests and the drinking to predict from them",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/60/liver+disorders",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/60/liver+disorders.zip",
+        member="bupa.data",
+        fields=_BUPA_FIELDS,
+    ),
+    "lymphography": Table(
+        name="lymphography",
+        label="Lymphography",
+        title="148 lymph node X-rays read 18 ways, 4 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/63/lymphography",
+        classes=("normal", "metastases", "malignant_lymphoma", "fibrosis"),
+        url="https://archive.ics.uci.edu/static/public/63/lymphography.zip",
+        member="lymphography.data",
+        fields=_LYMPH_FIELDS,
+        labels={str(which): which - 1 for which in range(1, 5)},
+    ),
+    "mammographic_mass": Table(
+        name="mammographic_mass",
+        label="Mammographic Mass",
+        title="961 lumps seen on a mammogram, benign or malignant",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/161/mammographic+mass",
+        classes=("benign", "malignant"),
+        url="https://archive.ics.uci.edu/static/public/161/mammographic+mass.zip",
+        member="mammographic_masses.data",
+        fields=_MAMMOGRAM_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "maternal_health": Table(
+        name="maternal_health",
+        label="Maternal Health Risk",
+        title="1,014 pregnancies seen in rural clinics, 3 degrees of risk",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/863/maternal+health+risk",
+        classes=("low_risk", "mid_risk", "high_risk"),
+        url="https://archive.ics.uci.edu/static/public/863/maternal+health+risk.zip",
+        member="Maternal Health Risk Data Set.csv",
+        header=True,
+        fields=_MATERNAL_FIELDS,
+        labels={"low risk": 0, "mid risk": 1, "high risk": 2},
+    ),
+    "nursery": Table(
+        name="nursery",
+        label="Nursery",
+        title="12,960 nursery applications ranked 5 ways",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/76/nursery",
+        classes=("not_recom", "recommend", "very_recom", "priority", "spec_prior"),
+        url="https://archive.ics.uci.edu/static/public/76/nursery.zip",
+        member="nursery.data",
+        fields=_NURSERY_FIELDS,
+        labels={
+            name: at
+            for at, name in enumerate(
+                ("not_recom", "recommend", "very_recom", "priority", "spec_prior")
+            )
+        },
+        codes=_NURSERY_CODES,
+    ),
+    "occupancy": Table(
+        name="occupancy",
+        label="Occupancy Detection",
+        title="20,560 minutes in an office and whether anyone was in it",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/357/occupancy+detection",
+        classes=("empty", "occupied"),
+        splits=("train", "test", "second_test"),
+        url="https://archive.ics.uci.edu/static/public/357/occupancy+detection.zip",
+        files={
+            "train": "datatraining.txt",
+            "test": "datatest.txt",
+            "second_test": "datatest2.txt",
+        },
+        header=True,
+        dates="%Y-%m-%d %H:%M:%S",
+        fields=_OCCUPANCY_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "online_shoppers": Table(
+        name="online_shoppers",
+        label="Online Shoppers Intention",
+        title="12,330 shopping sessions and which of them ended in a sale",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset",
+        classes=("no_purchase", "purchase"),
+        url="https://archive.ics.uci.edu/static/public/468/online+shoppers+purchasing+intention+dataset.zip",
+        member="online_shoppers_intention.csv",
+        header=True,
+        fields=_SHOPPER_FIELDS,
+        labels={"FALSE": 0, "TRUE": 1},
+        codes=_SHOPPER_CODES,
+    ),
+    "parkinsons": Table(
+        name="parkinsons",
+        label="Parkinsons",
+        title="195 voice recordings, 22 measurements each, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/174/parkinsons",
+        classes=("healthy", "parkinsons"),
+        url="https://archive.ics.uci.edu/static/public/174/parkinsons.zip",
+        member="parkinsons.data",
+        header=True,
+        text_size=24,
+        fields=_PARKINSONS_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "parkinsons_telemonitoring": Table(
+        name="parkinsons_telemonitoring",
+        label="Parkinsons Telemonitoring",
+        title="5,875 recordings made at home and the two scores to predict",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/189/parkinsons+telemonitoring",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/189/parkinsons+telemonitoring.zip",
+        member="parkinsons_updrs.data",
+        header=True,
+        fields=_TELEMONITORING_FIELDS,
+    ),
+    "pendigits": Table(
+        name="pendigits",
+        label="Pen-Based Digits",
+        title="10,992 digits written on a tablet, 8 points each, 10 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/81/pen+based+recognition+of+handwritten+digits",
+        classes=tuple(str(digit) for digit in range(10)),
+        splits=("train", "test"),
+        url="https://archive.ics.uci.edu/static/public/81/pen+based+recognition+of+handwritten+digits.zip",
+        files={"train": "pendigits.tra", "test": "pendigits.tes"},
+        fields=_PENDIGIT_FIELDS,
+        labels={str(digit): digit for digit in range(10)},
+    ),
+    "phishing": Table(
+        name="phishing",
+        label="Phishing Websites",
+        title="11,055 websites scored 30 ways, phishing or legitimate",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/327/phishing+websites",
+        classes=("phishing", "legitimate"),
+        url="https://archive.ics.uci.edu/static/public/327/phishing+websites.zip",
+        member="Training Dataset.arff",
+        arff=True,
+        fields=_PHISHING_FIELDS,
+        labels={"-1": 0, "1": 1},
+    ),
+    "power_plant": Table(
+        name="power_plant",
+        label="Combined Cycle Power Plant",
+        title="9,568 hours of a gas turbine and the power it put out",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/294/combined+cycle+power+plant",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/294/combined+cycle+power+plant.zip",
+        member="CCPP/Folds5x2_pp.xlsx",
+        xlsx=True,
+        header=True,
+        fields=_POWER_FIELDS,
+    ),
+    "qsar_aquatic": Table(
+        name="qsar_aquatic",
+        label="QSAR Aquatic Toxicity",
+        title="546 chemicals and the dose that kills half the water fleas",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/505/qsar+aquatic+toxicity",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/505/qsar+aquatic+toxicity.zip",
+        member="qsar_aquatic_toxicity.csv",
+        delimiter=";",
+        fields=_AQUATIC_FIELDS,
+    ),
+    "qsar_fish": Table(
+        name="qsar_fish",
+        label="QSAR Fish Toxicity",
+        title="908 chemicals and the dose that kills half the minnows",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/504/qsar+fish+toxicity",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/504/qsar+fish+toxicity.zip",
+        member="qsar_fish_toxicity.csv",
+        delimiter=";",
+        fields=_FISH_FIELDS,
+    ),
+    "raisin": Table(
+        name="raisin",
+        label="Raisin",
+        title="900 raisins measured off a photograph, 2 varieties",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/850/raisin",
+        classes=("kecimen", "besni"),
+        url="https://archive.ics.uci.edu/static/public/850/raisin.zip",
+        inner="Raisin_Dataset.zip",
+        member="Raisin_Dataset/Raisin_Dataset.arff",
+        arff=True,
+        fields=_RAISIN_FIELDS,
+        labels={"Kecimen": 0, "Besni": 1},
+    ),
+    "rice": Table(
+        name="rice",
+        label="Rice",
+        title="3,810 grains of rice measured off a photograph, 2 varieties",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/545/rice+cammeo+and+osmancik",
+        classes=("cammeo", "osmancik"),
+        url="https://archive.ics.uci.edu/static/public/545/rice+cammeo+and+osmancik.zip",
+        member="Rice_Cammeo_Osmancik.arff",
+        arff=True,
+        fields=_RICE_FIELDS,
+        labels={"Cammeo": 0, "Osmancik": 1},
+    ),
+    "satellite": Table(
+        name="satellite",
+        label="Statlog Landsat Satellite",
+        title="6,435 Landsat neighbourhoods of 9 pixels, 6 kinds of ground",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/146/statlog+landsat+satellite",
+        classes=(
+            "red_soil", "cotton_crop", "grey_soil", "damp_grey_soil",
+            "vegetation_stubble", "very_damp_grey_soil",
+        ),
+        splits=("train", "test"),
+        url="https://archive.ics.uci.edu/static/public/146/statlog+landsat+satellite.zip",
+        files={"train": "sat.trn", "test": "sat.tst"},
+        delimiter=None,
+        fields=_SATELLITE_FIELDS,
+        labels={"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "7": 5},
+    ),
+    "seismic": Table(
+        name="seismic",
+        label="Seismic Bumps",
+        title="2,584 shifts in a Polish coal mine, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/266/seismic+bumps",
+        classes=("no_bump", "bump"),
+        url="https://archive.ics.uci.edu/static/public/266/seismic+bumps.zip",
+        member="seismic-bumps.arff",
+        arff=True,
+        fields=_SEISMIC_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={"hazard": ("a", "b", "c", "d"), "shift": ("W", "N")},
+    ),
+    "servo": Table(
+        name="servo",
+        label="Servo",
+        title="167 servomechanisms and how long each took to settle",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/87/servo",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/87/servo.zip",
+        member="servo.data",
+        fields=_SERVO_FIELDS,
+        codes={"part": ("A", "B", "C", "D", "E")},
+    ),
+    "solar_flare": Table(
+        name="solar_flare",
+        label="Solar Flare",
+        title="1,066 active regions on the sun, 7 modified Zurich classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/89/solar+flare",
+        classes=tuple(f"class_{letter}" for letter in "abcdefh"),
+        url="https://archive.ics.uci.edu/static/public/89/solar+flare.zip",
+        member="flare.data2",
+        delimiter=None,
+        comment="*",
+        fields=_FLARE_FIELDS,
+        labels={letter.upper(): at for at, letter in enumerate("abcdefh")},
+        codes={"spots": ("X", "R", "S", "A", "H", "K"), "spread": ("X", "O", "I", "C")},
+    ),
+    "sonar": Table(
+        name="sonar",
+        label="Sonar",
+        title="208 sonar returns off a rock or a mine, 60 bands each",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/151/connectionist+bench+sonar+mines+vs+rocks",
+        classes=("rock", "mine"),
+        url="https://archive.ics.uci.edu/static/public/151/connectionist+bench+sonar+mines+vs+rocks.zip",
+        member="sonar.all-data",
+        fields=_SONAR_FIELDS,
+        labels={"R": 0, "M": 1},
+    ),
+    "soybean": Table(
+        name="soybean",
+        label="Soybean (Large)",
+        title="683 diseased soybean plants, 19 diseases",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/90/soybean+large",
+        classes=tuple(
+            name.replace("&", "and").replace("2-4-d", "two_four_d").replace("-", "_")
+            for name in _SOYBEAN_DISEASES
+        ),
+        splits=("train", "test"),
+        url="https://archive.ics.uci.edu/static/public/90/soybean+large.zip",
+        files={"train": "soybean-large.data", "test": "soybean-large.test"},
+        fields=_SOYBEAN_FIELDS,
+        labels={name: at for at, name in enumerate(_SOYBEAN_DISEASES)},
+    ),
+    "statlog_heart": Table(
+        name="statlog_heart",
+        label="Statlog Heart",
+        title="270 patients from the Cleveland heart study, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/145/statlog+heart",
+        classes=("absent", "present"),
+        url="https://archive.ics.uci.edu/static/public/145/statlog+heart.zip",
+        member="heart.dat",
+        delimiter=None,
+        fields=_STATLOG_HEART_FIELDS,
+        labels={"1": 0, "2": 1},
+    ),
+    "steel_industry": Table(
+        name="steel_industry",
+        label="Steel Industry Energy",
+        title="35,040 quarter hours in a steel plant, 3 kinds of load",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/851/steel+industry+energy+consumption",
+        classes=("light_load", "medium_load", "maximum_load"),
+        url="https://archive.ics.uci.edu/static/public/851/steel+industry+energy+consumption.zip",
+        member="Steel_industry_data.csv",
+        header=True,
+        dates="%d/%m/%Y %H:%M",
+        fields=_STEEL_FIELDS,
+        labels={"Light_Load": 0, "Medium_Load": 1, "Maximum_Load": 2},
+        codes={"week": ("Weekday", "Weekend"), "weekday": _WEEKDAYS},
+    ),
+    "tic_tac_toe": Table(
+        name="tic_tac_toe",
+        label="Tic-Tac-Toe Endgame",
+        title="958 finished games and whether x had won, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/101/tic+tac+toe+endgame",
+        classes=("x_lost", "x_won"),
+        url="https://archive.ics.uci.edu/static/public/101/tic+tac+toe+endgame.zip",
+        member="tic-tac-toe.data",
+        fields=_TICTACTOE_FIELDS,
+        labels={"negative": 0, "positive": 1},
+        codes={"square": {"x": 1, "o": -1, "b": 0}},
+    ),
+    "vertebral_column": Table(
+        name="vertebral_column",
+        label="Vertebral Column",
+        title="310 lower spines measured 6 ways, 3 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/212/vertebral+column",
+        classes=("disc_hernia", "spondylolisthesis", "normal"),
+        url="https://archive.ics.uci.edu/static/public/212/vertebral+column.zip",
+        member="column_3C.dat",
+        delimiter=None,
+        fields=_VERTEBRAL_FIELDS,
+        labels={"DH": 0, "SL": 1, "NO": 2},
+    ),
+    "wifi_localisation": Table(
+        name="wifi_localisation",
+        label="Wireless Indoor Localisation",
+        title="2,000 readings of 7 wifi points, taken in 4 rooms",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/422/wireless+indoor+localization",
+        classes=tuple(f"room_{at}" for at in range(1, 5)),
+        url="https://archive.ics.uci.edu/static/public/422/wireless+indoor+localization.zip",
+        member="wifi_localization.txt",
+        delimiter=None,
+        fields=_WIFI_FIELDS,
+        labels={str(at): at - 1 for at in range(1, 5)},
+    ),
+    "yacht": Table(
+        name="yacht",
+        label="Yacht Hydrodynamics",
+        title="308 towing tank runs and the resistance each hull made",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/243/yacht+hydrodynamics",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/243/yacht+hydrodynamics.zip",
+        member="yacht_hydrodynamics.data",
+        delimiter=None,
+        fields=_YACHT_FIELDS,
+    ),
+    "zoo": Table(
+        name="zoo",
+        label="Zoo",
+        title="101 animals described 16 ways, 7 kinds of animal",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/111/zoo",
+        classes=(
+            "mammal", "bird", "reptile", "fish", "amphibian", "insect", "invertebrate",
+        ),
+        url="https://archive.ics.uci.edu/static/public/111/zoo.zip",
+        member="zoo.data",
+        text_size=16,
+        fields=_ZOO_FIELDS,
+        labels={str(which): which - 1 for which in range(1, 8)},
     ),
 }
 
