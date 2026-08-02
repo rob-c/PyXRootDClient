@@ -117,6 +117,7 @@ class BranchRecord:
         "basket_seek",
         "leaves",
         "branches",
+        "streamed",
     )
 
     def __init__(self) -> None:
@@ -130,6 +131,9 @@ class BranchRecord:
         self.basket_seek: list[int] = []
         self.leaves: list[LeafRecord] = []
         self.branches: list[BranchRecord] = []
+        #: Did the class stream itself, record and all, rather than the file's
+        #: streamer information writing out its members bare?
+        self.streamed = False
 
     def __repr__(self) -> str:
         return f"<BranchRecord {self.name!r} with {len(self.basket_seek)} baskets>"
@@ -217,6 +221,23 @@ def read_branch_element(buf: Buffer) -> BranchRecord:
         buf.string(), buf.string()  # the parent class, and the TClonesArray class
         buf.u32()  # the checksum of the class this was written from
     buf.u16() if version >= 10 else buf.u32()  # that class's version
+    buf.i32()  # which member of the class this branch is, which its name says too
+    branch.streamed = buf.i32() < 0  # ROOT calls this fType, and -1 is the whole object
+    buf.resume(end)
+    return branch
+
+
+def read_branch_object(buf: Buffer) -> BranchRecord:
+    """A ``TBranchObject``: a branch of whole objects, named a class at a time.
+
+    This is how ROOT wrote an object before ``TBranchElement``, and the file
+    still holds the layout for it: the class name is here, and every entry is
+    that class streaming itself.
+    """
+    _version, end = buf.header()
+    branch = read_branch(buf)
+    branch.classname = buf.string()
+    branch.streamed = True
     buf.resume(end)
     return branch
 
@@ -247,7 +268,8 @@ CLASSES: dict[str, Any] = {
 }
 CLASSES["TBranch"] = read_branch
 CLASSES["TBranchElement"] = read_branch_element
-for _derived in ("TBranchObject", "TBranchClones", "TBranchSTL"):
+CLASSES["TBranchObject"] = read_branch_object
+for _derived in ("TBranchClones", "TBranchSTL"):
     CLASSES[_derived] = read_derived_branch
 
 

@@ -83,12 +83,13 @@ def branch_bytes() -> bytes:
     return record(10, body + empty * 3 + b"\x01\x01\x01" + tstring(""))
 
 
-def branch_element_bytes(version: int, classname: str) -> bytes:
+def branch_element_bytes(version: int, classname: str, ftype: int = 0) -> bytes:
     """A ``TBranchElement`` of a version old enough to say things differently."""
     body = branch_bytes() + tstring(classname)
     if version > 1:
         body += tstring("") + tstring("") + struct.pack(">I", 0)
     body += struct.pack(">I" if version < 10 else ">H", 0)
+    body += struct.pack(">ii", -1, ftype)  # which member this is, and what it holds
     return record(version, body)
 
 
@@ -153,6 +154,7 @@ def test_the_pieces_of_a_type_say_what_they_are():
     assert isinstance(parse("map<int,int>"), Mapping)
     assert isinstance(parse("TString"), Str)
     assert isinstance(parse("bool"), Prim)
+    assert repr(parse("ROOT::VecOps::RVec<float>")) == "<Seq of <Prim float32>>"
 
 
 # -- the classes a file describes -----------------------------------------
@@ -188,6 +190,8 @@ def test_a_class_written_with_no_member_list_has_no_members():
 def test_a_branch_element_from_before_the_version_shrank_still_names_its_class():
     assert read_branch_element(Buffer(branch_element_bytes(9, "Event"))).classname == "Event"
     assert read_branch_element(Buffer(branch_element_bytes(1, "Event"))).classname == "Event"
+    assert not read_branch_element(Buffer(branch_element_bytes(10, "Event"))).streamed
+    assert read_branch_element(Buffer(branch_element_bytes(10, "P3", -1))).streamed
 
 
 def test_a_branch_of_a_kind_this_reader_cannot_follow_still_appears_by_name():
@@ -654,8 +658,8 @@ def test_a_counted_member_written_before_its_count_is_refused():
 
 
 def test_a_member_of_a_kind_this_reader_does_not_decode_is_named_in_the_refusal():
-    source = Layout(Event=declared("obj", 66))
-    assert "'obj', which is a TObject that this reader does not decode inside an entry" in (
+    source = Layout(Event=declared("obj", 63, "P3*"))
+    assert "'obj', which is a pointer to an object that this reader does not decode" in (
         column_of("Event", source=source).reason
     )
 
@@ -708,3 +712,100 @@ def test_a_branch_this_reader_cannot_decode_is_named_in_the_tree_not_dropped():
     tree = TTree("t", "", 0, [record_], Nothing())
     assert tree.keys() == ["obj"] and tree.readable() == []
     assert tree.unreadable["obj"] == tree["obj"].column.reason
+
+
+# -- a class with a base class --------------------------------------------
+
+
+def test_a_class_that_streamed_itself_reads_the_record_it_put_in_front():
+    """`TLorentzVector` writes itself, so the entry is its record and not its members.
+
+    The values are the ones go-hep reads out of the same ten entries: a
+    momentum of ``(i, i+1, i+2)`` and an energy of ``i+3``.
+    """
+    with opened("tlv-split99") as handle:
+        rows = handle["tree"]["p4"].array()
+        assert len(rows) == 10
+        assert rows[0]["fP"]["fX"] == 0.0 and rows[0]["fE"] == 3.0
+        assert [row["fP"]["fZ"] for row in rows[:3]] == [2.0, 3.0, 4.0]
+        assert rows[0]["TObject"] == {"fUniqueID": 0, "fBits": 0x03000000}
+
+
+def test_the_older_branch_that_names_its_class_holds_the_same_objects():
+    """A `TBranchObject` writes the class name in front of every entry.
+
+    It is the same ten `TLorentzVector`s as the file above, written the way
+    ROOT wrote objects before `TBranchElement` existed.
+    """
+    with opened("tlv-split00") as first, opened("tlv-split99") as second:
+        assert first["tree"]["p4"].array() == second["tree"]["p4"].array()
+
+
+def test_a_branch_that_says_one_class_and_holds_another_stops_rather_than_reads():
+    source = Layout(P3=declared("x", 3, "int"))
+    record_ = BranchRecord()
+    record_.name, record_.classname = "p", "P3"
+    leaf = LeafRecord("TLeafObject")
+    leaf.name = "p"
+    record_.leaves = [leaf]
+    column = build(record_, leaf, source)
+    written = bytes([2]) + b"P4\x00" + record(1, struct.pack(">i", 7))
+    with pytest.raises(FormatError, match="says it holds 'P4' instead"):
+        column.value(Buffer(written), 0)
+
+
+def test_a_base_class_keeps_its_own_members_under_its_own_name():
+    """`D2` declares an `I32` of its own and inherits another one.
+
+    Nesting the base under its name is what keeps both: flattening them into
+    one dictionary would quietly drop whichever was written first.
+    """
+    with opened("tbase") as handle:
+        tree = handle["tree"]
+        assert tree["d1"].array() == [
+            {"Base": {"I32": 1}, "D32": 2},
+            {"Base": {"I32": 2}, "D32": 3},
+        ]
+        assert tree["d2"].array(0, 1) == [{"Base": {"I32": 3}, "I32": 4}]
+
+
+def test_the_rvec_an_rdataframe_writes_reads_back_as_the_vector_it_is():
+    """`RVec` is `RDataFrame`'s vector, and is written exactly like one.
+
+    The numbers are the ones go-hep dumps out of the same file.
+    """
+    with opened("rvec") as handle:
+        tree = handle["events"]
+        assert tree.unreadable == {}
+        momenta = tree["MC_px"].array(0, 1)
+        assert momenta.lengths() == [192]
+        assert [round(value, 5) for value in momenta[0][6:9]] == [0.0, 30.39946, -30.39946]
+        assert tree["MC_pdg"].array(0, 1)[0][:5].tolist() == [11.0, -11.0, 11.0, -11.0, 23.0]
+        assert round(tree["EVT_thrust_x"].array(0, 1)[0], 5) == -5.89043
+
+
+def test_a_bitset_is_a_byte_a_bit_with_the_lowest_bit_first():
+    """The file holds `bitset<8>("00010001")`, written the way a vector is.
+
+    C++ writes a `bitset` most significant bit first, so the row is that
+    string backwards - which is `bs[0]`, `bs[1]`, ... in the order C++ asks
+    for them.
+    """
+    with opened("std-bitset") as handle:
+        rows = handle["tree"]["evt"].array(0, 2)
+    assert rows[0]["Bs8"].tolist() == [1, 0, 0, 0, 1, 0, 0, 0]
+    assert [bits.tolist() for bits in rows[0]["VecBs8"]] == [[0, 1, 1, 1, 0, 1, 1, 1]]
+    assert rows[1]["Bs8"].tolist() == [1, 0, 0, 1, 1, 0, 0, 1]
+    assert len(rows[1]["VecBs8"]) == 2
+
+
+def test_a_bitset_of_something_that_is_not_a_width_is_not_a_bitset():
+    assert parse("bitset<8>") is not None and parse("bitset<n>") is None
+
+
+def test_a_tnamed_base_gives_back_the_name_and_title_it_carries():
+    source = Layout(Event={"TNamed": Member("TNamed", "", 67, "BASE", 0)})
+    column = column_of("Event", source=source)
+    assert column.value(Buffer(named_bytes("a name", "a title")), 0) == {
+        "TNamed": {"fName": "a name", "fTitle": "a title"}
+    }

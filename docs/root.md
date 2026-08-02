@@ -127,6 +127,25 @@ tree["evt"].array(1, 2)
 # [{'Beg': 'beg-001', 'I32': 1, 'P3': {'Px': 0, 'Py': 1.0, 'Pz': 0}, ...}]
 ```
 
+A class that inherits keeps each base under the base's own name, because a
+derived class is allowed to declare a member its base already declared and
+flattening the two together would quietly drop one of them. `TObject`, which
+nearly every ROOT class inherits, comes back as the identifier and bits it
+really is:
+
+```python
+tree["p4"].array(0, 1)
+# [{'TObject': {'fUniqueID': 0, 'fBits': 50331648},
+#   'fP': {'TObject': {...}, 'fX': 0.0, 'fY': 1.0, 'fZ': 2.0}, 'fE': 3.0}]
+```
+
+Some classes stream themselves rather than being written out by the file's
+streamer information - `TLorentzVector` is one - and then the entry is the
+class's own record with a version in front of the members. Both are read, and
+so is the older `TBranchObject`, which writes the name of the class in front
+of every entry; a branch of that kind holding more than one class stops with a
+message naming both rather than reading the one as the other.
+
 The same events written the two ways read back the same values, member for
 member. Splitting is still the cheaper way to have written them - a split file
 lets you read one member without touching the rest, and an unsplit one cannot -
@@ -147,6 +166,8 @@ nearly is, one per entry:
 | `std::map<K, V>`, `unordered_map` | a `list[dict]`, one dict per entry |
 | `std::string`, `TString` | a `list[str]` |
 | `std::vector<bool>` | rows of 0 and 1, a byte an element, which is how ROOT wrote it |
+| `ROOT::VecOps::RVec<T>` | whatever the same `std::vector<T>` gives, which is what it is written as |
+| `std::bitset<N>` | rows of 0 and 1, `bs[0]` first, a byte a bit as ROOT wrote it |
 
 `Double32_t` and `Float16_t` are floats squeezed into three or four bytes by a
 recipe written as `[xmin,xmax,nbits]`, where the ends may be given in units of
@@ -224,8 +245,9 @@ with the same sentence if it is asked for:
 
 ```python
 >>> tree.unreadable
-{'vtx': 'TLorentzVector, which is a C++ type this reader does not decode; '
-        'a split file has its members as branches of their own'}
+{'vtx': 'Vertex, which is a C++ type this reader does not decode: this '
+        "file's streamer information does not describe its layout, and a "
+        'file written split would have its members as branches of their own'}
 ```
 
 What is named that way:

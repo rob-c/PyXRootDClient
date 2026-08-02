@@ -234,7 +234,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader are implemented and tested —
-2620 tests, of which the great majority need no network, no KDC and no
+2628 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

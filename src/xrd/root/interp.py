@@ -45,6 +45,10 @@ OFFSET_P = 40  # a pointer to a counted one, ``x[n]``
 #: class, and a member held by value with or without a dictionary of its own.
 OBJECTS = (0, 61, 62)
 
+#: The two bases ROOT gives its own classes, which stream themselves rather
+#: than being written out the way the streamer information describes them.
+TOBJECT, TNAMED = 66, 67
+
 #: The two fundamental types that are not their own width: a float squeezed
 #: into a range the declaration's comment spells out. ``True`` for the one
 #: that is a ``double`` when the comment asks for nothing in particular.
@@ -504,18 +508,52 @@ def _plainly(read: Callable[[Buffer], Any]) -> Step:
     return lambda buf, _row: read(buf)
 
 
-def _instance(read: Callable[[Buffer], Any]) -> Step:
-    """A class instance inside another one, which carries a record of its own."""
+def _streamed(read: Callable[[Buffer], Any]) -> Callable[[Buffer], Any]:
+    """A class that streamed itself, and so carries a record of its own."""
 
-    def step(buf: Buffer, _row: dict[str, Any]) -> Any:
+    def value(buf: Buffer) -> Any:
         version, end = buf.header()
         if version == 0:
             buf.u32()  # a class with no version of its own says so with a checksum
-        value = read(buf)
+        row = read(buf)
         buf.resume(end)
-        return value
+        return row
 
-    return step
+    return value
+
+
+def _named(name: str, read: Callable[[Buffer], Any]) -> Callable[[Buffer], Any]:
+    """An entry that says which class it holds before holding it.
+
+    The name is written the way C would have written it: how long it is, and
+    then the characters and the NUL that ended them. A branch that says one
+    class and holds another is a branch of several classes, which is a thing
+    ROOT allows and this reader stops at rather than reading as the wrong one.
+    """
+
+    def value(buf: Buffer) -> Any:
+        buf.u8()  # how long the name is, which its NUL says as well
+        written = buf.cstring()
+        if written != name:
+            raise FormatError(
+                f"an entry of a branch of {name} says it holds {written!r} instead, "
+                f"and a branch of more than one class is not one this reader follows"
+            )
+        return read(buf)
+
+    return value
+
+
+def _bookkeeping(buf: Buffer) -> dict[str, Any]:
+    """A ``TObject`` base: the identifier and bits every ROOT object carries."""
+    unique, bits = buf.tobject()
+    return {"fUniqueID": unique, "fBits": bits}
+
+
+def _titled(buf: Buffer) -> dict[str, Any]:
+    """A ``TNamed`` base: the name and title, which every ROOT object can have."""
+    name, title = buf.named()
+    return {"fName": name, "fTitle": title}
 
 
 def _reader(node: Any) -> Callable[[Buffer], Any]:
@@ -559,11 +597,17 @@ def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str
         if base == OFFSET_L:
             return _run(prim, unpack, member.length)
         return _one(prim, unpack)
+    if member.stype == TOBJECT:
+        return _plainly(_bookkeeping)
+    if member.stype == TNAMED:
+        return _plainly(_titled)
+    if member.stype in OBJECTS:
+        # A base class is declared under its own name, with ``BASE`` for a type.
+        inside = member.name if member.stype == 0 else member.typename
+        return _plainly(_streamed(_members(inside, source, seen)))
     node = parse(member.typename)
     if node is not None:
         return _plainly(_reader(node))
-    if member.stype in OBJECTS:
-        return _instance(_members(member.typename, source, seen))
     raise _Unreadable(
         f"{member.name!r}, which is {KINDS.get(member.stype, 'of a kind')} that "
         f"this reader does not decode inside an entry"
@@ -597,13 +641,18 @@ def _members(
     return read
 
 
-def _whole(name: str, source: Source) -> Column:
+def _whole(name: str, source: Source, streamed: bool = False, named: bool = False) -> Column:
     """A whole C++ object written into the entry, rather than split into branches.
 
     Nothing about it is in the file except its bytes and the layout the file's
     streamer information gives for the class, so this walks that layout member
     by member and gives back a :class:`dict` per entry - the same shape a split
     object comes back as, from a file that was written the other way.
+
+    ``streamed`` is for the class that wrote itself rather than being written
+    out by the file's streamer information, which puts a record in front of the
+    members; ``named`` is for the older branch that writes the class name in
+    front of every entry as well.
     """
     if not source.streamers().get(name):
         return Refused(
@@ -612,9 +661,13 @@ def _whole(name: str, source: Source) -> Column:
             f"and a file written split would have its members as branches of their own"
         )
     try:
-        read = _members(name, source)
+        read: Callable[[Buffer], Any] = _members(name, source)
     except _Unreadable as why:
         return Refused(f"{name or 'an unnamed type'}, which holds {why.reason}")
+    if streamed:
+        read = _streamed(read)
+    if named:
+        read = _named(name, read)
     return Values("dict", read)
 
 
@@ -644,7 +697,7 @@ def _declared(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
     node = parse(name)
     if node is None:
         if not header:
-            return _whole(name, source)  # the whole object, member by member
+            return _whole(name, source, branch.streamed)  # the whole object
         return Refused(
             f"{name or 'an unnamed type'}, which is a C++ type this reader does not "
             f"decode; a split file has its members as branches of their own"
@@ -675,6 +728,8 @@ def build(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
         return _plain(leaf)
     if leaf.classname in PACKED_LEAVES:
         return _packed(leaf)
+    if leaf.classname == "TLeafObject" and branch.classname:
+        return _whole(branch.classname, source, streamed=True, named=True)
     if leaf.classname != "TLeafElement":
         return Refused(leaf.reason)
     if leaf.ltype == 65:

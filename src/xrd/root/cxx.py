@@ -29,8 +29,10 @@ _PRIMS = [
     ("float64", "d", 8, ("double", "Double_t")),
 ]
 
-#: Containers whose contents are simply one value after another.
-SEQUENCES = ("vector", "list", "forward_list", "deque", "set", "multiset", "unordered_set")
+#: Containers whose contents are simply one value after another. ``RVec`` is
+#: the vector ``RDataFrame`` hands out, and is written exactly like one.
+SEQUENCES = ("vector", "list", "forward_list", "deque", "set", "multiset", "unordered_set",
+             "RVec")
 
 #: Containers of pairs. ``multimap`` is missing on purpose: a Python dict
 #: would silently drop the duplicate keys that are the point of one.
@@ -116,6 +118,7 @@ def parse(name: str) -> object | None:
         <Seq of <Prim float32>>
     """
     text = name.replace("std::", "").strip().rstrip("*&").strip()  # a pointer holds the same
+    text = text.replace("ROOT::VecOps::", "")
     if text in _STRINGS:
         return Str(_STRINGS[text])
     found = _BY_NAME.get(text)
@@ -128,6 +131,10 @@ def parse(name: str) -> object | None:
     if head in SEQUENCES:
         item = parse(inside)
         return None if item is None else Seq(item)
+    if head == "bitset" and inside.strip().isdigit():
+        # A byte a bit, lowest bit first, and the count is in the file as well,
+        # so the width in the name is not needed to read one.
+        return Seq(Prim(*_BY_NAME["bool"]))
     if head in MAPPINGS:
         halves = _split(inside)
         if halves is None:
