@@ -13,11 +13,14 @@ from typing import TYPE_CHECKING, Literal
 
 from ..client.file import File
 from ..errors import NotFoundError
-from ..flags import Access, OpenFlags
+from ..flags import Access, OpenFlags, flags_for_mode, parse_mode
 
 if TYPE_CHECKING:
     from _typeshed import ReadableBuffer, WriteableBuffer
 
+#: ``parse_mode`` and ``flags_for_mode`` live in :mod:`xrd.flags`, which has
+#: no imports of its own; they are re-exported here because this is where
+#: mode strings are turned into open requests.
 __all__ = ["XRootDRawIO", "flags_for_mode", "parse_mode", "OpenBinaryMode", "OpenTextMode"]
 
 #: The mode strings that mean bytes, spelled the ways people actually spell
@@ -35,49 +38,6 @@ OpenTextMode = Literal[
     "r+", "rt+", "r+t", "w+", "wt+", "w+t",
     "x+", "xt+", "x+t", "a+", "at+", "a+t",
 ]  # fmt: skip
-
-
-def parse_mode(mode: str) -> tuple[str, bool, bool]:
-    """Split a :func:`open` mode string into ``(base, binary, updating)``."""
-    cleaned = mode.replace("U", "")
-    binary = "b" in cleaned
-    text = "t" in cleaned
-    if binary and text:
-        raise ValueError(f"can't have text and binary mode at once: {mode!r}")
-    updating = "+" in cleaned
-    bases = [ch for ch in cleaned if ch in "rwxa"]
-    if len(bases) != 1:
-        raise ValueError(f"must have exactly one of create/read/write/append mode: {mode!r}")
-    unknown = set(cleaned) - set("rwxa+bt")
-    if unknown:
-        raise ValueError(f"invalid mode: {mode!r}")
-    # Text is the default, exactly as it is for the builtin.
-    return bases[0], binary, updating
-
-
-def flags_for_mode(mode: str, *, posc: bool = False, makepath: bool = True) -> OpenFlags:
-    """Translate a Python mode string into ``kXR_open`` options.
-
-    ``posc`` asks for persist-on-successful-close: the server discards a
-    partially written file if the connection dies, which is what you want for
-    a transfer and not what you want for a long-lived append.
-    """
-    base, _, updating = parse_mode(mode)
-    flags = OpenFlags.NONE
-    if base == "r":
-        flags |= OpenFlags.UPDATE if updating else OpenFlags.READ
-    elif base == "w":
-        flags |= OpenFlags.UPDATE | OpenFlags.DELETE
-    elif base == "x":
-        flags |= OpenFlags.UPDATE | OpenFlags.NEW
-    elif base == "a":
-        flags |= OpenFlags.UPDATE | OpenFlags.APPEND
-    if base != "r":
-        if makepath:
-            flags |= OpenFlags.MAKEPATH
-        if posc:
-            flags |= OpenFlags.POSC
-    return flags
 
 
 class XRootDRawIO(io.RawIOBase):

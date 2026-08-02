@@ -329,10 +329,10 @@ def test_reading_never_asks_to_create_anything():
 def test_a_mode_that_is_none_of_the_four_opens_nothing_in_particular(monkeypatch):
     """``parse_mode`` only ever yields ``r w x a``; the chain still falls through
     without an access flag rather than guessing one."""
-    from xrd.io import raw as raw_module
+    from xrd import flags as flags_module
 
-    monkeypatch.setattr(raw_module, "parse_mode", lambda mode: ("z", False, False))
-    flags = raw_module.flags_for_mode("zb", makepath=True, posc=True)
+    monkeypatch.setattr(flags_module, "parse_mode", lambda mode: ("z", False, False))
+    flags = flags_module.flags_for_mode("zb", makepath=True, posc=True)
     assert flags == OpenFlags.MAKEPATH | OpenFlags.POSC
     assert not flags & (OpenFlags.READ | OpenFlags.UPDATE)
 

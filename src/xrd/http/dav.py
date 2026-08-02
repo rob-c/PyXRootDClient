@@ -33,7 +33,14 @@ from ..errors import (
     kXR_NotFound,
     kXR_Unsupported,
 )
-from ..flags import DirListFlags, LocateFlags, PrepareFlags, QueryCode, StatInfoFlags
+from ..flags import (
+    DirListFlags,
+    LocateFlags,
+    PrepareFlags,
+    QueryCode,
+    StatInfoFlags,
+    prepare_flags,
+)
 from ..types import (
     ChecksumInfo,
     DirEntry,
@@ -429,10 +436,16 @@ class HTTPFileSystem(FileSystem):
         self,
         path: str = "",
         *,
-        flags: DirListFlags = DirListFlags.STAT,
+        stat: bool = True,
+        online: bool = False,
         algorithm: str = "",
+        flags: DirListFlags | int | str | None = None,
     ) -> list[DirEntry]:
         """``PROPFIND`` with ``Depth: 1``. The collection itself is dropped.
+
+        A ``PROPFIND`` answers with the properties whether or not anyone
+        wanted them, so ``stat`` and ``online`` are accepted - the same call
+        works against any endpoint - and change nothing here.
 
         ``algorithm`` is refused rather than dropped: a `PROPFIND` carries no
         digest, and a listing whose checksums are all ``None`` looks exactly
@@ -468,7 +481,7 @@ class HTTPFileSystem(FileSystem):
     # -- mutation ------------------------------------------------------
 
     def mkdir(
-        self, path: str, mode: int = 0o755, *, parents: bool = False, exist_ok: bool = False
+        self, path: str, mode: int | str = 0o755, *, parents: bool = False, exist_ok: bool = False
     ) -> None:
         """``MKCOL``. ``mode`` has no HTTP equivalent and is ignored."""
         target = self._url(path, collection=True)
@@ -488,7 +501,7 @@ class HTTPFileSystem(FileSystem):
             if not exist_ok:
                 raise
 
-    def makedirs(self, path: str, mode: int = 0o755, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, mode: int | str = 0o755, exist_ok: bool = False) -> None:
         self.mkdir(path, mode, parents=True, exist_ok=exist_ok)
 
     def remove(self, path: str) -> None:
@@ -576,7 +589,7 @@ class HTTPFileSystem(FileSystem):
     def statx(self, paths: Sequence[str]) -> list[StatInfo]:
         return [self.stat(path) for path in paths]
 
-    def chmod(self, path: str, mode: int) -> None:
+    def chmod(self, path: str, mode: int | str) -> None:
         raise self._unsupported("chmod")
 
     def utime(
@@ -613,7 +626,14 @@ class HTTPFileSystem(FileSystem):
         return False
 
     def locate(
-        self, path: str, *, flags: LocateFlags = LocateFlags.NONE
+        self,
+        path: str,
+        *,
+        refresh: bool = False,
+        no_wait: bool = False,
+        add_peers: bool = False,
+        prefer_name: bool = False,
+        flags: LocateFlags | int | str | None = None,
     ) -> list[LocationInfo]:
         raise self._unsupported("locate")
 
@@ -621,8 +641,12 @@ class HTTPFileSystem(FileSystem):
         self,
         paths: Sequence[str],
         *,
-        flags: PrepareFlags = PrepareFlags.STAGE,
+        stage: bool | None = None,
+        evict: bool = False,
+        notify: bool = False,
+        fresh: bool = False,
         priority: int = 0,
+        flags: PrepareFlags | int | str | None = None,
     ) -> str:
         """Stage these files, over the WLCG tape API. Returns the request id.
 
@@ -631,8 +655,9 @@ class HTTPFileSystem(FileSystem):
         caller's. An endpoint with no tape behind it answers ``404``, which
         arrives as a :class:`~xrd.errors.NotFoundError` naming the API path.
         """
-        if flags & ~PrepareFlags.STAGE:
-            raise self._unsupported(f"{PrepareFlags(flags & ~PrepareFlags.STAGE)!r}")
+        options = prepare_flags(stage=stage, evict=evict, notify=notify, fresh=fresh, flags=flags)
+        if options & ~PrepareFlags.STAGE:
+            raise self._unsupported(f"{PrepareFlags(options & ~PrepareFlags.STAGE)!r}")
         return tape.stage(self.client, self.url, [self._abs(p) for p in paths])
 
     def query_prepare(self, handle: str, paths: Sequence[str]) -> list[PrepareStatus]:
@@ -643,7 +668,7 @@ class HTTPFileSystem(FileSystem):
         """Where each of these files lives, without asking for any of it to move."""
         return tape.archive_info(self.client, self.url, [self._abs(p) for p in paths])
 
-    def query(self, code: QueryCode | int, args: str = "") -> bytes:
+    def query(self, code: QueryCode | int | str, args: str = "") -> bytes:
         raise self._unsupported("query")
 
     def query_config(self, *names: str) -> dict[str, str]:

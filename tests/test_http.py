@@ -871,6 +871,15 @@ def test_prepare_stages_over_the_tape_api_and_returns_the_request_id(fs, dav):
     assert ("POST", "/api/v1/stage") in dav.seen
 
 
+def test_the_friendly_keywords_arrive_here_too(fs, dav):
+    """``stat`` and ``online`` are free in a ``PROPFIND``; ``evict`` has no API."""
+    dav.nearline.add("/d/a.root")
+    assert [e.name for e in fs.scandir("/d", stat=False, online=True)] == ["a.root", "sub"]
+    assert fs.prepare(["/d/a.root"], stage=True)
+    with pytest.raises(UnsupportedError, match="EVICT"):
+        fs.prepare(["/d/a.root"], evict=True)
+
+
 def test_a_staged_file_reads_as_on_tape_until_it_arrives(fs, dav):
     dav.nearline.add("/d/a.root")
     handle = fs.prepare(["/d/a.root"])

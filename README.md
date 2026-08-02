@@ -7,12 +7,11 @@ WebDAV and `s3://`, spoken by the same objects, with no compiled extension, no
 ```python
 import xrd
 
+for path in xrd.ls("root://eos.example.org//store/user/me"):
+    print(path.name, xrd.human_bytes(xrd.size(path)))
+
 with xrd.open("root://eos.example.org//store/data.root", "rb") as fh:
     header = fh.read(1024)
-
-fs = xrd.FileSystem("root://eos.example.org")
-for entry in fs.scandir("/store"):
-    print(entry.name, entry.stat.st_size)
 
 xrd.copy("root://a.example.org//store/f.root", "davs://b.example.org/store/f.root")
 ```
@@ -34,6 +33,24 @@ and WebDAV are `http.client`, S3 is that plus `hmac`, and GSI/X.509 proxies
 are pure Python down to the AES and RSA. Kerberos is the one exception — see below.
 
 ## What it does
+
+**One-liners.** `xrd.ls`, `xrd.glob`, `xrd.stat`, `xrd.exists`, `xrd.size`,
+`xrd.checksum`, `xrd.read_text`, `xrd.read_bytes`, `xrd.write_text`,
+`xrd.write_bytes`, `xrd.mkdir`, `xrd.remove`, `xrd.move`, `xrd.stage` and
+`xrd.is_online` each take a URL and answer one question, with nothing to
+build and nothing to close.
+
+```python
+if not xrd.is_online("root://tape.example.org//store/f.root"):
+    xrd.stage("root://tape.example.org//store/f.root")
+```
+
+**No bit algebra.** Every flag answers to its own name, and the common
+choices are keyword arguments: `fh.open("r")`, `fh.open("new makepath")`,
+`fs.scandir(path, stat=False)`, `fs.prepare(paths, evict=True)`,
+`fs.query("checksum", path)`, `fs.chmod(path, "rw-r-----")`. A misspelling
+says what you probably meant. Printing a flag prints its name, printing a
+stat prints the line `ls -l` would have.
 
 **Files.** `xrd.open(url, mode)` returns something from the `io` stack:
 seekable, buffered, iterable, context-managed, `read`/`write`/`readinto`,

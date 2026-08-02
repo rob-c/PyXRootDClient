@@ -469,7 +469,7 @@ class AsyncFileSystem:
     async def checksum(self, path: str, algorithm: str | None = None) -> ChecksumInfo:
         return await _run(self._sync.checksum, path, algorithm)
 
-    async def query(self, code: QueryCode | int, args: str = "") -> bytes:
+    async def query(self, code: QueryCode | int | str, args: str = "") -> bytes:
         return await _run(self._sync.query, code, args)
 
     async def query_config(self, *names: str) -> dict[str, str]:
@@ -494,18 +494,52 @@ class AsyncFileSystem:
         await _run(self._sync.appid, name)
 
     async def locate(
-        self, path: str, *, flags: LocateFlags = LocateFlags.NONE
+        self,
+        path: str,
+        *,
+        refresh: bool = False,
+        no_wait: bool = False,
+        add_peers: bool = False,
+        prefer_name: bool = False,
+        flags: LocateFlags | int | str | None = None,
     ) -> list[LocationInfo]:
-        return await _run(functools.partial(self._sync.locate, path, flags=flags))
+        return await _run(
+            functools.partial(
+                self._sync.locate,
+                path,
+                refresh=refresh,
+                no_wait=no_wait,
+                add_peers=add_peers,
+                prefer_name=prefer_name,
+                flags=flags,
+            )
+        )
 
     async def deep_locate(self, path: str) -> list[LocationInfo]:
         return await _run(self._sync.deep_locate, path)
 
     async def prepare(
-        self, paths: Sequence[str], *, flags: PrepareFlags = PrepareFlags.STAGE, priority: int = 0
+        self,
+        paths: Sequence[str],
+        *,
+        stage: bool | None = None,
+        evict: bool = False,
+        notify: bool = False,
+        fresh: bool = False,
+        priority: int = 0,
+        flags: PrepareFlags | int | str | None = None,
     ) -> str:
         return await _run(
-            functools.partial(self._sync.prepare, paths, flags=flags, priority=priority)
+            functools.partial(
+                self._sync.prepare,
+                paths,
+                stage=stage,
+                evict=evict,
+                notify=notify,
+                fresh=fresh,
+                priority=priority,
+                flags=flags,
+            )
         )
 
     async def evict(self, paths: Sequence[str]) -> str:
@@ -523,10 +557,23 @@ class AsyncFileSystem:
     # -- listing -------------------------------------------------------
 
     async def scandir(
-        self, path: str = "", *, flags: DirListFlags = DirListFlags.STAT, algorithm: str = ""
+        self,
+        path: str = "",
+        *,
+        stat: bool = True,
+        online: bool = False,
+        algorithm: str = "",
+        flags: DirListFlags | int | str | None = None,
     ) -> list[DirEntry]:
         return await _run(
-            functools.partial(self._sync.scandir, path, flags=flags, algorithm=algorithm)
+            functools.partial(
+                self._sync.scandir,
+                path,
+                stat=stat,
+                online=online,
+                algorithm=algorithm,
+                flags=flags,
+            )
         )
 
     async def listdir(self, path: str = "") -> list[str]:
@@ -547,13 +594,13 @@ class AsyncFileSystem:
     # -- mutation ------------------------------------------------------
 
     async def mkdir(
-        self, path: str, mode: int = 0o755, *, parents: bool = False, exist_ok: bool = False
+        self, path: str, mode: int | str = 0o755, *, parents: bool = False, exist_ok: bool = False
     ) -> None:
         await _run(
             functools.partial(self._sync.mkdir, path, mode, parents=parents, exist_ok=exist_ok)
         )
 
-    async def makedirs(self, path: str, mode: int = 0o755, exist_ok: bool = False) -> None:
+    async def makedirs(self, path: str, mode: int | str = 0o755, exist_ok: bool = False) -> None:
         await _run(self._sync.makedirs, path, mode, exist_ok)
 
     async def rmdir(self, path: str) -> None:
@@ -568,7 +615,7 @@ class AsyncFileSystem:
     async def rename(self, src: str, dst: str) -> None:
         await _run(self._sync.rename, src, dst)
 
-    async def chmod(self, path: str, mode: int) -> None:
+    async def chmod(self, path: str, mode: int | str) -> None:
         await _run(self._sync.chmod, path, mode)
 
     async def utime(

@@ -152,6 +152,12 @@ def test_a_listing_that_asked_for_no_digests_has_none(fs):
     assert all(e.checksum is None for e in fs.scandir("/data"))
 
 
+def test_a_listing_is_asked_for_in_words(fs):
+    """The keywords are the flags, for a caller who would rather not spell bits."""
+    assert all(e.stat is None for e in fs.scandir("/data", stat=False))
+    assert [e.name for e in fs.scandir("/data", online=True)] == ["a.root", "empty"]
+
+
 def test_a_dir_entry_is_os_pathlike(fs):
     import os
 
@@ -456,6 +462,23 @@ def test_prepare_flags_split_across_the_two_option_fields(fs, server):
     assert server.prepare_options == [(c.kXR_notify, c.kXR_evict)]
 
 
+def test_prepare_is_asked_for_in_words(fs, server):
+    """``evict=True`` and ``notify=True`` where the two option fields used to be."""
+    fs.prepare(["/data/a.root"], evict=True, notify=True)
+    assert server.evicted == ["/data/a.root"]
+    assert server.prepare_options == [(c.kXR_notify, c.kXR_evict)]
+
+
+def test_locate_is_asked_for_in_words(fs, server):
+    locations = fs.locate("/data/a.root", refresh=True, no_wait=True)
+    assert locations[0].address == f"{server.address[0]}:{server.address[1]}"
+
+
+def test_a_query_names_its_code(fs):
+    """``fs.query("checksum", path)`` rather than ``QueryCode.CHECKSUM``."""
+    assert fs.query("checksum", "/data/a.root").startswith(b"adler32 ")
+
+
 def test_query_prepare_reports_on_each_file_of_the_request(fs):
     handle = fs.prepare(["/data/a.root"])
     reports = fs.query_prepare(handle, ["/data/a.root", "/data/missing.root"])
@@ -637,6 +660,15 @@ def test_a_file_opens_reads_and_closes(fs):
         assert handle.is_open
         assert handle.read() == b"hello world"
     assert not handle.is_open
+
+
+def test_a_file_opens_with_the_words_a_person_would_use(fs, server):
+    """``fh.open("w", "rw-r--r--")`` says what the flag algebra used to."""
+    handle = File(fs.url.with_path("/data/worded.bin"), fs.config, router=fs._router)
+    handle.open("w", "rw-r--r--")
+    with handle:
+        handle.write(b"x", 0)
+    assert server.files["/data/worded.bin"] == b"x"
 
 
 def test_reading_a_closed_handle_is_a_value_error(fs):

@@ -24,7 +24,7 @@ from ..errors import (
     kXR_InvalidRequest,
     kXR_Unsupported,
 )
-from ..flags import Access, ChkPointCode, OpenFlags
+from ..flags import Access, ChkPointCode, OpenFlags, open_flags, permissions
 from ..proto import constants as c
 from ..proto import requests as r
 from ..proto import responses as rp
@@ -129,13 +129,24 @@ class File:
 
     def open(
         self,
-        flags: OpenFlags | int = OpenFlags.READ,
-        mode: Access | int = Access.OWNER_READ | Access.OWNER_WRITE,
+        flags: OpenFlags | int | str = OpenFlags.READ,
+        mode: Access | int | str = Access.OWNER_READ | Access.OWNER_WRITE,
     ) -> StatInfo | None:
-        """``kXR_open``. Returns the stat the server volunteered, if any."""
+        """``kXR_open``. Returns the stat the server volunteered, if any.
+
+        Say what you want in whichever way reads best::
+
+            fh.open("r")                              # as for the builtin
+            fh.open("w", "rw-r--r--")                 # and its permissions
+            fh.open("new makepath")                   # the protocol's names
+            fh.open(OpenFlags.NEW | OpenFlags.MAKEPATH)   # or the bits
+
+        A string of mode letters is a mode; any other string is read as
+        option names. ``mode`` is the permission set for a file this creates.
+        """
         if self._handle is not None:
             raise ValueError(f"{self.url} is already open")
-        self._flags, self._mode = OpenFlags(int(flags)), int(mode) & 0o777
+        self._flags, self._mode = open_flags(flags), permissions(mode)
         try:
             self._do_open()
         except BaseException:

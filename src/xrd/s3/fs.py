@@ -221,13 +221,16 @@ class S3FileSystem(HTTPFileSystem):
         self,
         path: str = "",
         *,
-        flags: DirListFlags = DirListFlags.STAT,
+        stat: bool = True,
+        online: bool = False,
         algorithm: str = "",
+        flags: DirListFlags | int | str | None = None,
     ) -> list[DirEntry]:
         """``ListObjectsV2`` with a delimiter, so a prefix reads as a directory.
 
         Every page a listing needs is fetched; sizes and modification times
-        come back with it, so ``flags`` has nothing to turn off. ``algorithm``
+        come back with it, so ``stat``, ``online`` and ``flags`` are accepted
+        for the sake of one call that works anywhere, and turn nothing off. ``algorithm``
         may be ``md5``, which S3 has already computed for any object that was
         uploaded in one piece and reports as its ``ETag``; anything else it
         does not have.
@@ -300,7 +303,7 @@ class S3FileSystem(HTTPFileSystem):
     # -- mutation ------------------------------------------------------
 
     def mkdir(
-        self, path: str, mode: int = 0o755, *, parents: bool = False, exist_ok: bool = False
+        self, path: str, mode: int | str = 0o755, *, parents: bool = False, exist_ok: bool = False
     ) -> None:
         """Nothing, successfully.
 
@@ -310,7 +313,7 @@ class S3FileSystem(HTTPFileSystem):
         every other reader would then have to learn to ignore.
         """
 
-    def makedirs(self, path: str, mode: int = 0o755, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, mode: int | str = 0o755, exist_ok: bool = False) -> None:
         """Nothing, successfully - see :meth:`mkdir`."""
 
     def rmdir(self, path: str) -> None:
@@ -406,8 +409,12 @@ class S3FileSystem(HTTPFileSystem):
         self,
         paths: Sequence[str],
         *,
-        flags: PrepareFlags = PrepareFlags.STAGE,
+        stage: bool | None = None,
+        evict: bool = False,
+        notify: bool = False,
+        fresh: bool = False,
         priority: int = 0,
+        flags: PrepareFlags | int | str | None = None,
     ) -> str:
         raise self._unsupported("staging from tape")
 

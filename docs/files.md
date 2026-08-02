@@ -82,15 +82,20 @@ rather than assume.
 `File` can also be used on its own, with or without `with`:
 
 ```python
-from xrd import File, OpenFlags
+from xrd import File
 
 handle = File("root://host//store/f.root")
-handle.open(OpenFlags.UPDATE | OpenFlags.NEW)
-try:
+handle.open("x")                    # the builtin's letters, or the protocol's
+try:                                # own names: handle.open("update new")
     handle.write(b"...", 0)
 finally:
     handle.close()
 ```
+
+`open()` takes what `xrd.open` takes - `"r"`, `"w"`, `"x"`, `"a"`, `"r+"` -
+or the flag names in a string, or the flags themselves; its second argument
+is the mode a created file gets, and reads either as `0o640` or as
+`"rw-r-----"`.
 
 Entering a `File` that is not yet open opens it for reading; entering one you
 have already opened is an error rather than a silent re-open.
@@ -249,7 +254,7 @@ p.iterdir(), p.glob("**/*.root"), p.rglob("*.root"), p.walk()
 p.mkdir(parents=True, exist_ok=True)
 p.touch(), p.unlink(), p.rmdir(), p.rename(other), p.replace(other)
 p.read_bytes(), p.write_text("hi"), p.open("rb")
-p.checksum(), p.chmod(0o640), p.locate()
+p.checksum(), p.chmod(0o640), p.locate()      # chmod also takes "rw-r-----"
 ```
 
 A path holds a connection once it has used one; `close()` returns it, and

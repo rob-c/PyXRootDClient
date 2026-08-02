@@ -393,6 +393,31 @@ def _use_aio(srv, tmp_path):
     return asyncio.run(go())
 
 
+def _one_file(srv):
+    """The URL the one-line verbs below ask their questions about."""
+    return srv.url.with_path("/store/f.root")
+
+
+def _use_mkdir(srv, tmp):
+    url = srv.url.with_path("/store/made/deeper")
+    xrd.mkdir(url, config=CONFIG)
+    return xrd.exists(url, config=CONFIG)
+
+
+def _use_remove(srv, tmp):
+    url = srv.url.with_path("/store/doomed.txt")
+    xrd.write_text(url, "x", config=CONFIG)
+    xrd.remove(url, config=CONFIG)
+    return not xrd.exists(url, config=CONFIG)
+
+
+def _use_move(srv, tmp):
+    source, target = srv.url.with_path("/store/from.txt"), srv.url.with_path("/store/to.txt")
+    xrd.write_text(source, "moved", config=CONFIG)
+    xrd.move(source, target, config=CONFIG)
+    return xrd.read_text(target, config=CONFIG)
+
+
 NAMES = {
     "Access": lambda srv, tmp: int(Access.OWNER_READ | Access.OWNER_WRITE) > 0,
     "Checkpoint": _use_checkpoint,
@@ -438,6 +463,23 @@ NAMES = {
     "override": _use_config,
     "parse": lambda srv, tmp: xrd.parse("root://host:1094//store/f.root").path,
     "third_party": _use_third_party,
+    # the one-line verbs
+    "ls": lambda srv, tmp: xrd.ls(srv.url.with_path("/store"), config=CONFIG),
+    "glob": lambda srv, tmp: xrd.glob(srv.url.with_path("/store/*.root"), config=CONFIG),
+    "stat": lambda srv, tmp: xrd.stat(_one_file(srv), config=CONFIG),
+    "exists": lambda srv, tmp: xrd.exists(_one_file(srv), config=CONFIG),
+    "size": lambda srv, tmp: xrd.size(_one_file(srv), config=CONFIG),
+    "checksum": lambda srv, tmp: xrd.checksum(_one_file(srv), config=CONFIG),
+    "read_bytes": lambda srv, tmp: xrd.read_bytes(_one_file(srv), config=CONFIG),
+    "read_text": lambda srv, tmp: xrd.read_text(_one_file(srv), config=CONFIG),
+    "write_bytes": lambda srv, tmp: xrd.write_bytes(srv.url / "w.bin", b"x", config=CONFIG),
+    "write_text": lambda srv, tmp: xrd.write_text(srv.url / "w.txt", "x", config=CONFIG),
+    "mkdir": _use_mkdir,
+    "remove": _use_remove,
+    "move": _use_move,
+    "stage": lambda srv, tmp: xrd.stage(_one_file(srv), config=CONFIG),
+    "is_online": lambda srv, tmp: xrd.is_online(_one_file(srv), config=CONFIG),
+    "human_bytes": lambda srv, tmp: xrd.human_bytes(1536),
 }
 
 

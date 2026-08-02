@@ -29,6 +29,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Easy mode: easy.md
   - Quickstart: quickstart.md
   - Guides:
       - Files and paths: files.md

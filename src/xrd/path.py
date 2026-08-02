@@ -205,7 +205,7 @@ class XRootDPath:
         for root, dirs, files in self.fs.walk(self._url.path, topdown=top_down):
             yield self._derive(root), dirs, files
 
-    def mkdir(self, mode: int = 0o755, parents: bool = False, exist_ok: bool = False) -> None:
+    def mkdir(self, mode: int | str = 0o755, parents: bool = False, exist_ok: bool = False) -> None:
         self.fs.mkdir(self._url.path, mode, parents=parents, exist_ok=exist_ok)
 
     def rmdir(self) -> None:
@@ -229,10 +229,10 @@ class XRootDPath:
     #: the server decides.
     replace = rename
 
-    def chmod(self, mode: int) -> None:
+    def chmod(self, mode: int | str) -> None:
         self.fs.chmod(self._url.path, mode)
 
-    def touch(self, mode: int = 0o644, exist_ok: bool = True) -> None:
+    def touch(self, mode: int | str = 0o644, exist_ok: bool = True) -> None:
         self.fs.touch(self._url.path, exist_ok=exist_ok)
 
     def open(self, mode: str = "rb", **kwargs: Any) -> IO[Any]:

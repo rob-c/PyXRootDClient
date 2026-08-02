@@ -7,8 +7,11 @@ compiled extension and no XRootD installation required.
     >>> with xrd.open("root://eos.example.org//store/data.root") as f:
     ...     header = f.read(1024)
 
-The four levels of the API, from most to least convenient:
+The five levels of the API, from most to least convenient:
 
+:mod:`xrd.easy`
+    One-line verbs on a URL - ``xrd.ls``, ``xrd.size``, ``xrd.read_text`` -
+    for when there is one question to ask and no reason to build anything.
 ``xrd.open`` / :class:`~xrd.path.XRootDPath`
     File objects and ``pathlib`` semantics.
 :class:`~xrd.client.FileSystem` / :class:`~xrd.client.File`
@@ -25,6 +28,23 @@ from .client import Checkpoint, File, FileSystem
 from .config import Config, configure, current, find_config_file, override
 from .copy import CopyResult, SyncMode, copy, copy_tree, third_party
 from .doctor import Check, Report, diagnose
+from .easy import (
+    checksum,
+    exists,
+    glob,
+    is_online,
+    ls,
+    mkdir,
+    move,
+    read_bytes,
+    read_text,
+    remove,
+    size,
+    stage,
+    stat,
+    write_bytes,
+    write_text,
+)
 from .errors import (
     AttrNotFoundError,
     AuthenticationError,
@@ -77,6 +97,7 @@ from .types import (
     StatInfo,
     VFSInfo,
     WriteChunk,
+    human_bytes,
 )
 from .url import XRootDURL, parse
 
@@ -125,6 +146,23 @@ __all__ = [
     "FileSystem",
     "File",
     "Checkpoint",
+    # one-line verbs, for when a URL is all you have
+    "ls",
+    "glob",
+    "stat",
+    "exists",
+    "size",
+    "checksum",
+    "read_bytes",
+    "read_text",
+    "write_bytes",
+    "write_text",
+    "mkdir",
+    "remove",
+    "move",
+    "stage",
+    "is_online",
+    "human_bytes",
     # urls
     "XRootDURL",
     "parse",

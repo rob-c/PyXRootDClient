@@ -220,6 +220,19 @@ class Router:
         if not SESSIONS.release(session, self.url, self.config):
             session.close()
 
+    def __del__(self) -> None:
+        """Give the connection back even when nobody said ``close``.
+
+        A one-liner - ``xrd.read_text(url)``, or a path used and dropped -
+        should not cost a socket for the rest of the process. Closing here is
+        belt to the ``with`` block's braces: the pool takes the connection
+        back and the next call reuses it.
+        """
+        try:
+            self.close()
+        except Exception:  # pragma: no cover - only reachable at interpreter shutdown
+            pass
+
     def __enter__(self) -> Router:
         return self
 

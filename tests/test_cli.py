@@ -585,20 +585,23 @@ def test_tail_follow_prints_what_is_appended(server, capsys):
     filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/grow.txt")
     out = io.BytesIO()
     server.add_file("/data/grow.txt", b"first\nsecond\n")
-    fs_cli._follow(out, filesystem, path, 6, 0.01, deadline=_soon())
+    with filesystem:
+        fs_cli._follow(out, filesystem, path, 6, 0.01, deadline=_soon())
     assert out.getvalue() == b"second\n"
 
 
 def test_tail_follow_stops_when_the_file_goes_away(server):
     filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/a.root")
     del server.files["/data/a.root"]
-    fs_cli._follow(io.BytesIO(), filesystem, path, 0, 0.01, deadline=_soon(10.0))
+    with filesystem:
+        fs_cli._follow(io.BytesIO(), filesystem, path, 0, 0.01, deadline=_soon(10.0))
 
 
 def test_tail_follow_stops_when_the_file_shrinks(server):
     """A shorter file is a different file; the next byte would not follow on."""
     filesystem, path = Endpoints(cli.Config()).at(str(server.url) + "data/a.root")
-    fs_cli._follow(io.BytesIO(), filesystem, path, 99, 0.01, deadline=_soon(10.0))
+    with filesystem:
+        fs_cli._follow(io.BytesIO(), filesystem, path, 99, 0.01, deadline=_soon(10.0))
 
 
 def test_tail_follow_from_the_command_line_stops_on_an_interrupt(server, capsys, monkeypatch):

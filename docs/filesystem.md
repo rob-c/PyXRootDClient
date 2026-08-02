@@ -29,7 +29,16 @@ for entry in fs.scandir("/store"):
     print(entry.name, entry.is_dir(), entry.stat.st_size)
 ```
 
-`DirEntry` is `os.PathLike`, so `open(entry)` and `os.fspath(entry)` work.
+`DirEntry` is `os.PathLike`, so `open(entry)` and `os.fspath(entry)` work, and
+printing one prints its path.
+
+A listing asks the server for a stat per entry, which is what you almost
+always want and is one flag on the request. Say so in words rather than bits:
+
+```python
+fs.scandir("/store", stat=False)     # names only, and cheaper for a huge directory
+fs.scandir("/store", online=True)    # ask which entries are on disk rather than on tape
+```
 
 A server can also digest every file as it lists, which turns a directory's
 worth of `checksum` calls into one round trip:
@@ -76,7 +85,7 @@ fs.remove("/store/b.root")          # also spelled unlink
 fs.rmdir("/store/empty")
 fs.rmtree("/store/user/me/scratch")
 fs.truncate("/store/f.root", 4096)
-fs.chmod("/store/f.root", 0o640)
+fs.chmod("/store/f.root", 0o640)                 # or "rw-r-----"
 fs.utime("/store/f.root")                       # os.utime: both times, now
 fs.utime("/store/f.root", (atime, mtime))       # seconds, as floats
 fs.utime("/store/f.root", ns=(atime_ns, mtime_ns))
@@ -142,13 +151,15 @@ fh = fs.open("/store/f.root", "rb")     # shares this connection
 fs.ping()                     # returns None; raises if it is not there
 fs.protocol()                 # ProtocolInfo: version, flags, capabilities
 fs.query_config("version", "role", "sitename")
-fs.query(QueryCode.SPACE, "/store")
+fs.query("space", "/store")   # or QueryCode.SPACE
 fs.checksum("/store/f.root")            # ChecksumInfo(algorithm, value)
 fs.locate("/store/f.root")              # which servers hold it
-fs.locate("/store/run7", flags=xrd.LocateFlags.FOR_DIRLIST)   # about to list it
+fs.locate("/store/f.root", refresh=True)  # ignore whatever the redirector cached
+fs.locate("/store/run7", flags="for_dirlist")     # about to list it
 fs.deep_locate("/store/f.root")         # follow managers to the data servers
 fs.prepare(["/store/a.root", "/store/b.root"])   # stage from tape
-fs.evict(["/store/a.root"])
+fs.prepare(["/store/a.root"], notify=True)       # and mail me when it lands
+fs.evict(["/store/a.root"])                     # prepare(evict=True), spelled out
 fs.statvfs("/store")
 fs.query_space("/store")      # SpaceInfo: one space token, in bytes
 fs.query_stats("a")           # the server's XML statistics summary

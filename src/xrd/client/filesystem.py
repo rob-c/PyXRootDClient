@@ -46,6 +46,10 @@ from ..flags import (
     PrepareFlags,
     QueryCode,
     StatInfoFlags,
+    dirlist_flags,
+    locate_flags,
+    permissions,
+    prepare_flags,
 )
 from ..proto import constants as c
 from ..proto import requests as r
@@ -308,10 +312,17 @@ class FileSystem:
         self,
         path: str = "",
         *,
-        flags: DirListFlags = DirListFlags.STAT,
+        stat: bool = True,
+        online: bool = False,
         algorithm: str = "",
+        flags: DirListFlags | int | str | None = None,
     ) -> list[DirEntry]:
         """Directory entries with stat information attached.
+
+        ``stat=False`` asks for names alone, which is one short answer
+        instead of a long one when that is all you need, and ``online=True``
+        asks the server to leave out anything it would have to fetch from
+        tape to describe.
 
         ``algorithm`` asks the server to digest every entry as it lists it
         (``kXR_dcksm``), which is one round trip where a checksum per entry is
@@ -327,18 +338,18 @@ class FileSystem:
         an error on the listing rather than a listing without digests.
         """
         target = self._abs(path or "/")
+        options = dirlist_flags(stat=stat, online=online, algorithm=algorithm, flags=flags)
         if algorithm:
-            flags |= DirListFlags.STAT | DirListFlags.CKSUM
             target += ("&" if "?" in target else "?") + f"cks.type={algorithm}"
-        with_stat = bool(flags & DirListFlags.STAT)
+        with_stat = bool(options & DirListFlags.STAT)
         res = self._router.execute(
-            r.Dirlist(target, int(flags) & ~int(DirListFlags.RECURSIVE)), path=target
+            r.Dirlist(target, int(options) & ~int(DirListFlags.RECURSIVE)), path=target
         )
         return rp.parse_dirlist(res.data, target, with_stat=with_stat)
 
     def listdir(self, path: str = "") -> list[str]:
         """Entry names only, like :func:`os.listdir`."""
-        return [e.name for e in self.scandir(path, flags=DirListFlags.NONE)]
+        return [e.name for e in self.scandir(path, stat=False)]
 
     def iterdir(self, path: str = "") -> Iterator[DirEntry]:
         """Iterate entries. The protocol has no cursor, so this reads it all."""
@@ -387,7 +398,7 @@ class FileSystem:
         start = _literal_prefix(target)
         deep = "**" in posixpath.basename(target)  # ``/d/**.root`` still descends
         if not deep and start == posixpath.dirname(target):  # magic in the last component only
-            for entry in self.scandir(start + cgi, flags=DirListFlags.NONE):
+            for entry in self.scandir(start + cgi, stat=False):
                 full = posixpath.join(start, entry.name)
                 if match(full):
                     yield full
@@ -405,7 +416,7 @@ class FileSystem:
     def mkdir(
         self,
         path: str,
-        mode: int = 0o755,
+        mode: int | str = 0o755,
         *,
         parents: bool = False,
         exist_ok: bool = False,
@@ -414,13 +425,13 @@ class FileSystem:
         target = self._abs(path)
         try:
             self._router.execute(
-                r.Mkdir(target, int(mode) & 0o777, mkpath=parents), path=target
+                r.Mkdir(target, permissions(mode), mkpath=parents), path=target
             )
         except FileExistsError:
             if not exist_ok:
                 raise
 
-    def makedirs(self, path: str, mode: int = 0o755, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, mode: int | str = 0o755, exist_ok: bool = False) -> None:
         """:func:`os.makedirs`."""
         self.mkdir(path, mode, parents=True, exist_ok=exist_ok)
 
@@ -493,9 +504,9 @@ class FileSystem:
         result = self._router.execute(r.Readlink(target), path=target)
         return rp.parse_readlink(result.data)
 
-    def chmod(self, path: str, mode: int) -> None:
+    def chmod(self, path: str, mode: int | str) -> None:
         target = self._abs(path)
-        self._router.execute(r.Chmod(target, int(mode) & 0o777), path=target)
+        self._router.execute(r.Chmod(target, permissions(mode)), path=target)
 
     def utime(
         self,
@@ -574,9 +585,9 @@ class FileSystem:
     # Query, checksums, staging, location
     # ------------------------------------------------------------------
 
-    def query(self, code: QueryCode | int, args: str = "") -> bytes:
+    def query(self, code: QueryCode | int | str, args: str = "") -> bytes:
         """Raw ``kXR_query``."""
-        res = self._router.execute(r.Query(int(code), args), path=args)
+        res = self._router.execute(r.Query(int(QueryCode(code)), args), path=args)
         return res.data
 
     def checksum(self, path: str, algorithm: str | None = None) -> ChecksumInfo:
@@ -678,11 +689,32 @@ class FileSystem:
         self.set_property(f"appid {name}")
 
     def locate(
-        self, path: str, *, flags: LocateFlags = LocateFlags.NONE
+        self,
+        path: str,
+        *,
+        refresh: bool = False,
+        no_wait: bool = False,
+        add_peers: bool = False,
+        prefer_name: bool = False,
+        flags: LocateFlags | int | str | None = None,
     ) -> list[LocationInfo]:
-        """Which servers hold ``path``."""
+        """Which servers hold ``path``.
+
+        ``refresh=True`` makes the redirector ask its servers again rather
+        than answer from what it remembers, and ``no_wait=True`` takes
+        whatever it can say now instead of waiting for a file to come back
+        from tape. The rarer options are still there as words or bits:
+        ``flags="add_peers refresh"``.
+        """
         target = self._abs(path)
-        res = self._router.execute(r.Locate(target, int(flags)), path=target)
+        options = locate_flags(
+            refresh=refresh,
+            no_wait=no_wait,
+            add_peers=add_peers,
+            prefer_name=prefer_name,
+            flags=flags,
+        )
+        res = self._router.execute(r.Locate(target, int(options)), path=target)
         return rp.parse_locate(res.data)
 
     def deep_locate(self, path: str) -> list[LocationInfo]:
@@ -714,20 +746,38 @@ class FileSystem:
         self,
         paths: Sequence[str],
         *,
-        flags: PrepareFlags = PrepareFlags.STAGE,
+        stage: bool | None = None,
+        evict: bool = False,
+        notify: bool = False,
+        fresh: bool = False,
         priority: int = 0,
+        flags: PrepareFlags | int | str | None = None,
     ) -> str:
-        """Stage, evict or co-locate files. Returns the request handle."""
+        """Ask the site to bring files onto disk. Returns the request handle.
+
+        A bare ``fs.prepare(paths)`` stages, which is what a tape site is
+        being asked for nine times in ten::
+
+            handle = fs.prepare(["/store/raw/run7.root"])
+            while not all(fs.query_prepare(handle, paths)):
+                time.sleep(60)
+
+        ``evict=True`` releases the disk copy instead, ``notify=True`` asks
+        to be told when it is done, and ``fresh=True`` re-stages a file the
+        site thinks it already has. The remaining ``kXR_prepare`` options are
+        reachable as words: ``flags="stage colocate"``.
+        """
         targets = [self._abs(p) for p in paths]
+        options = prepare_flags(stage=stage, evict=evict, notify=notify, fresh=fresh, flags=flags)
         # The options byte, then the extended half-word above it: see
         # PrepareFlags, where EVICT is the one that lives up there.
-        request = r.Prepare(targets, int(flags) & 0xFF, priority, extended=int(flags) >> 8)
+        request = r.Prepare(targets, int(options) & 0xFF, priority, extended=int(options) >> 8)
         res = self._router.execute(request)
         return res.data.split(b"\x00", 1)[0].decode("utf-8", "replace").strip()
 
     def evict(self, paths: Sequence[str]) -> str:
         """Ask the server to drop its cached copies."""
-        return self.prepare(paths, flags=PrepareFlags.EVICT)
+        return self.prepare(paths, evict=True)
 
     def archive_info(self, paths: Sequence[str]) -> list[PrepareStatus]:
         """Where each of these files lives, without asking for any of it to move.

@@ -6,12 +6,14 @@ field names so code that inspects a local stat works unchanged on a remote one.
 
 from __future__ import annotations
 
+import datetime
 import stat as _stat
 from dataclasses import dataclass, field
 
 from .flags import StatInfoFlags
 
 __all__ = [
+    "human_bytes",
     "StatInfo",
     "DirEntry",
     "VFSInfo",
@@ -28,9 +30,30 @@ __all__ = [
 ]
 
 
+def human_bytes(size: float) -> str:
+    """A byte count the way a person reads it: ``human_bytes(1536)`` is 1.5 KiB.
+
+    Powers of 1024, because that is what storage elements report and what
+    ``ls -lh`` prints; a petabyte-scale number keeps its units rather than
+    running off the end.
+    """
+    value = float(size)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB", "PiB"):
+        if abs(value) < 1024 or unit == "PiB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
 @dataclass(frozen=True, slots=True)
 class StatInfo:
-    """Result of a ``stat``. ``st_*`` names match ``os.stat_result``."""
+    """Result of a ``stat``. ``st_*`` names match ``os.stat_result``.
+
+    Printing one gives the line ``ls -l`` would have printed::
+
+        >>> print(StatInfo(st_size=1536, flags=StatInfoFlags.IS_READABLE))
+        -r--r--r--    1.5 KiB  -
+    """
 
     id: str = ""
     st_size: int = 0
@@ -50,6 +73,22 @@ class StatInfo:
     @property
     def modtime(self) -> int:
         return self.st_mtime
+
+    @property
+    def modified(self) -> datetime.datetime:
+        """When it last changed, as a :class:`~datetime.datetime` in UTC.
+
+        Storage elements keep times in UTC and people read them in their own,
+        so this is aware rather than naive: ``.astimezone()`` puts it in
+        yours, and printing it says which one it is.
+        """
+        return datetime.datetime.fromtimestamp(self.st_mtime, datetime.timezone.utc)
+
+    def __str__(self) -> str:
+        """The line ``ls -l`` would print for it."""
+        when = self.modified.strftime("%Y-%m-%d %H:%M") if self.st_mtime else "-"
+        size = human_bytes(self.st_size)
+        return f"{_stat.filemode(self.st_mode)} {size:>10}  {when}  {self.path}".rstrip()
 
     @property
     def st_mode(self) -> int:
@@ -99,6 +138,10 @@ class DirEntry:
 
     def is_file(self) -> bool:
         return self.stat is not None and self.stat.is_file()
+
+    def __str__(self) -> str:
+        """Where it is, so that printing a listing prints paths."""
+        return self.path
 
     def __fspath__(self) -> str:
         return self.path

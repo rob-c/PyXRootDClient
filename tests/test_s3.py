@@ -295,6 +295,14 @@ def test_a_listing_can_carry_the_digest_s3_already_has(fs):
     assert all(entry.checksum is None for entry in fs.scandir("/runs/2024"))
 
 
+def test_the_friendly_listing_keywords_are_accepted_and_change_nothing(fs):
+    """``ListObjectsV2`` volunteers the sizes and times, so there is nothing
+    to turn off - but the call has to work here as it does anywhere."""
+    entries = fs.scandir("/runs/2024", stat=False, online=True)
+    assert sorted(entry.name for entry in entries) == ["a.root", "b.root"]
+    assert entries[0].stat is not None
+
+
 def test_no_other_digest_can_be_asked_for_per_entry(fs):
     with pytest.raises(UnsupportedError, match="sha256 checksum per listing entry"):
         fs.scandir("/runs", algorithm="sha256")

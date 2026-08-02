@@ -7,12 +7,11 @@ WebDAV and `s3://`, spoken by the same objects, with no compiled extension, no
 ```python
 import xrd
 
+for path in xrd.ls("root://eos.example.org//store/user/me"):
+    print(path.name, xrd.human_bytes(xrd.size(path)))
+
 with xrd.open("root://eos.example.org//store/data.root", "rb") as fh:
     header = fh.read(1024)
-
-fs = xrd.FileSystem("root://eos.example.org")
-for entry in fs.scandir("/store"):
-    print(entry.name, entry.stat.st_size)
 
 xrd.copy("root://a.example.org//store/f.root", "davs://b.example.org/store/f.root")
 ```
@@ -29,6 +28,7 @@ It is a Python library first and an XRootD binding second.
 | `with` to clean up | every handle, filesystem and session is a context manager |
 | no status codes to check | nothing returns `(status, result)` - see [Coming from pyxrootd](migrating.md) |
 | `async` to be `await` in front | `xrd.aio` mirrors the whole surface |
+| never to add up bit flags | you never do - `fh.open("r")`, `fs.prepare(paths, evict=True)`, `fs.chmod(path, "rw-r-----")` |
 
 ## Install
 
@@ -45,6 +45,8 @@ can only honestly be tested against a live KDC.
 
 ## Where to go next
 
+- **[Easy mode](easy.md)** - fifteen one-line verbs on a URL, for when there
+  is one question to ask and no reason to learn a class first.
 - **[Quickstart](quickstart.md)** - the ten things you will actually do.
 - **[Files and paths](files.md)**, **[Namespaces](filesystem.md)**,
   **[Copying](copying.md)** - the three halves of the API.

@@ -2,6 +2,10 @@
 
 Everything below is a complete program once you add `import xrd`.
 
+If all you have is a URL and one question, start at
+[Easy mode](easy.md) instead - `xrd.ls`, `xrd.size`, `xrd.read_text` and a
+dozen more, each of them one line.
+
 ## Read a file
 
 ```python
@@ -48,6 +52,10 @@ for root, dirs, files in fs.walk("/store/user/me"):
 for path in fs.glob("/store/user/me/**/*.root"):
     ...
 ```
+
+`scandir` fetches a stat per entry; `scandir(path, stat=False)` asks for names
+only, which is the cheaper call on a directory with a hundred thousand files
+in it.
 
 ## Use it as a path
 

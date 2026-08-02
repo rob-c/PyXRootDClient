@@ -3,6 +3,42 @@
 Generated from the source. Everything below is importable from the top-level
 `xrd` package unless the heading says otherwise.
 
+## One-line verbs
+
+Each of these takes a URL - as text, as an `XRootDURL`, or as an `xrd.Path` -
+opens a connection, answers the question and closes it again. See
+[Easy mode](easy.md).
+
+::: xrd.ls
+
+::: xrd.glob
+
+::: xrd.stat
+
+::: xrd.exists
+
+::: xrd.size
+
+::: xrd.checksum
+
+::: xrd.read_bytes
+
+::: xrd.read_text
+
+::: xrd.write_bytes
+
+::: xrd.write_text
+
+::: xrd.mkdir
+
+::: xrd.remove
+
+::: xrd.move
+
+::: xrd.stage
+
+::: xrd.is_online
+
 ## Entry points
 
 ::: xrd.open
@@ -71,7 +107,14 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.WriteChunk
 
+::: xrd.human_bytes
+
 ## Flags
+
+Every one of these accepts its own member names in a string wherever it
+accepts bits - `"stage notify"`, `"checksum"`, `"rwxr-x---"` - and prints as
+those names rather than as a number. The helpers below turn an ordinary
+call's keyword arguments into them.
 
 ::: xrd.OpenFlags
 
@@ -88,6 +131,16 @@ Generated from the source. Everything below is importable from the top-level
 ::: xrd.LocateFlags
 
 ::: xrd.PrepareFlags
+
+::: xrd.flags.permissions
+
+::: xrd.flags.open_flags
+
+::: xrd.flags.dirlist_flags
+
+::: xrd.flags.locate_flags
+
+::: xrd.flags.prepare_flags
 
 ## Authentication
 

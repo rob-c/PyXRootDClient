@@ -127,6 +127,11 @@ strings cover opening, `makedirs(exist_ok=True)` covers `MAKEPATH`, and
 `scandir` always asks for stat information, and
 `scandir(algorithm=...)` covers `kXR_dcksm`.
 
+Where a flag is genuinely the point, it can be said in words instead of bits -
+`fs.prepare(paths, evict=True)`, `fs.query("checksum", path)`,
+`fh.open("new makepath")`, `fs.chmod(path, "rw-r-----")`. See
+[Easy mode](easy.md).
+
 ## What you gain
 
 Things the bindings do not offer at all:

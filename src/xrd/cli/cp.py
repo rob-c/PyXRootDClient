@@ -21,6 +21,7 @@ from typing import TextIO, TypedDict
 from ..config import Config
 from ..copy import CopyResult, copy, copy_tree, third_party
 from ..errors import XRootDError
+from ..types import human_bytes as _human
 from ..url import XRootDURL, parse
 from . import OK, USAGE, Endpoints, common_flags, config_from, dumps, fail, size_arg
 
@@ -167,16 +168,6 @@ class _CopyOptions(TypedDict, total=False):
     dry_run: bool
     remove_source: bool
     resume: bool
-
-
-def _human(size: int) -> str:
-    """A byte count the way a person reads it."""
-    value = float(size)
-    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
-        if value < 1024 or unit == "TiB":
-            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
-        value /= 1024
-    raise AssertionError("unreachable")  # pragma: no cover
 
 
 # ---------------------------------------------------------------------------

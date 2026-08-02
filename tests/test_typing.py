@@ -43,6 +43,38 @@ EXPECTED = [
 ]
 
 
+WORDS = """
+import xrd
+
+fs = xrd.FileSystem("root://host")
+fs.prepare(["/f"], evict=True)
+fs.prepare(["/f"], flags="stage notify")
+fs.scandir("/store", stat=False)
+fs.locate("/f", refresh=True)
+fs.chmod("/f", "rw-r-----")
+fs.mkdir("/d", "rwxr-x---")
+fs.query("checksum", "/f")
+xrd.PrepareFlags("stage notify")
+xrd.Access("rwxr-x---")
+xrd.OpenFlags("new makepath")
+xrd.QueryCode("checksum")
+xrd.File("root://host//f").open("w", "rw-r--r--")
+"""
+
+
+def test_a_word_where_a_flag_goes_type_checks_too(tmp_path: pathlib.Path) -> None:
+    """The words are only half a feature if using them fails ``mypy --strict``."""
+    script = tmp_path / "words.py"
+    script.write_text(WORDS)
+    result = subprocess.run(
+        [sys.executable, "-m", "mypy", "--strict", "--no-incremental", str(script)],
+        capture_output=True,
+        text=True,
+        cwd=pathlib.Path(__file__).resolve().parent.parent,
+    )
+    assert "error:" not in result.stdout, result.stdout
+
+
 def test_the_open_overloads_say_what_comes_back(tmp_path: pathlib.Path) -> None:
     script = tmp_path / "surface.py"
     # A non-literal mode is the escape hatch: it must still type-check, as

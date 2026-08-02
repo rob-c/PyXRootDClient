@@ -248,6 +248,23 @@ def test_the_namespace_surface(server):
     run(main())
 
 
+def test_the_friendly_keywords_reach_the_synchronous_call(server):
+    """The facade is a thread away from the sync one; the words have to survive."""
+
+    async def main():
+        async with AsyncFileSystem(server.url) as fs:
+            listed = await fs.scandir("/data", stat=False, online=True)
+            assert [e.name for e in listed] == ["a.root", "empty"]
+            assert all(e.stat is None for e in listed)
+            assert (await fs.locate("/data/a.root", refresh=True))[0].address
+            assert await fs.prepare(["/data/a.root"], evict=True, notify=True)
+            assert (await fs.query("checksum", "/data/a.root")).startswith(b"adler32 ")
+            await fs.mkdir("/data/moded", "rwxr-x---")
+
+    run(main())
+    assert server.evicted == ["/data/a.root"]
+
+
 def test_a_listing_can_digest_every_entry(server):
     """The digest keyword survives the trip through the executor."""
 
