@@ -33,6 +33,7 @@ from xrd.root import (
 from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
 from xrd.root.compression import _lz4, algorithm, decompress
 from xrd.root.file import Source, _directory_record
+from xrd.root.graph import Graph
 from xrd.root.hist import Histogram
 from xrd.root.interp import Refused, _class_held, _Described, build
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
@@ -688,6 +689,53 @@ def test_a_histogram_without_its_bins_or_its_axes_is_not_one():
         Histogram("TH1D", {"TAttLine": {"fLineColor": 1}, "TH1": {"fNcells": 1}})
     with pytest.raises(FormatError, match="holds only 3 values"):
         crafted_histogram("TH1D", [1.0, 2.0, 3.0], 3)
+
+
+def test_a_graph_is_its_points_and_the_bars_round_them():
+    with opened("graphs") as root:
+        plain = root["tg"]
+        assert repr(plain) == "<TGraph 'tg' of 4 points>"
+        assert (plain.name, plain.title) == ("tg", "graph without errors")
+        assert (len(plain), plain[0], plain[-1]) == (4, (1.0, 2.0), (4.0, 8.0))
+        assert plain.points() == [(1.0, 2.0), (2.0, 4.0), (3.0, 6.0), (4.0, 8.0)]
+        assert list(plain.x) == [1.0, 2.0, 3.0, 4.0]
+        assert (plain.xerr, plain.yerr) == (None, None)
+
+        # The same bar both sides of the point, written once.
+        even = root["tge"]
+        assert even.yerr[0] == even.yerr[1]
+        assert [round(bar, 4) for bar in even.yerr[0]] == [0.2, 0.4, 0.6, 0.8]
+        assert even.members["TGraph"]["fNpoints"] == 4
+
+        uneven = root["tgae"]
+        below, above = uneven.yerr
+        assert [round(bar, 4) for bar in below] == [0.3, 0.6, 0.9, 1.2]
+        assert [round(bar, 4) for bar in above] == [0.4, 0.8, 1.2, 1.6]
+        assert [round(bar, 4) for bar in uneven.xerr[1]] == [0.2, 0.4, 0.6, 0.8]
+
+
+def test_a_graph_without_its_points_is_not_one():
+    with pytest.raises(FormatError, match="without its points"):
+        Graph("TGraph", {"fNpoints": 2, "fX": array.array("d", [1.0, 2.0])})
+    with pytest.raises(FormatError, match="without its points"):
+        # The drawing attributes are searched through and are not it either.
+        Graph("TGraph", {"TAttLine": {"fLineColor": 1}})
+    short = {"fNpoints": 4, "fX": array.array("d", [1.0, 2.0]), "fY": array.array("d", [1.0, 2.0])}
+    with pytest.raises(FormatError, match="of 4 points holds only 2"):
+        Graph("TGraph", short)
+
+
+def test_a_graph_with_only_one_side_of_its_bars_written_has_neither():
+    """Half a pair is not a bar: what the other side would be is not knowable."""
+    points = {
+        "TNamed": {"fName": "g", "fTitle": ""},
+        "fNpoints": 1,
+        "fX": array.array("d", [1.0]),
+        "fY": array.array("d", [2.0]),
+    }
+    graph = Graph("TGraphAsymmErrors", {"TGraph": points, "fEYlow": array.array("d", [0.5])})
+    assert graph.yerr is None
+    assert graph.xerr is None
 
 
 def test_an_object_pointed_at_rather_than_held_is_read_where_it_points():

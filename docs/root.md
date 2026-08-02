@@ -49,7 +49,7 @@ ROOT's own kit as well:
 f["tlv"]                # {'TObject': {...}, 'fP': {'fX': 10.0, ...}, 'fE': 40.0}
 f["FileSummaryRecord"]  # a std::string key is a str
 f["written"]            # a TDatime is a datetime.datetime
-f["h1d"]                # a histogram is a Histogram, see below
+f["h1d"]                # a histogram is a Histogram, and a graph a Graph
 ```
 
 Objects held by pointer are followed, whether the class promises they are there
@@ -100,6 +100,26 @@ exactly; an evenly binned one keeps none, and they are worked out from the ends.
 Every member the histogram was written with is still there under `h.members`,
 under the name of the class that declared it, so nothing is hidden by being
 tidied away.
+
+## Graphs
+
+A `TGraph`, `TGraphErrors` or `TGraphAsymmErrors` comes back as a `Graph`,
+which is a sequence of points:
+
+```python
+g = f["tge"]
+len(g), g[0]                      # 4, (1.0, 2.0)
+for x, y in g:
+    ...
+g.x, g.y                          # array('d', [...]) each, one value per point
+g.points()                        # [(1.0, 2.0), (2.0, 4.0), ...]
+below, above = g.yerr             # the bars either side, or None if none were kept
+```
+
+`xerr` and `yerr` are always a pair, low side first, so the same code reads a
+graph whose bars are symmetric and one whose are not — a graph that kept one
+array for both sides gives that array twice. A `TGraph` proper kept none, and
+both are `None`.
 
 ## Columns
 

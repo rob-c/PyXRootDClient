@@ -17,6 +17,7 @@ from ..url import parse
 from .buffer import Buffer, as_datetime
 from .compression import decompress
 from .errors import FormatError, UnsupportedFeatureError
+from .graph import GRAPHS, Graph
 from .hist import HISTOGRAMS, Histogram
 
 if TYPE_CHECKING:
@@ -252,6 +253,8 @@ class Directory:
             )
         if key.classname in HISTOGRAMS:
             return Histogram(key.classname, value)
+        if key.classname in GRAPHS:
+            return Graph(key.classname, value)
         return value
 
     def _subdirectory(self, key: Key) -> Directory:
