@@ -124,17 +124,21 @@ characters when it is not — and `xrd.root.create` writes a new ROOT file:
 trees filled entry by entry and flushed a basket at a time, histograms,
 graphs, strings and arrays of numbers, under every compression ROOT itself
 writes, still from nothing but the standard library. `xrd.root.datasets` turns
-twenty-eight of the sets machine learning is taught with — the MNIST family
+thirty-eight of the sets machine learning is taught with — the MNIST family
 and EMNIST, CIFAR-10 and CIFAR-100, Semeion, the spoken digits of FSDD, the
-SMS Spam Collection, MiniBooNE, Human Activity Recognition, Iris, the Palmer
-penguins, Covertype, Adult, Mushroom, Letter Recognition, Optical Digits,
-Wine, Wine Quality, Spambase, Ionosphere, Glass, Abalone, Banknote
-Authentication, Breast Cancer Wisconsin, Dry Bean and Seeds — into ROOT files
-a tree per class, fetched from whoever publishes them and carrying their
-licence in the file, so a training loop can read them straight off a storage
-element without anybody having to leave the tools they already use. Images,
-audio, text and plain blocks of numbers all fit; none of the data is
-redistributed here, only the converter.
+SMS Spam Collection, MiniBooNE, the MAGIC gamma telescope, the HTRU2 pulsar
+survey, Human Activity Recognition, Iris, the Palmer penguins, Covertype,
+Adult, Mushroom, Letter Recognition, Optical Digits, Wine, Wine Quality,
+Spambase, Ionosphere, Glass, Abalone, Banknote Authentication, Breast Cancer
+Wisconsin, Dry Bean, Seeds, Yeast, Heart Disease, Car Evaluation, Auto MPG,
+Bike Sharing, Energy Efficiency, Real Estate Valuation and Student
+Performance — into ROOT files a tree per class, or one tree of every row where
+what is predicted is a number rather than a class, fetched from whoever
+publishes them and carrying their licence in the file, so a training loop can
+read them straight off a storage element without anybody having to leave the
+tools they already use. Images, audio, text, dates, spreadsheets and plain
+blocks of numbers all fit; none of the data is redistributed here, only the
+converter.
 
 ```python
 import torch, xrd.root, xrd.root.ml
@@ -255,7 +259,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader and writer are implemented and tested —
-2940 tests, of which the great majority need no network, no KDC and no
+2969 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

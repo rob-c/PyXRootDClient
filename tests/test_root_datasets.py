@@ -35,6 +35,7 @@ from xrd.root.datasets import (
     describe,
     read_arff,
     read_table,
+    read_xlsx,
 )
 from xrd.root.writer import create
 
@@ -221,6 +222,88 @@ RUNS = Matrix(
 )
 
 
+#: A table with no classes at all: a date and a number to predict from it.
+PRICES = Table(
+    name="prices",
+    label="Prices",
+    title="a few days and what a thing cost",
+    licence="CC0",
+    source="https://example.invalid/prices",
+    classes=(),
+    splits=("north", "south"),
+    url="https://example.invalid/prices.zip",
+    files={"north": "north.csv", "south": "south.csv"},
+    fields=(("when", "date"), ("price", "target")),
+)
+
+#: A table of numbers that ends in free text with spaces in it, the way the
+#: older whitespace-separated files do.
+CARS = Table(
+    name="cars",
+    label="Cars",
+    title="a few cars and how far they went",
+    licence="CC0",
+    source="https://example.invalid/cars",
+    classes=(),
+    url="https://example.invalid/cars.data",
+    delimiter=None,
+    tail=3,
+    text_size=16,
+    fields=(("mpg", "target"), ("cylinders", "i"), ("car_name", "text")),
+)
+
+#: A table that arrives as a spreadsheet rather than as text.
+SHEET = Table(
+    name="sheet",
+    label="Sheet",
+    title="a few rows somebody typed into a spreadsheet",
+    licence="CC0",
+    source="https://example.invalid/sheet",
+    classes=(),
+    url="https://example.invalid/sheet.zip",
+    member="book.xlsx",
+    xlsx=True,
+    header=True,
+    fields=(("width", "d"), ("height", "target")),
+)
+
+#: The namespace a spreadsheet writes everything it holds in.
+SHEET_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def celled(ref: str, value: str) -> str:
+    """One cell: a number, an ``s:`` shared string, an ``i:`` inline one, or nothing."""
+    if value.startswith("s:"):
+        return f'<c r="{ref}" t="s"><v>{value[2:]}</v></c>'
+    if value.startswith("i:"):
+        return f'<c r="{ref}" t="inlineStr"><is><t>{value[2:]}</t></is></c>'
+    return f'<c r="{ref}"><v>{value}</v></c>' if value else f'<c r="{ref}"/>'
+
+
+def spreadsheet(
+    rows: Sequence[dict[str, str]], *, shared: Sequence[str] = (), sheets: int = 1
+) -> bytes:
+    """A spreadsheet the shape Excel writes one: a zip of XML, text kept once."""
+    members = {
+        f"xl/worksheets/sheet{at}.xml": f'<worksheet xmlns="{SHEET_NS}"><sheetData/></worksheet>'
+        for at in range(2, sheets + 1)
+    }
+    if shared:
+        members["xl/sharedStrings.xml"] = (
+            f'<sst xmlns="{SHEET_NS}">'
+            + "".join(f"<si><t>{word}</t></si>" for word in shared)
+            + "</sst>"
+        )
+    body = "".join(
+        f'<row r="{at}">' + "".join(celled(ref, value) for ref, value in row.items()) + "</row>"
+        for at, row in enumerate(rows, 1)
+    )
+    members["xl/worksheets/sheet1.xml"] = (
+        f'<worksheet xmlns="{SHEET_NS}"><sheetData>{body}</sheetData></worksheet>'
+    )
+    return zipped({name: data.encode() for name, data in members.items()})
+
+
 def sensed(rows: str, labels: str, subjects: str, *, split: str = "train") -> bytes:
     """The archive SENSORS describes, which is a zip wrapped in another zip."""
     inner = zipped(
@@ -288,7 +371,8 @@ def tiny_archive(**names: bytes) -> bytes:
 @pytest.fixture
 def registry(monkeypatch: pytest.MonkeyPatch) -> None:
     """The test's own datasets, alongside the real ones, for the length of a test."""
-    for spec in (TINY, TINY_COARSE, FLOWERS, SPOKEN, SCRIBBLES, MESSAGES, SENSORS, HOT, RUNS):
+    for spec in (TINY, TINY_COARSE, FLOWERS, SPOKEN, SCRIBBLES, MESSAGES, SENSORS, HOT, RUNS,
+                 PRICES, CARS, SHEET):
         monkeypatch.setitem(DATASETS, spec.name, spec)
 
 
@@ -313,6 +397,8 @@ def test_the_datasets_asked_for_are_all_there():
         "letter", "digits", "wine", "breast_cancer", "dry_bean", "seeds",
         "miniboone", "har", "semeion", "sms_spam", "wine_quality", "spambase",
         "ionosphere", "glass", "abalone", "banknote",
+        "magic", "htru2", "auto_mpg", "bike_sharing", "energy_efficiency",
+        "real_estate", "student", "heart_disease", "car_evaluation", "yeast",
     }
 
 
@@ -360,8 +446,16 @@ def test_covertype_has_the_fifty_four_features_and_the_label_the_paper_describes
 def test_every_table_names_a_code_for_every_category_it_will_meet():
     for spec in DATASETS.values():
         if isinstance(spec, Table):
-            coded = {role for _, role in spec.fields} - {"d", "i", "label", "text"}
-            assert coded == set(spec.codes), spec.name
+            plain = {"d", "i", "label", "text", "date", "target"}
+            assert {role for _, role in spec.fields} - plain == set(spec.codes), spec.name
+
+
+def test_a_set_with_no_classes_has_a_number_to_predict_instead():
+    for spec in DATASETS.values():
+        if isinstance(spec, Table):
+            roles = [role for _, role in spec.fields]
+            assert bool(spec.classes) == ("label" in roles), spec.name
+            assert bool(spec.classes) != ("target" in roles), spec.name
 
 
 def test_no_dataset_labels_a_class_it_does_not_have():
@@ -1159,3 +1253,232 @@ def test_the_sms_set_gives_its_text_a_column_and_keeps_the_quotes_in_it():
     assert spec.delimiter == "\t" and not spec.quoted
     assert spec.text_size >= 910
     assert dict(spec.fields)["message"] == "text"
+
+
+# --- spreadsheets -----------------------------------------------------------
+
+
+def test_a_spreadsheet_is_read_out_of_the_xml_it_keeps_its_rows_in():
+    raw = spreadsheet([{"A1": "1", "B1": "2.5"}, {"A2": "3", "B2": "4"}])
+    assert list(read_xlsx(raw)) == [["1", "2.5"], ["3", "4"]]
+
+
+def test_the_words_a_spreadsheet_keeps_once_are_put_back_where_they_were():
+    raw = spreadsheet(
+        [{"A1": "s:1", "B1": "s:0"}, {"A2": "i:typed here", "B2": "7"}],
+        shared=("width", "height"),
+    )
+    assert list(read_xlsx(raw)) == [["height", "width"], ["typed here", "7"]]
+
+
+def test_an_empty_row_is_not_data_and_neither_are_the_cells_after_the_last_one():
+    raw = spreadsheet([{"A1": "1", "B1": "", "C1": ""}, {}, {"A3": "2"}])
+    assert list(read_xlsx(raw)) == [["1"], ["2"]]
+
+
+def test_a_gap_in_the_middle_of_a_row_keeps_the_fields_after_it_lined_up():
+    raw = spreadsheet([{"A1": "1", "D1": "4"}, {"B2": "2", "C2": "3"}])
+    assert list(read_xlsx(raw)) == [["1", "", "", "4"], ["", "2", "3"]]
+
+
+def test_a_spreadsheet_with_no_words_in_it_needs_no_table_of_them():
+    raw = spreadsheet([{"AA1": "1"}])
+    assert "xl/sharedStrings.xml" not in zipfile.ZipFile(io.BytesIO(raw)).namelist()
+    assert list(read_xlsx(raw)) == [[""] * 26 + ["1"]]
+
+
+def test_a_spreadsheet_header_is_dropped_like_any_other():
+    raw = spreadsheet([{"A1": "s:0"}, {"A2": "1"}], shared=("width",))
+    assert list(read_xlsx(raw, header=True)) == [["1"]]
+
+
+def test_the_sheet_wanted_can_be_chosen_and_one_that_is_not_there_is_refused():
+    raw = spreadsheet([{"A1": "1"}], sheets=3)
+    assert list(read_xlsx(raw, sheet=2)) == []
+    with pytest.raises(ValueError, match="this spreadsheet has 3 sheets in it, and no sheet 4"):
+        list(read_xlsx(raw, sheet=4))
+
+
+def test_a_spreadsheet_becomes_a_dataset_like_any_other_table(registry):
+    book = spreadsheet(
+        [{"A1": "s:0", "B1": "s:1"}, {"A2": "1.5", "B2": "2.5"}], shared=("width", "height")
+    )
+    counts, raw = written("sheet", zipped({"book.xlsx": book}), "table")
+    assert counts == {"rows": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        assert list(back["rows"]["width"].array()) == [1.5]
+        assert list(back["rows"]["height"].array()) == [2.5]
+
+
+# --- rows that end in free text ---------------------------------------------
+
+
+def test_a_row_that_ends_in_free_text_is_split_no_further_than_that():
+    raw = b'18.0   8\t"chevrolet chevelle malibu"\n15.0 6\tford pinto\n'
+    assert list(read_table(raw, delimiter=None, tail=3)) == [
+        ["18.0", "8", "chevrolet chevelle malibu"],
+        ["15.0", "6", "ford pinto"],
+    ]
+
+
+def test_free_text_keeps_its_quotes_when_the_file_means_them():
+    raw = b'1 2 "so he said"\n'
+    rows = read_table(raw, delimiter=None, tail=3, quoted=False)
+    assert next(rows) == ["1", "2", '"so he said"']
+
+
+def test_rows_divided_by_carriage_returns_alone_are_still_rows():
+    assert list(read_table(b"1,2\r3,4\r")) == [["1", "2"], ["3", "4"]]
+
+
+def test_the_text_at_the_end_of_a_row_arrives_in_its_own_column(registry):
+    counts, raw = written("cars", b'18.0 8\t"chevelle"\n', "table")
+    assert counts == {"rows": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["rows"]
+        assert tree.title == "Cars rows"
+        held = tree["car_name"].array()
+        assert bytes(held[: tree["car_name_length"].array()[0]]) == b"chevelle"
+        assert len(held) == 16
+
+
+# --- a number to predict rather than a class to sort into -------------------
+
+
+def test_a_table_with_no_classes_writes_one_tree_of_every_row(registry):
+    classes, columns, rows = PRICES.rows({"table": zipped({"north.csv": b"1970-01-03,5\n"})},
+                                         "north")
+    assert classes == ("rows",)
+    assert columns == {"when": "i", "price": "d", "index": "i"}
+    assert list(rows) == [(0, {"when": 2, "price": 5.0, "index": 0})]
+
+
+def test_a_set_with_a_number_to_predict_says_so_rather_than_counting_classes():
+    assert PRICES.sorting() == "no classes, a number to predict"
+    assert DATASETS["iris"].sorting() == "3 classes"
+    assert "one tree of every row" in PRICES.about("north")
+    assert PRICES.entry_title("north", "rows") == "Prices north rows"
+
+
+def test_a_regression_set_that_comes_in_splits_names_its_tree_for_the_split(registry):
+    counts, raw = written(
+        "prices", zipped({"south.csv": b"1970-01-01,2\n1970-01-02,3\n"}), "table", split="south"
+    )
+    assert counts == {"south_rows": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        assert sorted(back.keys()) == ["south_about", "south_rows"]
+        assert list(back["south_rows"]["when"].array()) == [0, 1]
+        assert "label" not in back["south_rows"].keys()
+
+
+def test_a_date_becomes_the_days_since_1970_and_a_gap_becomes_minus_one():
+    _, _, rows = PRICES.rows({"table": zipped({"north.csv": b"2011-01-01,1\n?,2\n"})}, "north")
+    assert [row["when"] for _, row in rows] == [14975, -1]
+
+
+def test_a_date_written_some_other_way_says_how_this_one_is_written():
+    _, _, rows = PRICES.rows({"table": zipped({"north.csv": b"01/01/2011,1\n"})}, "north")
+    with pytest.raises(ValueError, match=r"row 0 of Prices has '01/01/2011' in when, and the "
+                                         r"dates in it are written %Y-%m-%d"):
+        list(rows)
+
+
+def test_dates_can_be_read_the_way_the_file_happens_to_write_them():
+    spec = replace(PRICES, dates="%d/%m/%Y")
+    _, _, rows = spec.rows({"table": zipped({"north.csv": b"02/01/1970,1\n"})}, "north")
+    assert [row["when"] for _, row in rows] == [1]
+
+
+# --- what the newest registry entries say -----------------------------------
+
+
+def test_the_two_telescope_sets_are_labelled_the_way_their_papers_label_them():
+    magic, htru2 = DATASETS["magic"], DATASETS["htru2"]
+    assert isinstance(magic, Table) and isinstance(htru2, Table)
+    assert magic.classes == ("gamma", "hadron") and magic.labels == {"g": 0, "h": 1}
+    assert len(magic.fields) == 11 and magic.member == "magic04.data"
+    assert htru2.classes == ("not_pulsar", "pulsar")
+    assert [name for name, _ in htru2.fields][:2] == ["profile_mean", "profile_stdev"]
+    assert [name for name, _ in htru2.fields][4] == "dmsnr_mean"
+
+
+def test_auto_mpg_keeps_the_car_name_at_the_end_of_the_row():
+    spec = DATASETS["auto_mpg"]
+    assert isinstance(spec, Table)
+    assert spec.delimiter is None and spec.tail == len(spec.fields) == 9
+    assert spec.fields[0] == ("mpg", "target")
+    assert spec.fields[-1] == ("car_name", "text")
+    assert spec.text_size >= 38  # the longest name in the file, quotes and all
+
+
+def test_the_bike_hires_are_counted_by_the_hour_with_the_date_beside_them():
+    spec = DATASETS["bike_sharing"]
+    assert isinstance(spec, Table)
+    assert spec.member == "hour.csv" and spec.header
+    assert dict(spec.fields)["date"] == "date"
+    assert spec.fields[-1] == ("count", "target")
+    assert spec.dates == "%Y-%m-%d"
+
+
+def test_the_two_spreadsheet_sets_are_read_as_spreadsheets():
+    energy, estate = DATASETS["energy_efficiency"], DATASETS["real_estate"]
+    assert isinstance(energy, Table) and isinstance(estate, Table)
+    assert energy.xlsx and estate.xlsx
+    assert energy.member.endswith(".xlsx") and estate.member.endswith(".xlsx")
+    assert energy.header and estate.header
+    assert [name for name, role in energy.fields if role == "target"] == [
+        "heating_load", "cooling_load"
+    ]
+    assert estate.fields[-1] == ("price_per_unit_area", "target")
+
+
+def test_the_pupils_come_out_of_a_zip_inside_a_zip_in_both_their_subjects():
+    spec = DATASETS["student"]
+    assert isinstance(spec, Table)
+    assert spec.inner == "student.zip"
+    assert spec.splits == ("maths", "portuguese")
+    assert spec.files == {"maths": "student-mat.csv", "portuguese": "student-por.csv"}
+    assert spec.delimiter == ";" and spec.header
+    assert len(spec.fields) == 33
+    assert spec.codes["yesno"] == ("no", "yes")
+
+
+def test_heart_disease_comes_in_the_four_hospitals_that_gathered_it():
+    spec = DATASETS["heart_disease"]
+    assert isinstance(spec, Table)
+    assert spec.splits == ("cleveland", "hungary", "switzerland", "long_beach")
+    assert set(spec.files) == set(spec.splits)
+    assert all(name.startswith("processed.") for name in spec.files.values())
+    assert len(spec.fields) == 14 and spec.classes[0] == "none"
+    assert spec.labels == {"0": 0, "1": 1, "2": 2, "3": 3, "4": 4}
+
+
+def test_the_car_categories_are_numbered_worst_to_best():
+    spec = DATASETS["car_evaluation"]
+    assert isinstance(spec, Table)
+    assert spec.codes["price"] == ("low", "med", "high", "vhigh")
+    assert spec.codes["safety"] == ("low", "med", "high")
+    assert spec.codes["boot"] == ("small", "med", "big")
+    assert spec.classes == ("unacceptable", "acceptable", "good", "very_good")
+
+
+def test_yeast_names_the_place_in_the_cell_each_protein_ends_up():
+    spec = DATASETS["yeast"]
+    assert isinstance(spec, Table)
+    assert spec.delimiter is None and spec.text_size >= 10
+    assert spec.fields[0] == ("protein", "text")
+    assert spec.labels["CYT"] == 0 and spec.classes[0] == "cytosol"
+    assert sorted(spec.labels.values()) == list(range(10))
+
+
+def test_a_table_can_arrive_in_a_zip_inside_a_zip(registry):
+    spec = replace(PRICES, inner="inner.zip")
+    held = zipped({"inner.zip": zipped({"north.csv": b"1970-01-01,4\n"})})
+    _, _, rows = spec.rows({"table": held}, "north")
+    assert [row["price"] for _, row in rows] == [4.0]
+
+
+def test_a_table_written_as_an_arff_is_read_as_one(registry):
+    spec = replace(CARS, arff=True)
+    _, _, rows = spec.rows({"table": b"@relation cars\n@data\n18.0,8,chevelle\n"}, "all")
+    assert [row["mpg"] for _, row in rows] == [18.0]

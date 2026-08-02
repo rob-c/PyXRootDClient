@@ -19,9 +19,11 @@ same statement in an ``about`` key, so a file that outlives this program still
 says where it came from.
 
 Every archive is read with the standard library and nothing else - IDX, tar,
-zip, a zip inside a zip, gzip, WAV, ARFF and CSV - and what comes out is
-pictures, sound, sentences, tables and plain blocks of numbers, because a
-training loop should not have to care which of those it is reading. The CIFAR
+zip, a zip inside a zip, gzip, WAV, ARFF, CSV and the XML a spreadsheet keeps
+inside its own zip - and what comes out is pictures, sound, sentences, tables
+and plain blocks of numbers, because a training loop should not have to care
+which of those it is reading. Some of these sets have a class to sort a row
+into and some have a number to predict from it; both are here. The CIFAR
 sets are taken in their binary distribution rather than the Python one on
 purpose: that one is a pickle, and unpickling a download is a way to run
 somebody else's code.
@@ -35,9 +37,11 @@ import io
 import struct
 import tarfile
 import wave
+import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from math import nan
 from typing import Any
 
@@ -64,6 +68,7 @@ __all__ = [
     "read_arff",
     "read_idx",
     "read_table",
+    "read_xlsx",
 ]
 
 #: How many bytes of a column gather before a basket goes out. Images get a
@@ -99,6 +104,12 @@ IDX_FILES = {
 #: written as a NaN, which is what every reader downstream already means by
 #: it; a missing category is written as -1, because there is no such code.
 MISSING = frozenset({"", "?", "NA", "na", "N/A", "nan", "NaN", "null"})
+
+#: The namespace everything in a spreadsheet's XML is in.
+XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+
+#: The day a ``"date"`` column counts from, as an ordinal: 1970-01-01.
+EPOCH = date(1970, 1, 1).toordinal()
 
 #: One row on its way to a tree: which class it belongs to, and its columns.
 Rows = Iterator[tuple[int, dict[str, Any]]]
@@ -151,6 +162,7 @@ def read_table(
     header: bool = False,
     comment: str = "",
     quoted: bool = True,
+    tail: int = 0,
 ) -> Iterator[list[str]]:
     """Every row of a delimited text file, as stripped strings, blanks dropped.
 
@@ -160,10 +172,16 @@ def read_table(
     ``quoted`` is whether a double quote groups a field, as it does in a CSV;
     a file of English sentences means its quotes literally, and setting this
     ``False`` keeps them rather than reading them as punctuation.
+
+    ``tail`` is how many fields a whitespace-separated line has when the last
+    of them is free text with spaces in it - a car's name at the end of a row
+    of numbers. The line is split that many times and no further, and the last
+    field is unwrapped if it arrived in quotes, which is what a CSV reader
+    would have done with it.
     """
-    text = io.StringIO(raw.decode("utf-8-sig"))
+    text = io.StringIO(raw.decode("utf-8-sig"), newline="")
     rows: Iterator[list[str]] = (
-        (line.split() for line in text)
+        ((line.split(None, tail - 1) if tail else line.split()) for line in text)
         if delimiter is None
         else csv.reader(
             text,
@@ -174,8 +192,82 @@ def read_table(
     if header:
         next(rows, None)
     for row in rows:
-        if any(cell.strip() for cell in row) and not (comment and row[0].startswith(comment)):
-            yield [cell.strip() for cell in row]
+        if not any(cell.strip() for cell in row) or (comment and row[0].startswith(comment)):
+            continue
+        cells = [cell.strip() for cell in row]
+        if tail and quoted:
+            cells[-1] = _unquoted(cells[-1])
+        yield cells
+
+
+def _unquoted(cell: str) -> str:
+    """A field with the quotes around it taken off, if that is what they are."""
+    return cell[1:-1] if len(cell) > 1 and cell[0] == cell[-1] == '"' else cell
+
+
+def read_xlsx(raw: bytes, *, sheet: int = 1, header: bool = False) -> Iterator[list[str]]:
+    """Every row of one sheet of a spreadsheet, as the strings it shows.
+
+        >>> next(read_xlsx(open("ENB2012_data.xlsx", "rb").read()))  # doctest: +SKIP
+        ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'Y1', 'Y2']
+
+    A modern spreadsheet is a zip of XML, so this needs nothing the standard
+    library does not already have. Text is usually kept once in a shared table
+    and referred to by number, which is why a sheet on its own reads as
+    nonsense and this does not.
+
+    A row of nothing at all is not data - spreadsheets are full of them, below
+    and beside what was typed - and neither are the empty cells trailing a
+    row, so both are dropped. A gap in the middle of a row is kept, as an empty
+    string, because the fields after it still have to line up.
+    """
+    book = zipfile.ZipFile(io.BytesIO(raw))
+    inside = f"xl/worksheets/sheet{sheet}.xml"
+    if inside not in book.namelist():
+        sheets = sum(name.startswith("xl/worksheets/sheet") for name in book.namelist())
+        raise ValueError(f"this spreadsheet has {sheets} sheets in it, and no sheet {sheet}")
+    shared: list[str] = []
+    if "xl/sharedStrings.xml" in book.namelist():
+        shared = [
+            "".join(part.text or "" for part in entry.iter(XLSX_NS + "t"))
+            for entry in ET.fromstring(book.read("xl/sharedStrings.xml"))
+        ]
+    rows = _sheet(book.open(inside), shared)
+    if header:
+        next(rows, None)
+    yield from rows
+
+
+def _sheet(stream: Any, shared: Sequence[str]) -> Iterator[list[str]]:
+    """The rows of one sheet's XML, each cell put back where its reference says."""
+    with stream:
+        for _, element in ET.iterparse(stream):
+            if element.tag != XLSX_NS + "row":
+                continue
+            cells: list[str] = []
+            for cell in element:
+                while len(cells) < _at(cell.get("r", "")):
+                    cells.append("")
+                value = cell.find(XLSX_NS + "v")
+                if value is None:
+                    cells.append("".join(part.text or "" for part in cell.iter(XLSX_NS + "t")))
+                elif cell.get("t") == "s":
+                    cells.append(shared[int(value.text or "0")])
+                else:
+                    cells.append(value.text or "")
+            while cells and not cells[-1]:
+                cells.pop()
+            element.clear()
+            if cells:
+                yield cells
+
+
+def _at(ref: str) -> int:
+    """Which column a cell reference like ``A1`` or ``BC7`` names, from zero."""
+    place = 0
+    for letter in ref.rstrip("0123456789"):
+        place = place * 26 + ord(letter.upper()) - 64
+    return place - 1
 
 
 def read_arff(raw: bytes) -> Iterator[list[str]]:
@@ -288,13 +380,21 @@ class Dataset:
         where = f"\nsplit: {split}" if len(self.splits) > 1 else ""
         return (
             f"{self.label}: {self.title}{where}\nlicence: {self.licence}\n"
-            f"source: {self.source}\nconverted by xrd.root.datasets, one tree per class"
+            f"source: {self.source}\nconverted by xrd.root.datasets, {self.layout()}"
         )
 
     def entry_title(self, split: str, cls: str) -> str:
         """The title of the tree holding one class."""
         where = f"{split} " if len(self.splits) > 1 else ""
         return f"{self.label} {where}rows labelled {cls}"
+
+    def sorting(self) -> str:
+        """How many classes it has, the way :func:`describe` puts it."""
+        return f"{len(self.classes)} classes"
+
+    def layout(self) -> str:
+        """How the trees are laid out, the way :meth:`about` puts it."""
+        return "one tree per class"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -375,6 +475,10 @@ class CIFAR(Dataset):
     def urls(self, split: str) -> dict[str, str]:
         """The single archive, whichever split was asked for."""
         return {"archive": self.archive}
+
+    def sorting(self) -> str:
+        """How many classes it has; CIFAR-100 keeps its hundred in the archive."""
+        return f"{len(self.classes) or 100} classes"
 
     def entry_title(self, split: str, cls: str) -> str:
         return (
@@ -561,6 +665,9 @@ class Table(Dataset):
     url: str
     #: Which member of the archive it is, when it arrives in one.
     member: str = ""
+    #: Which member of the outer archive holds the inner one, when it arrives
+    #: in a zip inside a zip.
+    inner: str = ""
     #: Which member each split is, when the archive holds more than one.
     files: Mapping[str, str] = field(default_factory=dict)
     #: What separates the fields, or ``None`` for any run of whitespace.
@@ -571,6 +678,15 @@ class Table(Dataset):
     comment: str = ""
     #: Whether it is an ARFF file, whose rows come after its ``@data`` line.
     arff: bool = False
+    #: Whether it is a spreadsheet rather than a text file, read with
+    #: :func:`read_xlsx`.
+    xlsx: bool = False
+    #: How many fields a whitespace-separated row has when the last of them is
+    #: free text with spaces in it. Zero splits on every run of whitespace.
+    tail: int = 0
+    #: How a ``"date"`` field is written, in :func:`~datetime.datetime.strptime`
+    #: terms. What such a column holds is the days since 1970.
+    dates: str = "%Y-%m-%d"
     #: Whether a double quote groups a field. A table of sentences means its
     #: quotes literally and sets this ``False``.
     quoted: bool = True
@@ -579,11 +695,13 @@ class Table(Dataset):
     #: column beside it; anything longer is refused rather than cut short.
     text_size: int = 0
     #: The fields in the order the file writes them: a name, and either a
-    #: typecode, ``"label"``, ``"text"``, or the name of an entry in
-    #: :attr:`codes`.
+    #: typecode, ``"label"``, ``"text"``, ``"date"``, ``"target"``, or the name
+    #: of an entry in :attr:`codes`. A set with no ``"label"`` field and no
+    #: :attr:`classes` is a regression set: it has a ``"target"`` to predict
+    #: instead of a class to sort into, and its rows go to one tree.
     fields: tuple[tuple[str, str], ...]
     #: What each label in the file means, as an index into :attr:`classes`.
-    labels: Mapping[str, int]
+    labels: Mapping[str, int] = field(default_factory=dict)
     #: How the categorical fields are numbered, either as a mapping or as the
     #: categories in code order - a string of them where each is one letter.
     #: A category nobody wrote down is refused rather than guessed at.
@@ -592,6 +710,19 @@ class Table(Dataset):
     def urls(self, split: str) -> dict[str, str]:
         """The one file it comes in."""
         return {"table": self.url}
+
+    def entry_title(self, split: str, cls: str) -> str:
+        """The title of the tree, which holds every row when there are no classes."""
+        where = f"{split} " if len(self.splits) > 1 else ""
+        return f"{self.label} {where}rows" + (f" labelled {cls}" if self.classes else "")
+
+    def sorting(self) -> str:
+        """How many classes it has, or that it has a number to predict instead."""
+        return f"{len(self.classes)} classes" if self.classes else "no classes, a number to predict"
+
+    def layout(self) -> str:
+        """One tree a class, unless there are none and every row shares one."""
+        return "one tree per class" if self.classes else "one tree of every row"
 
     def rows(self, raw: Mapping[str, bytes], split: str) -> Loaded:
         """The columns the fields become, then the rows themselves."""
@@ -603,10 +734,11 @@ class Table(Dataset):
                 columns[name] = ("B", self.text_size)
                 columns[f"{name}_length"] = "i"
             else:
-                columns[name] = role if role == "d" else "i"
-        columns["label"] = "i"
+                columns[name] = "d" if role in ("d", "target") else "i"
+        if self.classes:
+            columns["label"] = "i"
         columns["index"] = "i"
-        return self.classes, columns, self._entries(raw["table"], split)
+        return self.classes or ("rows",), columns, self._entries(raw["table"], split)
 
     def _text(self, cell: str, name: str, index: int) -> bytes:
         """One field as the bytes its column holds, padded out to the width of it."""
@@ -618,12 +750,25 @@ class Table(Dataset):
             )
         return written + bytes(self.text_size - len(written))
 
+    def _day(self, cell: str, name: str, index: int) -> int:
+        """One date as the days since 1970 its column holds."""
+        try:
+            when = datetime.strptime(cell, self.dates)
+        except ValueError:
+            raise ValueError(
+                f"row {index} of {self.label} has {cell!r} in {name}, and the dates in it are "
+                f"written {self.dates}"
+            ) from None
+        return when.date().toordinal() - EPOCH
+
     def _cell(
         self, cell: str, name: str, role: str, index: int, coded: Mapping[str, Mapping[str, int]]
     ) -> Any:
         """One field as the number its column holds, or what a gap means there."""
-        if role == "d":
+        if role in ("d", "target"):
             return nan if cell in MISSING else _number(cell, float, name, index, self.label)
+        if role == "date":
+            return -1 if cell in MISSING else self._day(cell, name, index)
         if role == "i":
             return -1 if cell in MISSING else _number(cell, int, name, index, self.label)
         if cell in MISSING:
@@ -635,19 +780,25 @@ class Table(Dataset):
             )
         return coded[role][cell]
 
-    def _entries(self, raw: bytes, split: str) -> Rows:
-        held = _member(raw, self.files.get(split, self.member))
-        table = (
-            read_arff(held)
-            if self.arff
-            else read_table(
-                held,
-                delimiter=self.delimiter,
-                header=self.header,
-                comment=self.comment,
-                quoted=self.quoted,
-            )
+    def _read(self, held: bytes) -> Iterator[list[str]]:
+        """The rows of the file, however this one happens to be written."""
+        if self.arff:
+            return read_arff(held)
+        if self.xlsx:
+            return read_xlsx(held, header=self.header)
+        return read_table(
+            held,
+            delimiter=self.delimiter,
+            header=self.header,
+            comment=self.comment,
+            quoted=self.quoted,
+            tail=self.tail,
         )
+
+    def _entries(self, raw: bytes, split: str) -> Rows:
+        if self.inner:
+            raw = _member(raw, self.inner)
+        table = self._read(_member(raw, self.files.get(split, self.member)))
         coded = {role: _numbered(kinds) for role, kinds in self.codes.items()}
         for index, cells in enumerate(table):
             if len(cells) != len(self.fields):
@@ -655,7 +806,7 @@ class Table(Dataset):
                     f"row {index} of {self.label} has {len(cells)} fields, and its columns "
                     f"are {len(self.fields)}"
                 )
-            which = -1
+            which = -1 if self.classes else 0
             row: dict[str, Any] = {}
             for cell, (name, role) in zip(cells, self.fields, strict=True):
                 if role == "text":
@@ -670,7 +821,8 @@ class Table(Dataset):
                         f"row {index} of {self.label} is labelled {cell!r}, and its classes "
                         f"are {', '.join(sorted(self.labels))}"
                     )
-            row["label"] = which
+            if self.classes:
+                row["label"] = which
             row["index"] = index
             yield which, row
 
@@ -1096,6 +1248,173 @@ _HAR_ACTIVITIES: tuple[str, ...] = (
     "walking", "walking_upstairs", "walking_downstairs", "sitting", "standing", "laying",
 )
 
+#: The shower of light a gamma ray leaves in the telescope, measured ten ways.
+_MAGIC_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (name, "d")
+        for name in (
+            "length", "width", "size", "conc", "conc1", "asym", "m3_long", "m3_trans",
+            "alpha", "dist",
+        )
+    ),
+    ("shower", "label"),
+)
+
+#: Eight numbers a pulsar candidate is reduced to: four from the folded pulse
+#: profile, four from the curve of signal against dispersion measure.
+_HTRU_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (f"{where}_{what}", "d")
+        for where in ("profile", "dmsnr")
+        for what in ("mean", "stdev", "kurtosis", "skew")
+    ),
+    ("candidate", "label"),
+)
+
+_MPG_FIELDS: tuple[tuple[str, str], ...] = (
+    ("mpg", "target"),
+    ("cylinders", "i"),
+    ("displacement", "d"),
+    ("horsepower", "d"),
+    ("weight", "d"),
+    ("acceleration", "d"),
+    ("model_year", "i"),
+    ("origin", "i"),
+    ("car_name", "text"),
+)
+
+_BIKE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("instant", "i"),
+    ("date", "date"),
+    *((name, "i") for name in ("season", "year", "month", "hour", "holiday", "weekday")),
+    ("workingday", "i"),
+    ("weather", "i"),
+    *((name, "d") for name in ("temperature", "feels_like", "humidity", "windspeed")),
+    ("casual", "i"),
+    ("registered", "i"),
+    ("count", "target"),
+)
+
+_ENERGY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("relative_compactness", "d"),
+    ("surface_area", "d"),
+    ("wall_area", "d"),
+    ("roof_area", "d"),
+    ("overall_height", "d"),
+    ("orientation", "i"),
+    ("glazing_area", "d"),
+    ("glazing_distribution", "i"),
+    ("heating_load", "target"),
+    ("cooling_load", "target"),
+)
+
+_ESTATE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("serial", "i"),
+    ("transaction_date", "d"),
+    ("house_age", "d"),
+    ("distance_to_station", "d"),
+    ("convenience_stores", "i"),
+    ("latitude", "d"),
+    ("longitude", "d"),
+    ("price_per_unit_area", "target"),
+)
+
+#: The fourteen of the seventy-six columns that everyone uses, in the order
+#: the processed files write them.
+_HEART_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (name, "d")
+        for name in (
+            "age", "sex", "chest_pain", "rest_blood_pressure", "cholesterol",
+            "fasting_sugar", "rest_ecg", "max_heart_rate", "exercise_angina",
+            "st_depression", "st_slope", "vessels", "thallium",
+        )
+    ),
+    ("diagnosis", "label"),
+)
+
+_CAR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("buying", "price"),
+    ("maintenance", "price"),
+    ("doors", "doors"),
+    ("persons", "persons"),
+    ("luggage_boot", "boot"),
+    ("safety", "safety"),
+    ("acceptability", "label"),
+)
+
+#: The categories the car set is written in, worst to best in each field.
+_CAR_CODES: dict[str, Mapping[str, int] | Sequence[str]] = {
+    "price": ("low", "med", "high", "vhigh"),
+    "doors": ("2", "3", "4", "5more"),
+    "persons": ("2", "4", "more"),
+    "boot": ("small", "med", "big"),
+    "safety": ("low", "med", "high"),
+}
+
+_YEAST_FIELDS: tuple[tuple[str, str], ...] = (
+    ("protein", "text"),
+    *((name, "d") for name in ("mcg", "gvh", "alm", "mit", "erl", "pox", "vac", "nuc")),
+    ("site", "label"),
+)
+
+#: Where in the cell a yeast protein ends up, by the abbreviation the file uses.
+_YEAST_SITES: dict[str, int] = {
+    name: at
+    for at, name in enumerate(
+        ("CYT", "NUC", "MIT", "ME3", "ME2", "ME1", "EXC", "VAC", "POX", "ERL")
+    )
+}
+
+_YES_NO: tuple[str, ...] = ("no", "yes")
+
+#: The thirty-three answers each pupil's row holds, the last of them the mark
+#: to predict. The names are the ones the questionnaire uses.
+_STUDENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("school", "school"),
+    ("sex", "sex"),
+    ("age", "i"),
+    ("address", "address"),
+    ("famsize", "famsize"),
+    ("parents_status", "pstatus"),
+    ("mother_education", "i"),
+    ("father_education", "i"),
+    ("mother_job", "job"),
+    ("father_job", "job"),
+    ("reason", "reason"),
+    ("guardian", "guardian"),
+    ("travel_time", "i"),
+    ("study_time", "i"),
+    ("failures", "i"),
+    *(
+        (name, "yesno")
+        for name in (
+            "school_support", "family_support", "paid_classes", "activities", "nursery",
+            "wants_higher", "internet", "romantic",
+        )
+    ),
+    *(
+        (name, "i")
+        for name in (
+            "family_relations", "free_time", "going_out", "workday_alcohol",
+            "weekend_alcohol", "health", "absences", "first_period", "second_period",
+        )
+    ),
+    ("final_grade", "target"),
+)
+
+_STUDENT_CODES: dict[str, Mapping[str, int] | Sequence[str]] = {
+    "school": ("GP", "MS"),
+    "sex": ("F", "M"),
+    "address": ("R", "U"),
+    "famsize": ("LE3", "GT3"),
+    "pstatus": ("A", "T"),
+    "job": ("at_home", "health", "other", "services", "teacher"),
+    "reason": ("course", "home", "other", "reputation"),
+    "guardian": ("father", "mother", "other"),
+    "yesno": _YES_NO,
+}
+
 
 #: Every dataset this module knows, by the name :func:`convert` takes.
 DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
@@ -1520,6 +1839,147 @@ DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
         fields=_SEED_FIELDS,
         labels={"1": 0, "2": 1, "3": 2},
     ),
+    "magic": Table(
+        name="magic",
+        label="MAGIC Gamma Telescope",
+        title="19,020 air showers seen by a Cherenkov telescope, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/159/magic+gamma+telescope",
+        classes=("gamma", "hadron"),
+        url="https://archive.ics.uci.edu/static/public/159/magic+gamma+telescope.zip",
+        member="magic04.data",
+        fields=_MAGIC_FIELDS,
+        labels={"g": 0, "h": 1},
+    ),
+    "htru2": Table(
+        name="htru2",
+        label="HTRU2",
+        title="17,898 pulsar candidates from a radio survey, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/372/htru2",
+        classes=("not_pulsar", "pulsar"),
+        url="https://archive.ics.uci.edu/static/public/372/htru2.zip",
+        member="HTRU_2.csv",
+        fields=_HTRU_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "auto_mpg": Table(
+        name="auto_mpg",
+        label="Auto MPG",
+        title="398 cars of the 1970s and how far they went on a gallon",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/9/auto+mpg",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/9/auto+mpg.zip",
+        member="auto-mpg.data",
+        delimiter=None,
+        tail=9,
+        text_size=48,
+        fields=_MPG_FIELDS,
+    ),
+    "bike_sharing": Table(
+        name="bike_sharing",
+        label="Bike Sharing",
+        title="17,379 hours of a bicycle hire scheme, and how many were taken out",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip",
+        member="hour.csv",
+        header=True,
+        fields=_BIKE_FIELDS,
+    ),
+    "energy_efficiency": Table(
+        name="energy_efficiency",
+        label="Energy Efficiency",
+        title="768 simulated buildings and the heating and cooling they need",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/242/energy+efficiency",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/242/energy+efficiency.zip",
+        member="ENB2012_data.xlsx",
+        xlsx=True,
+        header=True,
+        fields=_ENERGY_FIELDS,
+    ),
+    "real_estate": Table(
+        name="real_estate",
+        label="Real Estate Valuation",
+        title="414 flats sold in Taipei and what a unit of floor cost",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/477/real+estate+valuation+data+set",
+        classes=(),
+        url="https://archive.ics.uci.edu/static/public/477/real+estate+valuation+data+set.zip",
+        member="Real estate valuation data set.xlsx",
+        xlsx=True,
+        header=True,
+        fields=_ESTATE_FIELDS,
+    ),
+    "student": Table(
+        name="student",
+        label="Student Performance",
+        title="1,044 pupils, 32 answers each, and the mark they finished on",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/320/student+performance",
+        classes=(),
+        splits=("maths", "portuguese"),
+        url="https://archive.ics.uci.edu/static/public/320/student+performance.zip",
+        inner="student.zip",
+        files={"maths": "student-mat.csv", "portuguese": "student-por.csv"},
+        delimiter=";",
+        header=True,
+        fields=_STUDENT_FIELDS,
+        codes=_STUDENT_CODES,
+    ),
+    "heart_disease": Table(
+        name="heart_disease",
+        label="Heart Disease",
+        title="920 patients from four hospitals, 5 degrees of narrowed arteries",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/45/heart+disease",
+        classes=("none", "stage_1", "stage_2", "stage_3", "stage_4"),
+        splits=("cleveland", "hungary", "switzerland", "long_beach"),
+        url="https://archive.ics.uci.edu/static/public/45/heart+disease.zip",
+        files={
+            "cleveland": "processed.cleveland.data",
+            "hungary": "processed.hungarian.data",
+            "switzerland": "processed.switzerland.data",
+            "long_beach": "processed.va.data",
+        },
+        fields=_HEART_FIELDS,
+        labels={str(stage): stage for stage in range(5)},
+    ),
+    "car_evaluation": Table(
+        name="car_evaluation",
+        label="Car Evaluation",
+        title="1,728 cars described six ways and judged acceptable or not",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/19/car+evaluation",
+        classes=("unacceptable", "acceptable", "good", "very_good"),
+        url="https://archive.ics.uci.edu/static/public/19/car+evaluation.zip",
+        member="car.data",
+        fields=_CAR_FIELDS,
+        labels={"unacc": 0, "acc": 1, "good": 2, "vgood": 3},
+        codes=_CAR_CODES,
+    ),
+    "yeast": Table(
+        name="yeast",
+        label="Yeast",
+        title="1,484 yeast proteins measured 8 ways, 10 places in the cell",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/110/yeast",
+        classes=(
+            "cytosol", "nucleus", "mitochondria", "membrane_no_signal",
+            "membrane_uncleaved_signal", "membrane_cleaved_signal", "extracellular",
+            "vacuole", "peroxisome", "endoplasmic_reticulum",
+        ),
+        url="https://archive.ics.uci.edu/static/public/110/yeast.zip",
+        member="yeast.data",
+        delimiter=None,
+        text_size=16,
+        fields=_YEAST_FIELDS,
+        labels=_YEAST_SITES,
+    ),
 }
 
 
@@ -1542,7 +2002,7 @@ def describe(name: str | None = None) -> str:
     chosen = DATASETS.values() if name is None else [_spec(name)]
     return "\n".join(
         f"{spec.name:<14} {spec.title}\n"
-        f"{'':14} {len(spec.classes) or 100} classes, {spec.licence}\n"
+        f"{'':14} {spec.sorting()}, {spec.licence}\n"
         f"{'':14} {spec.source}"
         for spec in chosen
     )

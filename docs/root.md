@@ -500,10 +500,12 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of twenty-eight. `xrd.root.datasets` converts the sets machine
+MNIST is one of thirty-eight. `xrd.root.datasets` converts the sets machine
 learning is actually taught and benchmarked with, all of them the same way —
 one tree per class, the label beside the data, and the row's place in the
-original file so any number can be traced back to where it came from. What
+original file so any number can be traced back to where it came from. The ten
+that have a number to predict rather than a class to sort into get one tree of
+every row instead, and the number to predict is a column like any other. What
 ships here is the converter, not the data: no dataset is redistributed in this
 repository, and `datasets/` is where the files it writes are meant to go.
 
@@ -549,9 +551,20 @@ datasets.convert("iris", "iris.root")
 | `glass` | 214 fragments of glass measured 9 ways, 6 kinds | CC BY 4.0 | 26 kB |
 | `abalone` | 4,177 abalone measured 8 ways and counted for rings, 3 sexes | CC BY 4.0 | 83 kB |
 | `banknote` | 1,372 photographed banknotes measured 4 ways, 2 classes | CC BY 4.0 | 42 kB |
+| `magic` | 19,020 air showers seen by a Cherenkov telescope, gamma or hadron | CC BY 4.0 | 775 kB |
+| `htru2` | 17,898 pulsar candidates from a radio survey, 2 classes | CC BY 4.0 | 977 kB |
+| `heart_disease` | 920 patients from four hospitals, 5 degrees of narrowed arteries | CC BY 4.0 | 72 kB |
+| `car_evaluation` | 1,728 cars described six ways and judged acceptable or not | CC BY 4.0 | 15 kB |
+| `yeast` | 1,484 yeast proteins measured 8 ways, 10 places in the cell | CC BY 4.0 | 50 kB |
+| `auto_mpg` | 398 cars of the 1970s and how far they went on a gallon | CC BY 4.0 | 14 kB |
+| `bike_sharing` | 17,379 hours of a bicycle hire scheme, and how many were taken out | CC BY 4.0 | 222 kB |
+| `energy_efficiency` | 768 simulated buildings and the heating and cooling they need | CC BY 4.0 | 12 kB |
+| `real_estate` | 414 flats sold in Taipei and what a unit of floor cost | CC BY 4.0 | 16 kB |
+| `student` | 1,044 pupils, 32 answers each, and the mark they finished on | CC BY 4.0 | 32 kB |
 
-The last column is one file holding every split, written with the default
-`zlib`, as measured on a conversion of all twenty-eight — both splits of a set
+The last ten have a number to predict rather than a class; the rest sort rows
+into classes. The last column is one file holding every split, written with the
+default `zlib`, as measured on a conversion of all thirty-eight — every split of a set
 that has them, a tree a class, and the `about` key beside them.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
@@ -573,8 +586,9 @@ with xrd.root.open_root("cifar10.root") as f:
 
 The CIFAR sets are taken in their **binary** distribution rather than the
 Python one, on purpose: the Python one is a pickle, and unpickling a download
-is a way to run somebody else's code. Every archive here — IDX, tar, zip,
-gzip, WAV, ARFF and CSV — is read with the standard library and nothing else.
+is a way to run somebody else's code. Every archive here — IDX, tar, zip, a zip
+inside a zip, gzip, WAV, ARFF, CSV, and the XML a spreadsheet keeps inside its
+own zip — is read with the standard library and nothing else.
 
 Images come out exactly as the archive laid them: CIFAR is 3072 bytes an
 entry, 1024 red then 1024 green then 1024 blue, which is what PyTorch wants,
@@ -693,17 +707,87 @@ refused rather than guessed at. A measurement nobody took becomes a NaN, which
 is what every reader downstream already means by it; a category nobody
 recorded becomes `-1`, because there is no such code.
 
+Not every set has classes. Half of what regression is taught with is a table
+with a number at the end of the row — the miles a car did on a gallon, the
+bicycles hired in an hour, the mark a pupil finished on — and forcing that into
+classes would be inventing bins nobody published. A set with no `classes` has a
+`"target"` field instead of a `"label"` one, and it comes out as a single tree
+called `rows`, with the number to predict a `double` column beside the features:
+
+```python
+datasets.convert("auto_mpg", "auto_mpg.root")
+# {'rows': 398}
+
+with xrd.root.open_root("auto_mpg.root") as f:
+    print(xrd.root.ml.numeric(f["rows"]))
+# ['mpg', 'cylinders', 'displacement', 'horsepower', 'weight',
+#  'acceleration', 'model_year', 'origin', 'car_name_length', 'index']
+```
+
+There is no `label` column in those files, because there is nothing for it to
+say, and `describe()` says `no classes, a number to predict` where it would
+otherwise count them. `energy_efficiency` has two targets rather than one — a
+building's heating load and its cooling load — which is nothing special here:
+they are two columns.
+
+`auto_mpg` also shows the older way of ending a row. Its eight numbers are
+separated by runs of spaces and then, after a tab, the car is named in quotes:
+`18.0 8 307.0 130.0 3504. 12.0 70 1  "chevrolet chevelle malibu"`. Splitting
+that on whitespace turns one name into three fields, so `tail=` says how many
+fields the line really has; the line is split that many times and no further,
+and the name arrives in a `car_name` column with a `car_name_length` beside it
+the way any text does.
+
+Dates are a column too. `bike_sharing` is a time series — a count of hires an
+hour for two years — and a `"date"` field becomes the days since 1970 as an
+`int`, which sorts, subtracts and plots without a parser at the other end:
+
+```python
+import datetime
+
+with xrd.root.open_root("bike_sharing.root") as f:
+    day = f["rows"]["date"].array(0, 1)[0]
+    print(datetime.date(1970, 1, 1) + datetime.timedelta(days=day))
+# 2011-01-01
+```
+
+`dates=` says how the file writes them, in `strptime` terms, and a date written
+some other way is refused with that format quoted back rather than guessed at.
+
+Two of these sets are published only as spreadsheets, so `read_xlsx` reads one.
+A modern spreadsheet is a zip of XML with the text kept once in a shared table
+and referred to by number, which is why a sheet on its own reads as nonsense
+and this does not — and it needs nothing that is not already in the standard
+library. Rows of nothing at all, and the empty cells trailing a row, are not
+data and are dropped; a gap in the middle of a row is kept, so the fields after
+it still line up:
+
+```python
+datasets.convert("energy_efficiency", "energy.root")
+# {'rows': 768}
+```
+
 Tables do not all arrive as comma-separated files, so `Table` says which shape
 it is and the reader does the rest: `delimiter=None` splits on whitespace
 (`seeds`), `delimiter=";"` with `header=True` reads the shape a spreadsheet
 exports (`wine_quality`), `comment=` drops the lines a publisher wrote above
 the data (`adult`), `arff=True` skips everything down to the `@data` line of a
-Weka file (`dry_bean`), and `files=` picks a different member of the one
-archive for each split — which need not be train and test: `wine_quality`'s
-two are `red` and `white`. `codes=` may name its categories as a
-mapping or just list them in order — `mushroom`'s 22 columns are the letters
-UCI documents, in UCI's order, so the numbers in the file mean what the
-published description says they mean.
+Weka file (`dry_bean`), `xlsx=True` reads the spreadsheet itself
+(`energy_efficiency`), `inner=` opens the zip inside the zip (`student`), and
+`files=` picks a different member of the one archive for each split — which
+need not be train and test: `wine_quality`'s two are `red` and `white`, and
+`heart_disease`'s four are the hospitals that gathered it, Cleveland, Hungary,
+Switzerland and Long Beach. `codes=` may name its categories as a mapping or
+just list them in order — `mushroom`'s 22 columns are the letters UCI
+documents, in UCI's order, and `car_evaluation`'s six are listed worst to best,
+so the numbers in the file mean what the published description says they mean.
+
+`magic` and `htru2` are the two to point at beside `miniboone` when somebody
+says HEP formats are not for machine learning: air showers in a Cherenkov
+telescope, sorted into gamma rays and hadrons, and pulsar candidates from a
+radio survey, sorted into pulsars and everything else. Both are ordinary
+teaching sets on every benchmark list, and both go back into a ROOT file
+without anybody having to adapt to us.
 
 Converting is one pass, and `parts=` takes archives already on disk when you
 would rather not download them twice:

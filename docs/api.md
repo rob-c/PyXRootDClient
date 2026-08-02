@@ -187,6 +187,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.datasets.read_arff
 
+::: xrd.root.datasets.read_xlsx
+
 ::: xrd.root.datasets.fetch
 
 ::: xrd.root.mnist.convert
