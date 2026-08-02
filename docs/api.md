@@ -177,6 +177,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.datasets.Audio
 
+::: xrd.root.datasets.Matrix
+
 ::: xrd.root.datasets.Table
 
 ::: xrd.root.datasets.read_idx

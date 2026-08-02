@@ -29,6 +29,7 @@ from xrd.root.datasets import (
     Audio,
     Dataset,
     Images,
+    Matrix,
     Table,
     convert,
     describe,
@@ -149,6 +150,89 @@ SCRIBBLES = Images(
 )
 
 
+#: A table whose second field is a sentence, which means its quotes literally
+#: and needs a column wide enough to hold it.
+MESSAGES = Table(
+    name="messages",
+    label="Messages",
+    title="a few short messages",
+    licence="CC0",
+    source="https://example.invalid/messages",
+    classes=("plain", "shouted"),
+    url="https://example.invalid/messages.zip",
+    member="messages.txt",
+    delimiter="\t",
+    quoted=False,
+    text_size=16,
+    fields=(("kind", "label"), ("message", "text")),
+    labels={"plain": 0, "shouted": 1},
+)
+
+MESSAGE_ROWS = b'plain\the said "no"\nshouted\tOI\n'
+
+#: A block of numbers with its labels in a file beside it, inside an archive
+#: inside the archive, which is how the phone-sensor sets arrive.
+SENSORS = Matrix(
+    name="sensors",
+    label="Sensors",
+    title="a few windows of sensor readings",
+    licence="CC0",
+    source="https://example.invalid/sensors",
+    classes=("still", "moving"),
+    splits=("train", "test"),
+    url="https://example.invalid/sensors.zip",
+    inner="inner.zip",
+    files={split: f"{split}/X.txt" for split in ("train", "test")},
+    label_files={split: f"{split}/y.txt" for split in ("train", "test")},
+    labels={"1": 0, "2": 1},
+    beside={"subject": {split: f"{split}/subject.txt" for split in ("train", "test")}},
+    width=3,
+)
+
+#: A block of numbers whose label is the last columns of the row itself.
+HOT = Matrix(
+    name="hot",
+    label="Hot",
+    title="a few rows labelled where they lie",
+    licence="CC0",
+    source="https://example.invalid/hot",
+    classes=("left", "right"),
+    url="https://example.invalid/hot.data",
+    files={"all": ""},
+    width=2,
+    column="image",
+    kind="B",
+    onehot=2,
+)
+
+#: A block of numbers with no labels in it at all, only a line at the top
+#: saying how many rows each class has in turn.
+RUNS = Matrix(
+    name="runs",
+    label="Runs",
+    title="a few rows counted at the top",
+    licence="CC0",
+    source="https://example.invalid/runs",
+    classes=("signal", "background"),
+    url="https://example.invalid/runs.txt",
+    files={"all": ""},
+    width=2,
+    counts=True,
+)
+
+
+def sensed(rows: str, labels: str, subjects: str, *, split: str = "train") -> bytes:
+    """The archive SENSORS describes, which is a zip wrapped in another zip."""
+    inner = zipped(
+        {
+            f"{split}/X.txt": rows.encode(),
+            f"{split}/y.txt": labels.encode(),
+            f"{split}/subject.txt": subjects.encode(),
+        }
+    )
+    return zipped({"inner.zip": inner})
+
+
 def waved(samples: Sequence[int], *, rate: int = 8000, channels: int = 1, width: int = 2) -> bytes:
     """One WAV file, laid out the way a recording arrives in an archive."""
     raw = io.BytesIO()
@@ -204,7 +288,7 @@ def tiny_archive(**names: bytes) -> bytes:
 @pytest.fixture
 def registry(monkeypatch: pytest.MonkeyPatch) -> None:
     """The test's own datasets, alongside the real ones, for the length of a test."""
-    for spec in (TINY, TINY_COARSE, FLOWERS, SPOKEN, SCRIBBLES):
+    for spec in (TINY, TINY_COARSE, FLOWERS, SPOKEN, SCRIBBLES, MESSAGES, SENSORS, HOT, RUNS):
         monkeypatch.setitem(DATASETS, spec.name, spec)
 
 
@@ -227,6 +311,8 @@ def test_the_datasets_asked_for_are_all_there():
         "mnist", "fashion_mnist", "kmnist", "cifar10", "cifar100",
         "iris", "penguins", "covertype", "emnist", "fsdd", "adult", "mushroom",
         "letter", "digits", "wine", "breast_cancer", "dry_bean", "seeds",
+        "miniboone", "har", "semeion", "sms_spam", "wine_quality", "spambase",
+        "ionosphere", "glass", "abalone", "banknote",
     }
 
 
@@ -274,13 +360,13 @@ def test_covertype_has_the_fifty_four_features_and_the_label_the_paper_describes
 def test_every_table_names_a_code_for_every_category_it_will_meet():
     for spec in DATASETS.values():
         if isinstance(spec, Table):
-            coded = {role for _, role in spec.fields} - {"d", "i", "label"}
+            coded = {role for _, role in spec.fields} - {"d", "i", "label", "text"}
             assert coded == set(spec.codes), spec.name
 
 
 def test_no_dataset_labels_a_class_it_does_not_have():
     for spec in DATASETS.values():
-        if isinstance(spec, (Table, Audio)) and spec.classes:
+        if isinstance(spec, (Table, Audio, Matrix)) and spec.classes and spec.labels:
             assert max(spec.labels.values()) == len(spec.classes) - 1, spec.name
             assert min(spec.labels.values()) == 0, spec.name
 
@@ -855,3 +941,221 @@ def test_an_image_set_in_an_archive_converts_like_any_other(registry):
     with open_root(io.BytesIO(raw)) as back:
         assert list(back["train_up"]["image"].array()) == [8, 9, 10, 11]
         assert back["train_down"].num_entries == 2
+
+
+# --- tables of sentences ----------------------------------------------------
+
+
+def test_a_table_of_sentences_keeps_the_quotes_it_was_written_with():
+    raw = b'a\t"no" he said\n'
+    assert list(read_table(raw, delimiter="\t")) == [["a", "no he said"]]
+    assert list(read_table(raw, delimiter="\t", quoted=False)) == [["a", '"no" he said']]
+
+
+def test_a_quote_that_is_never_closed_does_not_swallow_the_lines_after_it():
+    raw = b'a\t"two\nb\tthree\n'
+    assert len(list(read_table(raw, delimiter="\t"))) == 1
+    assert list(read_table(raw, delimiter="\t", quoted=False)) == [["a", '"two'], ["b", "three"]]
+
+
+def test_text_is_written_into_a_column_of_its_own_with_the_length_beside_it():
+    _, columns, rows = MESSAGES.rows({"table": MESSAGE_ROWS}, "all")
+    assert columns == {
+        "message": ("B", 16),
+        "message_length": "i",
+        "label": "i",
+        "index": "i",
+    }
+    first, second = list(rows)
+    assert first == (0, {"message": b'he said "no"' + bytes(4), "message_length": 12,
+                         "label": 0, "index": 0})
+    assert second[1]["message"] == b"OI" + bytes(14)
+
+
+def test_a_message_too_long_for_its_column_is_refused_rather_than_cut_short():
+    _, _, rows = MESSAGES.rows({"table": b"plain\t" + b"x" * 17 + b"\n"}, "all")
+    with pytest.raises(ValueError, match="has 17 bytes in message, and the column holds 16"):
+        list(rows)
+
+
+def test_messages_become_trees_holding_the_text_and_how_much_of_it_is_real(registry):
+    counts, raw = written("messages", zipped({"messages.txt": MESSAGE_ROWS}), "table")
+    assert counts == {"plain": 1, "shouted": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["plain"]
+        held = bytes(tree["message"].array())
+        assert held[: tree["message_length"].array()[0]] == b'he said "no"'
+        assert set(held[12:]) == {0}
+
+
+# --- blocks of numbers ------------------------------------------------------
+
+
+def test_a_matrix_takes_its_labels_and_its_subjects_from_the_files_beside_it():
+    archive = sensed("1 2 3\n4 5 6\n", "2\n1\n", "7\n9\n")
+    classes, columns, rows = SENSORS.rows({"archive": archive}, "train")
+    assert classes == ("still", "moving")
+    assert columns == {"features": ("d", 3), "label": "i", "subject": "i", "index": "i"}
+    assert list(rows) == [
+        (1, {"features": (1.0, 2.0, 3.0), "index": 0, "subject": 7, "label": 1}),
+        (0, {"features": (4.0, 5.0, 6.0), "index": 1, "subject": 9, "label": 0}),
+    ]
+
+
+def test_a_label_the_matrix_was_not_told_about_is_refused_by_name():
+    _, _, rows = SENSORS.rows({"archive": sensed("1 2 3\n", "9\n", "7\n")}, "train")
+    with pytest.raises(ValueError, match="is labelled '9', and its classes are 1, 2"):
+        list(rows)
+
+
+def test_a_row_that_is_not_as_wide_as_the_others_is_refused():
+    _, _, rows = SENSORS.rows({"archive": sensed("1 2 3\n4 5\n", "1\n1\n", "7\n7\n")}, "train")
+    with pytest.raises(ValueError, match="row 1 of Sensors holds 2 numbers, and its rows are 3"):
+        list(rows)
+
+
+def test_a_number_that_is_not_one_is_refused_by_where_it_was():
+    _, _, rows = SENSORS.rows({"archive": sensed("1 x 3\n", "1\n", "7\n")}, "train")
+    with pytest.raises(ValueError, match="has 'x' in features, which is not a number"):
+        list(rows)
+
+
+def test_more_rows_than_labels_is_refused_rather_than_labelled_by_guesswork():
+    _, _, rows = SENSORS.rows({"archive": sensed("1 2 3\n4 5 6\n", "1\n", "7\n8\n")}, "train")
+    with pytest.raises(ValueError, match="more rows than the 1 in its file of labels"):
+        list(rows)
+
+
+def test_more_rows_than_subjects_is_refused_the_same_way():
+    _, _, rows = SENSORS.rows({"archive": sensed("1 2 3\n4 5 6\n", "1\n1\n", "7\n")}, "train")
+    with pytest.raises(ValueError, match="more rows than the 1 in its file of subject"):
+        list(rows)
+
+
+@pytest.mark.parametrize(
+    ("labels", "subjects", "complaint"),
+    [
+        ("1\n1\n1\n", "7\n7\n", "2 rows in train and 3 in its file of labels"),
+        ("1\n1\n", "7\n7\n7\n", "2 rows in train and 3 in its file of subject"),
+    ],
+)
+def test_a_file_beside_the_numbers_that_is_longer_than_they_are_is_refused(
+    labels, subjects, complaint
+):
+    archive = sensed("1 2 3\n4 5 6\n", labels, subjects)
+    _, _, rows = SENSORS.rows({"archive": archive}, "train")
+    with pytest.raises(ValueError, match=complaint):
+        list(rows)
+
+
+def test_a_one_hot_label_is_whichever_of_the_last_columns_is_set():
+    _, columns, rows = HOT.rows({"archive": b"1.0000 0.0000 0 1\n0.0000 1.0000 1 0\n"}, "all")
+    assert columns == {"image": ("B", 2), "label": "i", "index": "i"}
+    assert list(rows) == [
+        (1, {"image": (1, 0), "index": 0, "label": 1}),
+        (0, {"image": (0, 1), "index": 1, "label": 0}),
+    ]
+
+
+@pytest.mark.parametrize("tail", ["0 0", "1 1"])
+def test_a_row_with_anything_but_one_label_column_set_is_refused(tail):
+    _, _, rows = HOT.rows({"archive": f"1 0 {tail}\n".encode()}, "all")
+    with pytest.raises(ValueError, match="of its 2 label columns set, and exactly one"):
+        list(rows)
+
+
+def test_a_matrix_counted_at_the_top_labels_its_rows_by_where_they_lie():
+    _, _, rows = RUNS.rows({"archive": b" 2 1\n1 2\n3 4\n5 6\n"}, "all")
+    assert [which for which, _ in rows] == [0, 0, 1]
+
+
+def test_a_count_line_that_names_the_wrong_number_of_classes_is_refused():
+    _, _, rows = RUNS.rows({"archive": b"1 1 1\n1 2\n"}, "all")
+    with pytest.raises(ValueError, match="starts by counting 3 classes, and it has 2"):
+        list(rows)
+
+
+def test_more_rows_than_the_counts_promised_is_refused():
+    _, _, rows = RUNS.rows({"archive": b"1 1\n1 2\n3 4\n5 6\n"}, "all")
+    with pytest.raises(ValueError, match="counts 2 rows at the top of its file and holds more"):
+        list(rows)
+
+
+def test_a_block_of_numbers_becomes_one_tree_per_class(registry):
+    counts, raw = written("hot", b"1 0 1 0\n0 1 0 1\n1 1 1 0\n", "archive")
+    assert counts == {"left": 2, "right": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        assert back["left"].title == "Hot rows labelled left, 2 numbers each"
+        assert list(back["left"]["image"].array()) == [1, 0, 1, 1]
+        assert list(back["right"]["image"].array()) == [0, 1]
+
+
+def test_a_matrix_that_comes_in_splits_says_so_in_the_tree_it_writes(registry):
+    archive = sensed("1 2 3\n", "2\n", "7\n")
+    counts, raw = written("sensors", archive, "archive", split="train")
+    assert counts == {"train_still": 0, "train_moving": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        assert back["train_moving"].title == "Sensors train rows labelled moving, 3 numbers each"
+        assert list(back["train_moving"]["subject"].array()) == [7]
+
+
+# --- what the new registry entries say --------------------------------------
+
+
+def test_miniboone_counts_its_two_classes_at_the_top_of_the_one_file():
+    spec = DATASETS["miniboone"]
+    assert isinstance(spec, Matrix)
+    assert spec.counts and spec.width == 50 and not spec.label_files
+    assert spec.urls("all") == {"archive": spec.url}
+
+
+def test_har_reads_the_archive_inside_the_archive_and_the_files_beside_it():
+    spec = DATASETS["har"]
+    assert isinstance(spec, Matrix)
+    assert spec.inner.endswith(".zip")
+    assert spec.width == 561
+    assert spec.files["train"] == "UCI HAR Dataset/train/X_train.txt"
+    assert spec.label_files["test"] == "UCI HAR Dataset/test/y_test.txt"
+    assert set(spec.beside) == {"subject"}
+    assert sorted(spec.labels.values()) == list(range(6))
+
+
+def test_semeion_is_labelled_by_the_last_ten_columns_of_its_own_rows():
+    spec = DATASETS["semeion"]
+    assert isinstance(spec, Matrix)
+    assert (spec.onehot, spec.width, spec.kind, spec.column) == (10, 16 * 16, "B", "image")
+
+
+def test_the_wine_quality_splits_are_the_two_colours_it_is_published_in():
+    spec = DATASETS["wine_quality"]
+    assert isinstance(spec, Table)
+    assert spec.splits == ("red", "white")
+    assert spec.files == {
+        "red": "winequality-red.csv",
+        "white": "winequality-white.csv",
+    }
+    assert spec.delimiter == ";" and spec.header
+    assert spec.classes[0] == "quality_3" and spec.labels["3"] == 0
+
+
+def test_spambase_names_its_punctuation_counts_rather_than_spelling_them():
+    spec = DATASETS["spambase"]
+    assert isinstance(spec, Table)
+    assert len(spec.fields) == 58
+    assert ("char_freq_dollar", "d") in spec.fields
+    assert all(name.replace("_", "").isalnum() for name, _ in spec.fields)
+
+
+def test_glass_leaves_out_the_class_number_its_data_never_uses():
+    spec = DATASETS["glass"]
+    assert isinstance(spec, Table)
+    assert "4" not in spec.labels
+    assert sorted(spec.labels.values()) == list(range(6))
+
+
+def test_the_sms_set_gives_its_text_a_column_and_keeps_the_quotes_in_it():
+    spec = DATASETS["sms_spam"]
+    assert isinstance(spec, Table)
+    assert spec.delimiter == "\t" and not spec.quoted
+    assert spec.text_size >= 910
+    assert dict(spec.fields)["message"] == "text"

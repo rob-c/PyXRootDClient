@@ -19,9 +19,12 @@ same statement in an ``about`` key, so a file that outlives this program still
 says where it came from.
 
 Every archive is read with the standard library and nothing else - IDX, tar,
-zip, gzip, WAV, ARFF and CSV. The CIFAR sets are taken in their binary
-distribution rather than the Python one on purpose: that one is a pickle, and
-unpickling a download is a way to run somebody else's code.
+zip, a zip inside a zip, gzip, WAV, ARFF and CSV - and what comes out is
+pictures, sound, sentences, tables and plain blocks of numbers, because a
+training loop should not have to care which of those it is reading. The CIFAR
+sets are taken in their binary distribution rather than the Python one on
+purpose: that one is a pickle, and unpickling a download is a way to run
+somebody else's code.
 """
 
 from __future__ import annotations
@@ -53,6 +56,7 @@ __all__ = [
     "Audio",
     "Dataset",
     "Images",
+    "Matrix",
     "Table",
     "convert",
     "describe",
@@ -141,19 +145,31 @@ def read_idx(raw: bytes) -> tuple[tuple[int, ...], bytes]:
 
 
 def read_table(
-    raw: bytes, *, delimiter: str | None = ",", header: bool = False, comment: str = ""
+    raw: bytes,
+    *,
+    delimiter: str | None = ",",
+    header: bool = False,
+    comment: str = "",
+    quoted: bool = True,
 ) -> Iterator[list[str]]:
     """Every row of a delimited text file, as stripped strings, blanks dropped.
 
     ``delimiter`` is what separates the fields, or ``None`` for any run of
     whitespace, which is how the older sets are written. ``header`` drops the
     first line, and ``comment`` drops every line that starts with it.
+    ``quoted`` is whether a double quote groups a field, as it does in a CSV;
+    a file of English sentences means its quotes literally, and setting this
+    ``False`` keeps them rather than reading them as punctuation.
     """
     text = io.StringIO(raw.decode("utf-8-sig"))
     rows: Iterator[list[str]] = (
         (line.split() for line in text)
         if delimiter is None
-        else csv.reader(text, delimiter=delimiter)
+        else csv.reader(
+            text,
+            delimiter=delimiter,
+            quoting=csv.QUOTE_MINIMAL if quoted else csv.QUOTE_NONE,
+        )
     )
     if header:
         next(rows, None)
@@ -245,8 +261,9 @@ class Dataset:
     """Where a dataset comes from, what it holds, and what may be done with it.
 
     The subclasses below add how to read one: :class:`Images` for the IDX sets
-    shaped like MNIST, :class:`CIFAR` for the two tiny-image archives, and
-    :class:`Table` for the delimited ones.
+    shaped like MNIST, :class:`CIFAR` for the two tiny-image archives,
+    :class:`Audio` for the recordings, :class:`Matrix` for the plain blocks of
+    numbers, and :class:`Table` for the delimited ones.
     """
 
     #: How this module is asked for it: ``convert("cifar10", ...)``.
@@ -554,8 +571,16 @@ class Table(Dataset):
     comment: str = ""
     #: Whether it is an ARFF file, whose rows come after its ``@data`` line.
     arff: bool = False
+    #: Whether a double quote groups a field. A table of sentences means its
+    #: quotes literally and sets this ``False``.
+    quoted: bool = True
+    #: How many bytes a ``"text"`` field is given. A tree column is a fixed
+    #: size, so the text is written into one this wide with a ``_length``
+    #: column beside it; anything longer is refused rather than cut short.
+    text_size: int = 0
     #: The fields in the order the file writes them: a name, and either a
-    #: typecode, ``"label"``, or the name of an entry in :attr:`codes`.
+    #: typecode, ``"label"``, ``"text"``, or the name of an entry in
+    #: :attr:`codes`.
     fields: tuple[tuple[str, str], ...]
     #: What each label in the file means, as an index into :attr:`classes`.
     labels: Mapping[str, int]
@@ -570,12 +595,28 @@ class Table(Dataset):
 
     def rows(self, raw: Mapping[str, bytes], split: str) -> Loaded:
         """The columns the fields become, then the rows themselves."""
-        columns: dict[str, Any] = {
-            name: (role if role == "d" else "i") for name, role in self.fields if role != "label"
-        }
+        columns: dict[str, Any] = {}
+        for name, role in self.fields:
+            if role == "label":
+                continue
+            if role == "text":
+                columns[name] = ("B", self.text_size)
+                columns[f"{name}_length"] = "i"
+            else:
+                columns[name] = role if role == "d" else "i"
         columns["label"] = "i"
         columns["index"] = "i"
         return self.classes, columns, self._entries(raw["table"], split)
+
+    def _text(self, cell: str, name: str, index: int) -> bytes:
+        """One field as the bytes its column holds, padded out to the width of it."""
+        written = cell.encode()
+        if len(written) > self.text_size:
+            raise ValueError(
+                f"row {index} of {self.label} has {len(written)} bytes in {name}, and the "
+                f"column holds {self.text_size}"
+            )
+        return written + bytes(self.text_size - len(written))
 
     def _cell(
         self, cell: str, name: str, role: str, index: int, coded: Mapping[str, Mapping[str, int]]
@@ -600,7 +641,11 @@ class Table(Dataset):
             read_arff(held)
             if self.arff
             else read_table(
-                held, delimiter=self.delimiter, header=self.header, comment=self.comment
+                held,
+                delimiter=self.delimiter,
+                header=self.header,
+                comment=self.comment,
+                quoted=self.quoted,
             )
         )
         coded = {role: _numbered(kinds) for role, kinds in self.codes.items()}
@@ -613,7 +658,10 @@ class Table(Dataset):
             which = -1
             row: dict[str, Any] = {}
             for cell, (name, role) in zip(cells, self.fields, strict=True):
-                if role != "label":
+                if role == "text":
+                    row[name] = self._text(cell, name, index)
+                    row[f"{name}_length"] = len(cell.encode())
+                elif role != "label":
                     row[name] = self._cell(cell, name, role, index, coded)
                 elif cell in self.labels:
                     which = self.labels[cell]
@@ -625,6 +673,157 @@ class Table(Dataset):
             row["label"] = which
             row["index"] = index
             yield which, row
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Matrix(Dataset):
+    """A file that is one long row of numbers an example, and nothing else.
+
+    The feature-vector sets are written this way: every row the same width, no
+    header naming anything, and the label kept wherever the publisher found
+    convenient - in a file of its own beside the numbers, as a run of columns
+    at the end of the row, or nowhere at all except a count at the top saying
+    how many rows each class has. All three are read here, because the
+    alternative is asking everyone to reshape the file first.
+
+    The numbers become one fixed-size column rather than one column a feature,
+    which is what a training loop wants of 561 of them, and is what
+    :func:`~.ml.iter_tensors` hands straight to a tensor.
+    """
+
+    #: Where it is served from.
+    url: str
+    #: The archive inside the archive, when it arrives wrapped twice.
+    inner: str = ""
+    #: Which member of it each split's numbers are.
+    files: Mapping[str, str]
+    #: Which member each split's labels are, when they are kept apart.
+    label_files: Mapping[str, str] = field(default_factory=dict)
+    #: What each label in such a file means, as an index into
+    #: :attr:`~Dataset.classes`.
+    labels: Mapping[str, int] = field(default_factory=dict)
+    #: Any other column kept in a file of its own, as name to member a split.
+    beside: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+    #: How many numbers a row holds, checked against every one of them.
+    width: int
+    #: What the column of them is called.
+    column: str = "features"
+    #: What one of them is stored as.
+    kind: str = "d"
+    #: How many columns at the end of a row are a one-hot label, if it is
+    #: written there rather than in a file of its own.
+    onehot: int = 0
+    #: Whether the first line counts the rows of each class in turn, which is
+    #: how a file with no labels in it at all still says what its rows are.
+    counts: bool = False
+
+    def urls(self, split: str) -> dict[str, str]:
+        """The one archive everything comes in."""
+        return {"archive": self.url}
+
+    def entry_title(self, split: str, cls: str) -> str:
+        where = f"{split} " if len(self.splits) > 1 else ""
+        return f"{self.label} {where}rows labelled {cls}, {self.width} numbers each"
+
+    def rows(self, raw: Mapping[str, bytes], split: str) -> Loaded:
+        """The fixed-size column of numbers, the label, and whatever is beside it."""
+        columns: dict[str, Any] = {self.column: (self.kind, self.width), "label": "i"}
+        for name in self.beside:
+            columns[name] = "i"
+        columns["index"] = "i"
+        return self.classes, columns, self._entries(raw["archive"], split)
+
+    def _held(self, raw: bytes, member: str) -> bytes:
+        """One member of the archive, out of the archive inside it when there is one."""
+        return _member(_member(raw, self.inner) if self.inner else raw, member)
+
+    def _column(self, raw: bytes, member: str) -> list[str]:
+        """A file holding one value a line, which is how a label or a subject arrives."""
+        return [cells[0] for cells in read_table(self._held(raw, member), delimiter=None)]
+
+    def _runs(self, counted: Sequence[str]) -> list[int]:
+        """Where each class ends, from the line that says how many rows each has."""
+        if len(counted) != len(self.classes):
+            raise ValueError(
+                f"{self.label} starts by counting {len(counted)} classes, and it has "
+                f"{len(self.classes)}"
+            )
+        ends, total = [], 0
+        for count, cls in zip(counted, self.classes, strict=True):
+            total += _number(count, int, cls, 0, self.label)
+            ends.append(total)
+        return ends
+
+    def _entries(self, raw: bytes, split: str) -> Rows:
+        table = read_table(self._held(raw, self.files[split]), delimiter=None)
+        ends = self._runs(next(table, [])) if self.counts else []
+        told = self._column(raw, self.label_files[split]) if self.label_files else []
+        beside = {
+            name: self._column(raw, wheres[split]) for name, wheres in self.beside.items()
+        }
+        index = -1
+        for index, cells in enumerate(table):
+            if len(cells) != self.width + self.onehot:
+                raise ValueError(
+                    f"row {index} of {self.label} holds {len(cells)} numbers, and its rows "
+                    f"are {self.width + self.onehot} wide"
+                )
+            row: dict[str, Any] = {
+                self.column: self._values(cells[: self.width], index),
+                "index": index,
+            }
+            for name, values in beside.items():
+                row[name] = _number(self._beside(values, name, index), int, name, index, self.label)
+            which = self._which(cells, told, ends, index)
+            row["label"] = which
+            yield which, row
+        for name, values in (("labels", told), *beside.items()):
+            if values and len(values) != index + 1:
+                raise ValueError(
+                    f"{self.label} has {index + 1} rows in {split} and {len(values)} in its "
+                    f"file of {name}"
+                )
+
+    def _values(self, cells: Sequence[str], index: int) -> tuple[Any, ...]:
+        """One row's numbers, as whatever the column stores them as."""
+        numbers = tuple(_number(cell, float, self.column, index, self.label) for cell in cells)
+        return numbers if self.kind == "d" else tuple(int(number) for number in numbers)
+
+    def _beside(self, values: Sequence[str], name: str, index: int) -> str:
+        """One row's value out of a file kept beside the numbers."""
+        if index >= len(values):
+            raise ValueError(
+                f"{self.label} has more rows than the {len(values)} in its file of {name}"
+            )
+        return values[index]
+
+    def _which(
+        self, cells: Sequence[str], told: Sequence[str], ends: Sequence[int], index: int
+    ) -> int:
+        """Which class a row belongs to, however this dataset says so."""
+        if self.onehot:
+            hot = [at for at, cell in enumerate(cells[self.width :]) if float(cell)]
+            if len(hot) != 1:
+                raise ValueError(
+                    f"row {index} of {self.label} has {len(hot)} of its {self.onehot} label "
+                    f"columns set, and exactly one of them is a label"
+                )
+            return hot[0]
+        if ends:
+            for at, end in enumerate(ends):
+                if index < end:
+                    return at
+            raise ValueError(
+                f"{self.label} counts {ends[-1]} rows at the top of its file and holds more "
+                f"than that"
+            )
+        cell = self._beside(told, "labels", index)
+        if cell not in self.labels:
+            raise ValueError(
+                f"row {index} of {self.label} is labelled {cell!r}, and its classes "
+                f"are {', '.join(sorted(self.labels))}"
+            )
+        return self.labels[cell]
 
 
 _COVER_FIELDS: tuple[tuple[str, str], ...] = (
@@ -815,9 +1014,91 @@ _BEAN_FIELDS: tuple[tuple[str, str], ...] = (
     ("bean", "label"),
 )
 
+#: The words Spambase counts, in the order its own description lists them.
+#: The six punctuation counts are named rather than spelled, because a branch
+#: called ``char_freq_$`` is not a name anything downstream can use.
+_SPAM_WORDS: tuple[str, ...] = (
+    "make", "address", "all", "3d", "our", "over", "remove", "internet", "order", "mail",
+    "receive", "will", "people", "report", "addresses", "free", "business", "email", "you",
+    "credit", "your", "font", "000", "money", "hp", "hpl", "george", "650", "lab", "labs",
+    "telnet", "857", "data", "415", "85", "technology", "1999", "parts", "pm", "direct",
+    "cs", "meeting", "original", "project", "re", "edu", "table", "conference",
+)
+
+_SPAM_FIELDS: tuple[tuple[str, str], ...] = (
+    *((f"word_freq_{word}", "d") for word in _SPAM_WORDS),
+    *(
+        (f"char_freq_{name}", "d")
+        for name in ("semicolon", "bracket", "square_bracket", "exclamation", "dollar", "hash")
+    ),
+    ("capital_run_length_average", "d"),
+    ("capital_run_length_longest", "i"),
+    ("capital_run_length_total", "i"),
+    ("spam", "label"),
+)
+
+_IONOSPHERE_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (f"pulse_{at // 2 + 1}_{'real' if at % 2 == 0 else 'imaginary'}", "d")
+        for at in range(34)
+    ),
+    ("returns", "label"),
+)
+
+_GLASS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("id", "i"),
+    ("refractive_index", "d"),
+    *(
+        (name, "d")
+        for name in (
+            "sodium", "magnesium", "aluminium", "silicon",
+            "potassium", "calcium", "barium", "iron",
+        )
+    ),
+    ("kind", "label"),
+)
+
+_ABALONE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("sex", "label"),
+    *(
+        (name, "d")
+        for name in (
+            "length", "diameter", "height", "whole_weight",
+            "shucked_weight", "viscera_weight", "shell_weight",
+        )
+    ),
+    ("rings", "i"),
+)
+
+_BANKNOTE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("variance", "d"),
+    ("skewness", "d"),
+    ("kurtosis", "d"),
+    ("entropy", "d"),
+    ("authenticity", "label"),
+)
+
+_WINE_QUALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (name, "d")
+        for name in (
+            "fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides",
+            "free_sulfur_dioxide", "total_sulfur_dioxide", "density", "ph", "sulphates",
+            "alcohol",
+        )
+    ),
+    ("quality", "label"),
+)
+
+#: What the six activities a phone was told to recognise are, in the order
+#: the labels file numbers them from one.
+_HAR_ACTIVITIES: tuple[str, ...] = (
+    "walking", "walking_upstairs", "walking_downstairs", "sitting", "standing", "laying",
+)
+
 
 #: Every dataset this module knows, by the name :func:`convert` takes.
-DATASETS: dict[str, Images | CIFAR | Audio | Table] = {
+DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
     "mnist": Images(
         name="mnist",
         label="MNIST",
@@ -1078,6 +1359,154 @@ DATASETS: dict[str, Images | CIFAR | Audio | Table] = {
             "HOROZ": 4, "SIRA": 5, "DERMASON": 6,
         },
     ),
+    "miniboone": Matrix(
+        name="miniboone",
+        label="MiniBooNE",
+        title="130,064 particle-identification events measured 50 ways, signal or background",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/199/miniboone+particle+identification",
+        classes=("electron_neutrino", "muon_neutrino"),
+        basket_size=IMAGE_BASKET,
+        url="https://archive.ics.uci.edu/static/public/199/miniboone+particle+identification.zip",
+        files={"all": "MiniBooNE_PID.txt"},
+        width=50,
+        counts=True,
+    ),
+    "har": Matrix(
+        name="har",
+        label="Human Activity Recognition",
+        title="10,299 windows of phone accelerometer and gyroscope, 561 features, 6 activities",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones",
+        classes=_HAR_ACTIVITIES,
+        splits=("train", "test"),
+        basket_size=IMAGE_BASKET,
+        url=(
+            "https://archive.ics.uci.edu/static/public/240/"
+            "human+activity+recognition+using+smartphones.zip"
+        ),
+        inner="UCI HAR Dataset.zip",
+        files={split: f"UCI HAR Dataset/{split}/X_{split}.txt" for split in ("train", "test")},
+        label_files={
+            split: f"UCI HAR Dataset/{split}/y_{split}.txt" for split in ("train", "test")
+        },
+        labels={str(at + 1): at for at in range(6)},
+        beside={
+            "subject": {
+                split: f"UCI HAR Dataset/{split}/subject_{split}.txt"
+                for split in ("train", "test")
+            }
+        },
+        width=561,
+    ),
+    "semeion": Matrix(
+        name="semeion",
+        label="Semeion",
+        title="1,593 handwritten digits as 16x16 black and white, 10 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/235/semeion+handwritten+digit",
+        classes=tuple(str(digit) for digit in range(10)),
+        basket_size=IMAGE_BASKET,
+        url="https://archive.ics.uci.edu/ml/machine-learning-databases/semeion/semeion.data",
+        files={"all": ""},
+        width=256,
+        column="image",
+        kind="B",
+        onehot=10,
+    ),
+    "sms_spam": Table(
+        name="sms_spam",
+        label="SMS Spam Collection",
+        title="5,574 text messages, ham or spam",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+        classes=("ham", "spam"),
+        url="https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip",
+        member="SMSSpamCollection",
+        delimiter="\t",
+        quoted=False,
+        text_size=1024,
+        fields=(("kind", "label"), ("message", "text")),
+        labels={"ham": 0, "spam": 1},
+    ),
+    "wine_quality": Table(
+        name="wine_quality",
+        label="Wine Quality",
+        title="6,497 Portuguese wines analysed 11 ways and scored out of ten",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/186/wine+quality",
+        classes=tuple(f"quality_{score}" for score in range(3, 10)),
+        splits=("red", "white"),
+        url="https://archive.ics.uci.edu/static/public/186/wine+quality.zip",
+        files={colour: f"winequality-{colour}.csv" for colour in ("red", "white")},
+        delimiter=";",
+        header=True,
+        fields=_WINE_QUALITY_FIELDS,
+        labels={str(score): score - 3 for score in range(3, 10)},
+    ),
+    "spambase": Table(
+        name="spambase",
+        label="Spambase",
+        title="4,601 e-mails counted 57 ways, spam or not",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/94/spambase",
+        classes=("not_spam", "spam"),
+        url="https://archive.ics.uci.edu/static/public/94/spambase.zip",
+        member="spambase.data",
+        fields=_SPAM_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "ionosphere": Table(
+        name="ionosphere",
+        label="Ionosphere",
+        title="351 radar returns from the ionosphere measured 34 ways, good or bad",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/52/ionosphere",
+        classes=("good", "bad"),
+        url="https://archive.ics.uci.edu/static/public/52/ionosphere.zip",
+        member="ionosphere.data",
+        fields=_IONOSPHERE_FIELDS,
+        labels={"g": 0, "b": 1},
+    ),
+    "glass": Table(
+        name="glass",
+        label="Glass Identification",
+        title="214 fragments of glass measured 9 ways, 6 kinds",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/42/glass+identification",
+        classes=(
+            "building_windows_float", "building_windows_nonfloat", "vehicle_windows_float",
+            "containers", "tableware", "headlamps",
+        ),
+        url="https://archive.ics.uci.edu/static/public/42/glass+identification.zip",
+        member="glass.data",
+        fields=_GLASS_FIELDS,
+        labels={"1": 0, "2": 1, "3": 2, "5": 3, "6": 4, "7": 5},
+    ),
+    "abalone": Table(
+        name="abalone",
+        label="Abalone",
+        title="4,177 abalone measured 8 ways and counted for rings, 3 sexes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/1/abalone",
+        classes=("male", "female", "infant"),
+        url="https://archive.ics.uci.edu/static/public/1/abalone.zip",
+        member="abalone.data",
+        fields=_ABALONE_FIELDS,
+        labels={"M": 0, "F": 1, "I": 2},
+    ),
+    "banknote": Table(
+        name="banknote",
+        label="Banknote Authentication",
+        title="1,372 photographed banknotes measured 4 ways, 2 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/267/banknote+authentication",
+        classes=("class_0", "class_1"),
+        url="https://archive.ics.uci.edu/static/public/267/banknote+authentication.zip",
+        member="data_banknote_authentication.txt",
+        fields=_BANKNOTE_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
     "seeds": Table(
         name="seeds",
         label="Seeds",
@@ -1094,7 +1523,7 @@ DATASETS: dict[str, Images | CIFAR | Audio | Table] = {
 }
 
 
-def _spec(name: str) -> Images | CIFAR | Audio | Table:
+def _spec(name: str) -> Images | CIFAR | Audio | Matrix | Table:
     """The dataset called ``name``, or a refusal naming the ones there are."""
     spec = DATASETS.get(name)
     if spec is None:

@@ -500,10 +500,12 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of eighteen. `xrd.root.datasets` converts the sets machine
+MNIST is one of twenty-eight. `xrd.root.datasets` converts the sets machine
 learning is actually taught and benchmarked with, all of them the same way —
 one tree per class, the label beside the data, and the row's place in the
-original file so any number can be traced back to where it came from.
+original file so any number can be traced back to where it came from. What
+ships here is the converter, not the data: no dataset is redistributed in this
+repository, and `datasets/` is where the files it writes are meant to go.
 
 ```python
 from xrd.root import datasets
@@ -537,9 +539,19 @@ datasets.convert("iris", "iris.root")
 | `breast_cancer` | 569 cell-nucleus images measured 30 ways, benign or malignant | CC BY 4.0 | 111 kB |
 | `dry_bean` | 13,611 beans measured 16 ways from photographs, 7 varieties | CC BY 4.0 | 1.4 MB |
 | `seeds` | 210 wheat kernels measured 7 ways, 3 varieties | CC BY 4.0 | 18 kB |
+| `miniboone` | 130,064 particle-identification events measured 50 ways, signal or background | CC BY 4.0 | 39.8 MB |
+| `har` | 10,299 windows of phone accelerometer and gyroscope, 561 features, 6 activities | CC BY 4.0 | 40.2 MB |
+| `semeion` | 1,593 handwritten digits as 16×16 black and white, 10 classes | CC BY 4.0 | 54 kB |
+| `sms_spam` | 5,574 text messages, ham or spam | CC BY 4.0 | 337 kB |
+| `wine_quality` | 6,497 Portuguese wines analysed 11 ways and scored out of ten | CC BY 4.0 | 175 kB |
+| `spambase` | 4,601 e-mails counted 57 ways, spam or not | CC BY 4.0 | 216 kB |
+| `ionosphere` | 351 radar returns measured 34 ways, good or bad | CC BY 4.0 | 80 kB |
+| `glass` | 214 fragments of glass measured 9 ways, 6 kinds | CC BY 4.0 | 26 kB |
+| `abalone` | 4,177 abalone measured 8 ways and counted for rings, 3 sexes | CC BY 4.0 | 83 kB |
+| `banknote` | 1,372 photographed banknotes measured 4 ways, 2 classes | CC BY 4.0 | 42 kB |
 
 The last column is one file holding every split, written with the default
-`zlib`, as measured on a conversion of all eighteen — both splits of a set
+`zlib`, as measured on a conversion of all twenty-eight — both splits of a set
 that has them, a tree a class, and the `about` key beside them.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
@@ -614,6 +626,58 @@ with xrd.root.open_root("fsdd.root") as f:
         loss = criterion(model(wave * mask), ...)
 ```
 
+Some sets are neither pictures nor a table of named fields, but one long row
+of numbers an example — and those become one fixed-size column called
+`features`, which is what a training loop wants of 561 of them and what
+`iter_tensors` hands straight to a tensor. The awkward part of those sets is
+never the numbers, it is where the publisher put the labels, so all three
+places are read:
+
+```python
+datasets.convert("miniboone", "miniboone.root")
+# {'electron_neutrino': 36499, 'muon_neutrino': 93565}
+```
+
+`miniboone` is the one to point at when somebody says HEP formats are not for
+machine learning: it is a particle-identification set from a neutrino
+experiment, published for exactly this teaching purpose, and it goes back into
+a ROOT file where it started. Its file has no labels in it at all — the first
+line says `36499 93565`, meaning the first 36,499 rows are signal and the rest
+background — so the label comes from where a row lies, and a file with more
+rows than the counts promised is refused rather than labelled by guesswork.
+
+`har` keeps its labels in a file beside the numbers, inside a zip inside the
+zip, with the volunteer's number in a third file; all three are read together
+and a mismatch between their lengths is an error, not a silent truncation.
+`semeion` writes its label as ten columns at the end of each row, one of them
+set — anything other than exactly one set is refused. Its 256 pixels are 16×16
+black and white, so it reads like a smaller MNIST:
+
+```python
+with xrd.root.open_root("semeion.root") as f:
+    row = f["3"]["image"].array(0, 1)
+    for line in range(16):
+        print("".join("#" if pixel else "." for pixel in row[line * 16 : line * 16 + 16]))
+```
+
+Text works the way sound does. `sms_spam` is 5,574 messages, and since a tree
+column is a fixed size each one is written into 1,024 bytes of UTF-8 with a
+`message_length` beside it saying where the real text stops:
+
+```python
+with xrd.root.open_root("sms_spam.root") as f:
+    tree = f["spam"]
+    held, upto = bytes(tree["message"].array(0, 1)), tree["message_length"].array(0, 1)[0]
+    print(held[:upto].decode())
+# Free entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005. ...
+```
+
+That file is tab-separated, and reading it as an ordinary CSV would quietly
+change 536 of its messages and lose two rows entirely, because a message that
+opens with a quotation mark swallows everything up to the next one. English
+means its quotes literally, so `Table` sets `quoted=False` and the text
+arrives as written.
+
 The tabular sets become one column per field instead of one wide array:
 
 ```python
@@ -631,10 +695,12 @@ recorded becomes `-1`, because there is no such code.
 
 Tables do not all arrive as comma-separated files, so `Table` says which shape
 it is and the reader does the rest: `delimiter=None` splits on whitespace
-(`seeds`), `comment=` drops the lines a publisher wrote above the data
-(`adult`), `arff=True` skips everything down to the `@data` line of a Weka
-file (`dry_bean`), and `files=` picks a different member of the one archive
-for each split (`adult`, `digits`). `codes=` may name its categories as a
+(`seeds`), `delimiter=";"` with `header=True` reads the shape a spreadsheet
+exports (`wine_quality`), `comment=` drops the lines a publisher wrote above
+the data (`adult`), `arff=True` skips everything down to the `@data` line of a
+Weka file (`dry_bean`), and `files=` picks a different member of the one
+archive for each split — which need not be train and test: `wine_quality`'s
+two are `red` and `white`. `codes=` may name its categories as a
 mapping or just list them in order — `mushroom`'s 22 columns are the letters
 UCI documents, in UCI's order, so the numbers in the file mean what the
 published description says they mean.
@@ -649,9 +715,9 @@ datasets.convert("cifar100", "cifar100.root", split="test",
 
 `base=` points the downloads at a mirror of your own, and `target` may be a
 `WritableFile` already open, which is how several splits end up in one file.
-Adding a dataset of your own is an `Images`, `CIFAR`, `Audio` or `Table` in
-the registry — each is a frozen dataclass saying where the data is and what
-its fields mean, with no code to write for the common shapes.
+Adding a dataset of your own is an `Images`, `CIFAR`, `Audio`, `Matrix` or
+`Table` in the registry — each is a frozen dataclass saying where the data is
+and what its fields mean, with no code to write for the common shapes.
 
 ## Compression
 
