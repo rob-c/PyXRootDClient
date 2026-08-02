@@ -11,7 +11,7 @@ guessed at.
 
 from __future__ import annotations
 
-__all__ = ["Prim", "Str", "Seq", "Mapping", "parse", "py_name"]
+__all__ = ["Prim", "Str", "Seq", "Mapping", "Pair", "parse", "py_name"]
 
 #: Every spelling of a fundamental type ROOT writes, and what it is here.
 _PRIMS = [
@@ -93,6 +93,19 @@ class Mapping:
         return f"<Mapping {self.key!r} to {self.value!r}>"
 
 
+class Pair:
+    """``std::pair``, which comes back as the tuple it obviously is."""
+
+    __slots__ = ("first", "second")
+
+    def __init__(self, first: object, second: object) -> None:
+        self.first = first
+        self.second = second
+
+    def __repr__(self) -> str:
+        return f"<Pair of {self.first!r} and {self.second!r}>"
+
+
 _BY_NAME = {
     alias: (typename, code, size)
     for typename, code, size, aliases in _PRIMS
@@ -141,6 +154,12 @@ def parse(name: str) -> object | None:
             return None
         key, value = parse(halves[0]), parse(halves[1])
         return None if key is None or value is None else Mapping(key, value)
+    if head == "pair":
+        halves = _split(inside)
+        if halves is None:
+            return None
+        first, second = parse(halves[0]), parse(halves[1])
+        return None if first is None or second is None else Pair(first, second)
     return None
 
 
@@ -156,5 +175,7 @@ def py_name(node: object) -> str:
         return "str"
     if isinstance(node, Seq):
         return f"list[{py_name(node.item)}]"
+    if isinstance(node, Pair):
+        return f"tuple[{py_name(node.first)}, {py_name(node.second)}]"
     assert isinstance(node, Mapping)
     return f"dict[{py_name(node.key)}, {py_name(node.value)}]"

@@ -300,7 +300,9 @@ class Buffer:
         self.resume(end)
         return items
 
-    def clones(self, classes: dict[str, Any]) -> list[Any]:
+    def clones(
+        self, classes: dict[str, Any], fields: Any = None
+    ) -> list[Any]:
         """A ``TClonesArray``: many objects of one class, the class written once.
 
         ROOT keeps a pool of objects of a single class and reuses it entry
@@ -308,6 +310,12 @@ class Buffer:
         named at the front of the array rather than in front of every object.
         A byte before each object says whether that slot was ever filled; an
         empty one comes back as ``None`` rather than shifting the rest along.
+
+        An array told to bypass its streamer is written field by field instead
+        - every object's first member, then every object's second - with no
+        byte per slot, since an array written that way cannot have holes.
+        ``fields`` is asked for the members of the held class, in order, when
+        the array turns out to be one of those.
         """
         version, end = self.header()
         bits = self.tobject()[1] if version > 2 else 0
@@ -316,10 +324,25 @@ class Buffer:
         held = self.string().partition(";")[0]  # the class, and the version of it
         count, _low = abs(self.i32()), self.i32()
         if bits & BYPASS_STREAMER and not bits & NO_MEMBER_WISE:
-            raise UnsupportedFeatureError(
-                f"a TClonesArray of {held} was written field by field, which is a "
-                f"shape this reader does not decode"
-            )
+            steps = fields(held) if fields is not None else None
+            if steps is None:
+                raise UnsupportedFeatureError(
+                    f"a TClonesArray of {held} was written field by field, and this "
+                    f"file's streamer information does not describe {held} well "
+                    f"enough to read it that way"
+                )
+            rows: list[Any] = [{} for _ in range(count)]
+            for label, step in steps:
+                for row in rows:
+                    row[label] = step(self, row)
+            if end is not None and self.pos != end:
+                raise FormatError(
+                    f"a TClonesArray of {count} {held} written field by field ended "
+                    f"{abs(end - self.pos)} bytes from where it said it would, so "
+                    f"what was read out of it cannot be trusted"
+                )
+            self.resume(end)
+            return rows
         one = classes.get(held)
         if one is None:
             raise UnsupportedFeatureError(

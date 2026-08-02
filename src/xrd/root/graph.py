@@ -11,13 +11,14 @@ from __future__ import annotations
 import array
 from typing import Any
 
-from .errors import FormatError
+from .errors import FormatError, UnsupportedFeatureError
 
 __all__ = ["GRAPHS", "Graph"]
 
-#: The graph classes this reads: points, points with error bars, and points
-#: whose bars are a different length each side.
-GRAPHS = ("TGraph", "TGraphErrors", "TGraphAsymmErrors")
+#: The graph classes this reads: points, points with error bars, points whose
+#: bars are a different length each side, and points whose y errors are kept
+#: in more than one layer.
+GRAPHS = ("TGraph", "TGraphErrors", "TGraphAsymmErrors", "TGraphMultiErrors")
 
 
 def _core(row: dict[str, Any]) -> dict[str, Any] | None:
@@ -41,7 +42,8 @@ class Graph:
     ``x`` and ``y`` are :class:`array.array` of one value per point, which
     :func:`numpy.asarray` takes without copying. :attr:`xerr` and :attr:`yerr`
     are the bars either side of each point, or ``None`` for a graph written
-    without them.
+    without them; a graph keeping its errors in layers has them in
+    :attr:`layers`.
     """
 
     __slots__ = ("classname", "members", "x", "y", "_core")
@@ -88,30 +90,62 @@ class Graph:
         """Every point as a pair, which is what a graph is a picture of."""
         return list(self)
 
-    def _bars(self, axis: str) -> tuple[array.array[float], array.array[float]] | None:
-        """The bars either side along one axis, or ``None`` if there are none.
-
-        A graph whose bars are the same length both sides keeps one array and
-        that array is both sides of the point.
-        """
-        low: Any = self.members.get(f"fE{axis}low")
-        high: Any = self.members.get(f"fE{axis}high")
-        if low is None or high is None:
-            low = high = self.members.get(f"fE{axis}")
-            if low is None:
-                return None
+    def _pair(self, low: Any, high: Any) -> tuple[array.array[float], array.array[float]]:
+        """Two arrays of bars, cut to the points the graph says it has."""
         points = len(self)
         return (array.array("d", low[:points]), array.array("d", high[:points]))
+
+    def _bars(
+        self, axis: str, *spellings: tuple[str, str]
+    ) -> tuple[array.array[float], array.array[float]] | None:
+        """The bars either side along one axis, or ``None`` if there are none.
+
+        Each spelling is the pair of names one class gives the low and the
+        high bar; a graph whose bars are the same length both sides keeps a
+        single array instead, and that array is both sides of the point.
+        """
+        for below, above in spellings:
+            low, high = self.members.get(below), self.members.get(above)
+            if low is not None and high is not None:
+                return self._pair(low, high)
+        same = self.members.get(f"fE{axis}")
+        return None if same is None else self._pair(same, same)
 
     @property
     def xerr(self) -> tuple[array.array[float], array.array[float]] | None:
         """The bars left and right of each point, or ``None`` if none were kept."""
-        return self._bars("X")
+        return self._bars("X", ("fEXlow", "fEXhigh"), ("fExL", "fExH"))
+
+    @property
+    def layers(self) -> tuple[tuple[array.array[float], array.array[float]], ...]:
+        """The bars below and above each point, one pair per layer of them.
+
+        A graph told to keep its statistical and its systematic errors apart
+        keeps a layer of each, in the order they were added. An ordinary graph
+        keeps one layer, and a graph written without y errors keeps none.
+        """
+        low, high = self.members.get("fEyL"), self.members.get("fEyH")
+        if low is None or high is None:
+            bars = self._bars("Y", ("fEYlow", "fEYhigh"))
+            return () if bars is None else (bars,)
+        return tuple(self._pair(a, b) for a, b in zip(low, high, strict=True))
 
     @property
     def yerr(self) -> tuple[array.array[float], array.array[float]] | None:
-        """The bars below and above each point, or ``None`` if none were kept."""
-        return self._bars("Y")
+        """The bars below and above each point, or ``None`` if none were kept.
+
+        A graph keeping more than one layer of them refuses here rather than
+        answer with one of the layers or with a sum of them it made up: which
+        of those you want is yours to say, and :attr:`layers` has them all.
+        """
+        layers = self.layers
+        if len(layers) > 1:
+            raise UnsupportedFeatureError(
+                f"this {self.classname} keeps its y errors in {len(layers)} layers, "
+                f"which are one pair of bars only once you have said how to add them "
+                f"up; they are each of them in .layers"
+            )
+        return layers[0] if layers else None
 
     def __repr__(self) -> str:
         return f"<{self.classname} {self.name!r} of {len(self)} points>"

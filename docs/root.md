@@ -57,7 +57,11 @@ or writes the name of the class in front of them; a `TList`, `TObjArray`,
 `TClonesArray` or `TArray` member is read the way it streams itself rather than
 by the members it declares — a `TClonesArray` names the one class it holds at
 the front, and a slot never filled comes back as `None` rather than shifting
-the rest along; and a container of objects is read one object after another. A class
+the rest along; and a container of objects is read one object after another, or
+a field at a time when it was written that way — every object's first member,
+then every object's second — which is how ROOT writes a container of plain C++
+objects and a `TClonesArray` asked to bypass its streamer. A `vector` of pairs
+comes back as the list of tuples it is. A class
 inside an entry that this reader cannot walk — one the file does not describe,
 or one that streams itself some way of its own — comes back as the name of its
 class, because the length written in front of it says how to step over it
@@ -105,8 +109,8 @@ tidied away.
 
 ## Graphs
 
-A `TGraph`, `TGraphErrors` or `TGraphAsymmErrors` comes back as a `Graph`,
-which is a sequence of points:
+A `TGraph`, `TGraphErrors`, `TGraphAsymmErrors` or `TGraphMultiErrors` comes
+back as a `Graph`, which is a sequence of points:
 
 ```python
 g = f["tge"]
@@ -122,6 +126,16 @@ below, above = g.yerr             # the bars either side, or None if none were k
 graph whose bars are symmetric and one whose are not — a graph that kept one
 array for both sides gives that array twice. A `TGraph` proper kept none, and
 both are `None`.
+
+A `TGraphMultiErrors` keeps its y errors in layers — statistical and
+systematic, say — and `g.layers` is those pairs of bars in the order they were
+added. Asking such a graph for `yerr` raises rather than picking a layer or
+summing them for you, because how to combine them is physics, not format. For
+every other graph `layers` is simply `(yerr,)`, or `()` when none were kept.
+
+A graph or histogram met *inside* another object — in the list a `TMultiGraph`
+keeps, behind a pointer in a `TEfficiency` — comes back as a `Graph` or
+`Histogram` too, the same as it would standing in a key of its own.
 
 ## Columns
 
@@ -350,9 +364,15 @@ What is named that way:
   last and there is no length in front of a member to step over it by;
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;
-- a container, or a `TClonesArray`, written field by field rather than value
-  by value;
+- a `pair` anywhere but directly under its own container, and a container of
+  pairs written pair by pair, neither of which any file this reader has met
+  writes;
+- a graph of layered y errors asked for `yerr`, because summing the layers
+  would be an answer this reader made up;
 - trees written by ROOT 3 or older.
+
+A class the file describes as having no members at all — `TLimit` is one —
+reads as the empty `dict` it honestly is, rather than being refused.
 
 ## Errors
 

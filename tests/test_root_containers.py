@@ -18,9 +18,9 @@ import pytest
 
 from xrd.root import FormatError, UnsupportedFeatureError, open_root
 from xrd.root.buffer import BYTE_COUNT_MASK, Buffer
-from xrd.root.cxx import Mapping, Prim, Seq, Str, parse, py_name
+from xrd.root.cxx import Mapping, Pair, Prim, Seq, Str, parse, py_name
 from xrd.root.file import Source
-from xrd.root.interp import KINDS, Flat, Refused, Rows, Values, _packed, _range, build
+from xrd.root.interp import KINDS, Flat, Refused, Rows, Values, _fields, _packed, _range, build
 from xrd.root.objects import (
     BranchRecord,
     LeafRecord,
@@ -142,7 +142,29 @@ def test_a_name_this_reader_has_no_idea_about_is_no_type_at_all():
     assert parse("map<int>") is None
     assert parse("map<int,TLorentzVector>") is None
     assert parse("map<TLorentzVector,int>") is None
-    assert parse("pair<int,int>") is None
+    assert parse("pair<int>") is None
+    assert parse("pair<int,TLorentzVector>") is None
+
+
+def test_a_pair_is_the_tuple_it_obviously_is():
+    node = parse("pair<int,double>")
+    assert isinstance(node, Pair)
+    assert repr(node) == "<Pair of <Prim int32> and <Prim float64>>"
+    assert py_name(parse("vector<pair<int,double> >")) == "list[tuple[int32, float64]]"
+
+
+def test_a_pair_anywhere_but_under_its_own_container_is_refused():
+    assert "a pair standing on its own" in column_of("pair<int,int>").reason
+    assert "a pair holding a container" in column_of("vector<pair<int,vector<int> > >").reason
+    assert "below the top of its container" in column_of("vector<vector<pair<int,int> > >").reason
+
+
+def test_the_members_of_a_class_that_cannot_be_walked_are_no_fields_at_all():
+    """``None`` from :func:`_fields` is what refuses field-by-field data."""
+    assert _fields("TArrayD", Nothing(), ()) is None  # streams itself instead
+    described = Layout(Widget=declared("w", 999, "Mystery"))
+    assert _fields("Widget", described, ()) is None
+    assert _fields("Widget", Nothing(), ()) is None
 
 
 def test_the_pieces_of_a_type_say_what_they_are():

@@ -32,13 +32,13 @@ somebody else's writer produced.
 | `stdvec-bool-fullsplit-6.10.08.root` | `std::vector<bool>`, which is a byte per element and not a bit |
 | `graphs.root` | a graph, one with error bars and one whose bars differ each side |
 | `tclonesarray-no-streamerbypass.root` | a `TClonesArray`, which names the one class it holds at the front |
-| `tclonesarray-with-streamerbypass.root` | the same array written field by field, which is refused |
+| `tclonesarray-with-streamerbypass.root` | the same array written field by field, read back a field at a time |
 | `gauss-h1.root` | one-dimensional histograms, evenly binned and with every edge written out |
 | `gauss-h2.root` | two-dimensional histograms, for the order the bins are written in |
 | `streamers.root` | objects held by pointer, arrays of them, and the class names written in front |
-| `tconfidence-level.root` | a `TObjArray` member, and two classes this reader refuses by name |
+| `tconfidence-level.root` | a `TObjArray` member, a class of no members at all, and a `vector<pair<double,double>>` |
 | `tformula.root` | a `vector<TF1*>`, and a member of a class no reader here can walk |
-| `tgme.root` | a container written field by field, which is refused rather than guessed at |
+| `tgme.root` | a `TGraphMultiErrors` whose containers are written field by field |
 
 go-hep is BSD-3-Clause; the licence is in `LICENSE.go-hep` next to these
 files, and it is the whole of what is required to redistribute them.

@@ -113,7 +113,10 @@ STL containers, `std::map`, both kinds of string and the packed
 `Double32_t`/`Float16_t` floats are read, under every compression ROOT
 writes. So are the objects beside the tree: a `TH1`, `TH2` or `TH3` comes back
 as a `Histogram`, with its bins, edges and errors where you would look for
-them, and a graph as a `Graph` you can walk a point at a time. The few columns this reader will not decode are listed with the
+them, and a graph — layered error bars and all — as a `Graph` you can walk a
+point at a time, inside another object as well as in a key. Containers written
+field by field, `TClonesArray` however it was told to write itself, and
+`vector<pair>` all read back as what they are. The few columns this reader will not decode are listed with the
 reason rather than silently missing, because a plausible misreading of
 physics data is worse than a refusal.
 
@@ -236,7 +239,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader are implemented and tested —
-2659 tests, of which the great majority need no network, no KDC and no
+2675 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

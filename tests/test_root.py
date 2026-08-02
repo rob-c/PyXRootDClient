@@ -32,10 +32,19 @@ from xrd.root import (
 )
 from xrd.root.buffer import BYTE_COUNT_MASK, CLASS_MASK, MAP_OFFSET, NEW_CLASS_TAG, Buffer
 from xrd.root.compression import _lz4, algorithm, decompress
+from xrd.root.cxx import parse
 from xrd.root.file import Source, _directory_record
 from xrd.root.graph import Graph
 from xrd.root.hist import Histogram
-from xrd.root.interp import Refused, _class_held, _Described, build
+from xrd.root.interp import (
+    MEMBER_WISE,
+    Refused,
+    _class_held,
+    _Described,
+    _objects,
+    _sequence,
+    build,
+)
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
 from xrd.root.streamers import Member
 from xrd.root.tree import Basket
@@ -767,10 +776,37 @@ def test_an_array_of_numbers_standing_on_its_own_is_read_as_numbers():
     assert keyed(payload, "TArrayD", {})["thing"] == array.array("d", [1.5, 2.5])
 
 
-def test_an_array_of_one_class_written_field_by_field_is_refused():
-    with opened("tclonesarray-with-streamerbypass") as root:
-        with pytest.raises(UnsupportedFeatureError, match="TObjString was written field by field"):
-            root["clones"]
+def test_an_array_of_one_class_written_field_by_field_reads_the_same_either_way():
+    """The twin files hold the same three objects, one written each way."""
+    with opened("tclonesarray-no-streamerbypass") as plain:
+        with opened("tclonesarray-with-streamerbypass") as bypass:
+            assert bypass["clones"] == plain["clones"]
+
+
+def bypass_bytes(*, count: int = 2, tail: bytes = b"") -> bytes:
+    """A ``TClonesArray`` whose objects were written field by field."""
+    body = struct.pack(">HII", 1, 0, 1 << 12) + tstring("arr")
+    body += tstring("Thing;1") + struct.pack(">ii", count, 0) + tail
+    return record(4, body)
+
+
+def test_an_array_written_field_by_field_reads_every_first_field_then_every_second():
+    steps = [("a", lambda buf, row: buf.u8()), ("b", lambda buf, row: buf.u8())]
+    held = Buffer(bypass_bytes(tail=bytes([1, 2, 3, 4]))).clones({}, lambda name: steps)
+    assert held == [{"a": 1, "b": 3}, {"a": 2, "b": 4}]
+
+
+def test_an_array_written_field_by_field_of_an_undescribed_class_is_refused():
+    with pytest.raises(UnsupportedFeatureError, match="field by field, and this file"):
+        Buffer(bypass_bytes()).clones({})
+    with pytest.raises(UnsupportedFeatureError, match="describe Thing well enough"):
+        Buffer(bypass_bytes()).clones({}, lambda name: None)
+
+
+def test_an_array_written_field_by_field_that_ends_elsewhere_is_not_trusted():
+    steps = [("a", lambda buf, row: buf.u8())]
+    with pytest.raises(FormatError, match="cannot be trusted"):
+        Buffer(bypass_bytes(tail=bytes([1, 2, 3]))).clones({}, lambda name: steps)
 
 
 def test_an_array_of_a_class_this_file_does_not_describe_is_refused_by_name():
@@ -805,10 +841,23 @@ def test_an_array_of_objects_that_streams_itself_is_read_by_its_own_kind():
             "fDummyTA",
             "fDummyIds",
         ]
-        with pytest.raises(UnsupportedFeatureError, match="does not describe its layout"):
-            root["limit"]
-        with pytest.raises(UnsupportedFeatureError, match="fBeta_bin_params"):
-            root["eff"]
+
+
+def test_a_class_the_file_describes_as_having_no_members_reads_as_nothing():
+    """``TLimit`` computes and keeps nothing; the file says so, and so does this."""
+    with opened("tconfidence-level") as root:
+        assert root["limit"] == {}
+
+
+def test_a_container_of_pairs_is_a_list_of_tuples():
+    """gen-tconflvl.go set bins 1 and 2 of ``fBeta_bin_params`` and left the rest."""
+    with opened("tconfidence-level") as root:
+        eff = root["eff"]
+        params = eff["fBeta_bin_params"]
+        assert len(params) == 22  # twenty bins and the flow either side
+        assert params[:3] == [(1.0, 1.0), (1.0, 2.0), (2.0, 3.0)]
+        assert set(params[3:]) == {(1.0, 1.0)}
+        assert eff["fPassedHistogram"].name == "eff_passed"  # a histogram anywhere is one
 
 
 def test_a_container_of_objects_is_read_one_object_after_another():
@@ -829,10 +878,85 @@ def test_a_member_of_a_class_this_reader_cannot_walk_comes_back_as_its_name():
         assert list(formula["fParErrors"]) == [0.0, 0.0]
 
 
-def test_a_container_of_objects_written_field_by_field_is_refused():
+def test_a_container_written_field_by_field_is_read_a_field_at_a_time():
+    """Every value gen-tgme.go wrote with C++ ROOT, including the member-wise ones."""
     with opened("tgme") as root:
-        with pytest.raises(UnsupportedFeatureError, match="written field by field"):
-            root["gme"]
+        gme = root["gme"]
+        assert list(gme) == [(0.0, 0.0), (1.0, 2.0), (2.0, 4.0), (3.0, 1.0), (4.0, 3.0)]
+        low, high = gme.xerr
+        assert list(low) == [0.3] * 5 == list(high)
+        stat, syst = gme.layers
+        assert [list(side) for side in stat] == [[1, 0.5, 1, 0.5, 1], [0.5, 1, 0.5, 1, 2]]
+        assert [list(side) for side in syst] == [
+            [0.5, 0.4, 0.8, 0.3, 1.2],
+            [0.6, 0.7, 0.6, 0.4, 0.8],
+        ]
+        #: ``fAttLine`` is a ``vector<TAttLine>``, written all colors then all styles.
+        assert [line["fLineColor"] for line in gme.members["fAttLine"]] == [632, 600]
+
+
+def test_a_graph_of_layered_errors_will_not_pick_a_layer_for_you():
+    with opened("tgme") as root:
+        gme = root["gme"]
+        with pytest.raises(UnsupportedFeatureError, match="2 layers"):
+            assert gme.yerr
+
+
+def test_the_layers_of_an_ordinary_graph_are_its_bars_or_nothing():
+    with opened("graphs") as root:
+        assert root["tg"].layers == ()
+        tge = root["tge"]
+        assert tge.layers == (tge.yerr,)
+
+
+def test_a_key_of_a_class_holding_what_cannot_be_walked_is_refused_by_member():
+    classes = {"Widget": {"w": Member("w", "", 999, "Mystery", 1, "")}}
+    with pytest.raises(UnsupportedFeatureError, match="it holds 'w'"):
+        keyed(record(1), "Widget", classes)["thing"]
+
+
+def test_a_container_of_a_described_class_reads_field_by_field_too():
+    """The class version leads, and one written without a version leaves a checksum."""
+    steps = [("a", lambda buf, row: buf.u8()), ("b", lambda buf, row: buf.u8())]
+    read = _objects(lambda buf: {}, steps)
+    versioned = struct.pack(">hi", 2, 2) + bytes([1, 2, 3, 4])
+    summed = struct.pack(">hIi", 0, 0xD00DAD, 2) + bytes([1, 2, 3, 4])
+    for body in (versioned, summed):
+        rows = read(Buffer(record(MEMBER_WISE | 1, body)))
+        assert rows == [{"a": 1, "b": 3}, {"a": 2, "b": 4}]
+
+
+def test_a_container_read_field_by_field_that_ends_elsewhere_is_not_trusted():
+    steps = [("a", lambda buf, row: buf.u8())]
+    body = struct.pack(">hi", 2, 2) + bytes([1, 2, 3])
+    with pytest.raises(FormatError, match="cannot be trusted"):
+        _objects(lambda buf: {}, steps)(Buffer(record(MEMBER_WISE | 1, body)))
+
+
+def test_a_container_of_pointers_written_field_by_field_is_refused():
+    with pytest.raises(UnsupportedFeatureError, match="container of pointers"):
+        _objects(lambda buf: {})(Buffer(record(MEMBER_WISE | 1)))
+
+
+def test_a_container_of_pairs_written_pair_by_pair_is_refused():
+    read = _sequence(parse("pair<char,char>"))
+    pairs = struct.pack(">hI", 1, 2) + bytes([1, 2, 3, 4])
+    assert read(Buffer(record(MEMBER_WISE | 9, pairs))) == [(1, 3), (2, 4)]
+    with pytest.raises(UnsupportedFeatureError, match="pair by pair"):
+        read(Buffer(record(9)))
+    body = struct.pack(">hI", 1, 2) + bytes([1, 2, 3, 4, 5])
+    with pytest.raises(FormatError, match="cannot be trusted"):
+        read(Buffer(record(MEMBER_WISE | 9, body)))
+
+
+def test_a_graph_or_histogram_inside_another_object_is_still_one():
+    """A ``TMultiGraph`` is not wrapped, but everything it holds comes back dressed."""
+    with opened("tgme") as root:
+        multi = root["mg"]
+        held = multi["fGraphs"]
+        assert [one.classname for one in held] == ["TGraph", "TGraphErrors", "TGraphAsymmErrors"]
+        assert len(held[0]) == 5
+        assert multi["fHistogram"].classname == "TH1F"  # the frame its fit drew
 
 
 def test_a_class_the_file_says_nothing_about_is_stepped_over_inside_a_list():

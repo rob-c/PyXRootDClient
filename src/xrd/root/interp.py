@@ -19,8 +19,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from .buffer import Buffer, as_datetime, to_native
-from .cxx import SEQUENCES, Mapping, Prim, Seq, Str, parse, py_name
+from .cxx import SEQUENCES, Mapping, Pair, Prim, Seq, Str, parse, py_name
 from .errors import FormatError, UnsupportedFeatureError
+from .graph import GRAPHS, Graph
+from .hist import HISTOGRAMS, Histogram
 
 if TYPE_CHECKING:
     from .file import Source
@@ -76,6 +78,11 @@ ARRAYS = {
     "TArrayF": Prim("float32", "f", 4),
     "TArrayD": Prim("float64", "d", 8),
 }
+
+#: Everything above, which writes itself its own way: what the file says its
+#: members are would not read one of these, and neither would reading it a
+#: member at a time.
+SELF_STREAMING = frozenset(LISTS + OBJECT_ARRAYS + CLONES + tuple(ARRAYS))
 
 #: The two bases ROOT gives its own classes, which stream themselves rather
 #: than being written out the way the streamer information describes them.
@@ -306,7 +313,27 @@ def _member_string(buf: Buffer) -> str:
 
 def _sequence(item: Any) -> Callable[[Buffer], Any]:
     def read(buf: Buffer) -> Any:
-        version, _end = buf.header()
+        version, end = buf.header()
+        if isinstance(item, Pair):
+            # A container of pairs is written like a map that is not one: all
+            # the firsts in a block, then all the seconds.
+            if not version & MEMBER_WISE:
+                raise UnsupportedFeatureError(
+                    "this container of pairs was written pair by pair, which this "
+                    "reader has never seen a file do and will not decode on a guess"
+                )
+            if buf.i16() <= 0:
+                buf.u32()  # a pair has no version of its own, only a checksum
+            count = buf.u32()
+            firsts = _block(item.first, buf, count)
+            seconds = _block(item.second, buf, count)
+            if end is not None and buf.pos != end:
+                raise FormatError(
+                    f"a container of {count} pairs ended {abs(end - buf.pos)} bytes "
+                    f"from where it said it would, so what was read out of it "
+                    f"cannot be trusted"
+                )
+            return list(zip(firsts, seconds, strict=True))
         if version & MEMBER_WISE:
             raise UnsupportedFeatureError(
                 "this container was written field by field, which happens for a "
@@ -325,7 +352,7 @@ def _mapping(node: Mapping) -> Callable[[Buffer], Any]:
                 "this map was written pair by pair, which this reader has never "
                 "seen a file do and will not decode on a guess"
             )
-        if buf.u16() == 0:
+        if buf.i16() <= 0:
             buf.u32()  # a class with no version of its own says so with a checksum
         count = buf.u32()
         keys = _block(node.key, buf, count)
@@ -342,6 +369,8 @@ def _nested(node: Any) -> str:
     """Why a type below the top of an entry cannot be read, if it cannot."""
     if isinstance(node, Mapping):
         return "a map inside another container, which no file this reader has met writes"
+    if isinstance(node, Pair):
+        return "a pair below the top of its container, which no file this reader has met writes"
     if isinstance(node, Seq):
         return _nested(node.item)
     return ""
@@ -349,10 +378,17 @@ def _nested(node: Any) -> str:
 
 def _unusable(node: Any) -> str:
     """Why a whole column cannot be read, if it cannot."""
+    if isinstance(node, Pair):
+        return "a pair standing on its own, which no file this reader has met writes"
     if isinstance(node, Mapping):
         if not isinstance(node.key, Prim | Str):
             return "a map keyed by a container, which is not a thing a dict can be keyed by"
         return _nested(node.value)
+    if isinstance(node, Seq) and isinstance(node.item, Pair):
+        pair = node.item
+        if not isinstance(pair.first, Prim | Str) or not isinstance(pair.second, Prim | Str):
+            return "a pair holding a container, which no file this reader has met writes"
+        return ""
     return _nested(node)
 
 
@@ -561,10 +597,26 @@ class _Described(dict[str, Any]):
     def get(self, name: str, default: Any = None) -> Any:
         if name not in self:
             try:
-                self[name] = _embedded(name, self.source, self.seen)
+                self[name] = _shown(name, _embedded(name, self.source, self.seen))
             except _Unreadable:
                 self[name] = default
         return self[name]
+
+
+def _shown(name: str, read: Callable[[Buffer], Any]) -> Callable[[Buffer], Any]:
+    """The face a class shows when it stands on its own.
+
+    A graph or a histogram met inside another object - in a list a
+    ``TMultiGraph`` keeps, say - comes back as the same class it would be as a
+    key of the file. Only an object that names its own class is dressed up
+    like this: a base written into a derived object stays a plain ``dict``,
+    because the members of the derived class count on reaching into it.
+    """
+    if name in GRAPHS:
+        return lambda buf: Graph(name, read(buf))
+    if name in HISTOGRAMS:
+        return lambda buf: Histogram(name, read(buf))
+    return read
 
 
 def _embedded(name: str, source: Source, seen: tuple[str, ...]) -> Callable[[Buffer], Any]:
@@ -583,11 +635,24 @@ def _embedded(name: str, source: Source, seen: tuple[str, ...]) -> Callable[[Buf
         return lambda buf: buf.objarray(held)
     if name in CLONES:
         pool = _Described(source, seen)
-        return lambda buf: buf.clones(pool)
+        return lambda buf: buf.clones(pool, lambda held: _fields(held, source, seen))
     if name in ARRAYS:
         prim = ARRAYS[name]
         return lambda buf: _numbers(prim, None, buf, buf.i32())
     return _streamed(_members(name, source, seen))
+
+
+def _fields(name: str, source: Source, seen: tuple[str, ...]) -> list[tuple[str, Step]] | None:
+    """The members of one class in order, or ``None`` for a class that has no
+    such list - because it streams itself, or because the file does not
+    describe it - which is the sign that field-by-field data cannot be read.
+    """
+    if name in SELF_STREAMING:
+        return None
+    try:
+        return _steps(name, source, seen)
+    except _Unreadable:
+        return None
 
 
 def _class_held(typename: str) -> tuple[str, bool] | None:
@@ -606,17 +671,51 @@ def _class_held(typename: str) -> tuple[str, bool] | None:
     return inside.rstrip("*").strip(), inside.endswith("*")
 
 
-def _objects(one: Callable[[Buffer], Any]) -> Callable[[Buffer], list[Any]]:
+def _field_by_field(
+    buf: Buffer, end: int | None, fields: list[tuple[str, Step]]
+) -> list[dict[str, Any]]:
+    """A container written a member at a time rather than an object at a time.
+
+    Every object's first member comes first, then every object's second, and
+    so on, with the version of the class written once at the front instead of
+    in front of each object. Reading it back is the same steps in the same
+    order, only turned inside out.
+
+    The record says how long it is, so a shape read wrongly lands somewhere
+    other than the end of it; that is checked here rather than trusted, since
+    a plausible misreading of somebody's data is worse than a refusal.
+    """
+    version = buf.i16()  # of the class held, once for the lot of them
+    if version <= 0:
+        buf.u32()  # ... or a checksum of it, for a class that carries no version
+    rows: list[dict[str, Any]] = [{} for _ in range(buf.i32())]
+    for label, step in fields:
+        for row in rows:
+            row[label] = step(buf, row)
+    if end is not None and buf.pos != end:
+        raise FormatError(
+            f"a container of {len(rows)} written field by field ended "
+            f"{abs(end - buf.pos)} bytes from where it said it would, so what was "
+            f"read out of it cannot be trusted"
+        )
+    return rows
+
+
+def _objects(
+    one: Callable[[Buffer], Any], fields: list[tuple[str, Step]] | None = None
+) -> Callable[[Buffer], list[Any]]:
     """A container of whole objects, each written the way its own class is."""
 
     def read(buf: Buffer) -> list[Any]:
-        version, _end = buf.header()
-        if version & MEMBER_WISE:
+        version, end = buf.header()
+        if not version & MEMBER_WISE:
+            return [one(buf) for _ in range(buf.u32())]
+        if fields is None:
             raise UnsupportedFeatureError(
                 "this container was written field by field, which happens for a "
-                "container of C++ objects and is not a shape this reader decodes"
+                "container of pointers and is not a shape this reader decodes"
             )
-        return [one(buf) for _ in range(buf.u32())]
+        return list(_field_by_field(buf, end, fields))
 
     return read
 
@@ -758,21 +857,21 @@ def _step(
         if pointed:
             classes = _Described(source, seen)
             return _plainly(_objects(lambda buf: buf.any(classes)))
-        return _plainly(_objects(_embedded(name, source, seen)))
+        # A class the file describes can also be written field by field; one
+        # that streams itself, such as a TArrayD, only ever comes whole.
+        return _plainly(_objects(_embedded(name, source, seen), _fields(name, source, seen)))
     raise _Unreadable(
         f"{member.name!r}, which is {KINDS.get(member.stype, 'of a kind')} that "
         f"this reader does not decode inside an entry"
     )
 
 
-def _members(
-    name: str, source: Source, seen: tuple[str, ...] = ()
-) -> Callable[[Buffer], dict[str, Any]]:
-    """How every member of one class reads, in the order the class declares."""
+def _steps(name: str, source: Source, seen: tuple[str, ...] = ()) -> list[tuple[str, Step]]:
+    """Every member of one class, in the order the class declares them."""
     if name in seen:
         raise _Unreadable(f"{name}, which is written inside itself")
     described = source.streamers().get(name)
-    if not described:
+    if described is None:
         raise _Unreadable(
             f"a member of type {name or 'with no name'}, which this file's streamer "
             f"information does not describe"
@@ -785,6 +884,14 @@ def _members(
             for inner in source.streamers().get(member.name) or ():
                 before[inner] = (member.name, inner)
         before[member.name] = (member.name,)
+    return steps
+
+
+def _members(
+    name: str, source: Source, seen: tuple[str, ...] = ()
+) -> Callable[[Buffer], dict[str, Any]]:
+    """How every member of one class reads, in the order the class declares."""
+    steps = _steps(name, source, seen)
 
     def read(buf: Buffer) -> dict[str, Any]:
         row: dict[str, Any] = {}
@@ -810,7 +917,7 @@ def _whole(name: str, source: Source, streamed: bool = False, named: bool = Fals
     """
     if name == "TDatime":  # its word is the whole entry, with no record round it
         return Values("datetime", _named(name, _datime) if named else _datime)
-    if not source.streamers().get(name):
+    if source.streamers().get(name) is None:
         return Refused(
             f"{name or 'an unnamed type'}, which is a C++ type this reader does not "
             f"decode: this file's streamer information does not describe its layout, "
@@ -843,7 +950,7 @@ def whole_object(name: str, source: Source) -> Values | Refused:
     if name in LISTS + OBJECT_ARRAYS + CLONES:
         # A collection streams itself, so the file describing it would not help.
         return Values("list", _embedded(name, source, ()))
-    if not source.streamers().get(name):
+    if source.streamers().get(name) is None:
         return Refused("this file's streamer information does not describe its layout")
     try:
         return Values("dict", _streamed(_members(name, source)))
