@@ -19,9 +19,9 @@ same statement in an ``about`` key, so a file that outlives this program still
 says where it came from.
 
 Every archive is read with the standard library and nothing else - IDX, tar,
-zip, gzip and CSV. The CIFAR sets are taken in their binary distribution
-rather than the Python one on purpose: that one is a pickle, and unpickling a
-download is a way to run somebody else's code.
+zip, gzip, WAV, ARFF and CSV. The CIFAR sets are taken in their binary
+distribution rather than the Python one on purpose: that one is a pickle, and
+unpickling a download is a way to run somebody else's code.
 """
 
 from __future__ import annotations
@@ -31,8 +31,9 @@ import gzip
 import io
 import struct
 import tarfile
+import wave
 import zipfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from math import nan
 from typing import Any
@@ -49,12 +50,14 @@ __all__ = [
     "IMAGE_BASKET",
     "MISSING",
     "TABLE_BASKET",
+    "Audio",
     "Dataset",
     "Images",
     "Table",
     "convert",
     "describe",
     "fetch",
+    "read_arff",
     "read_idx",
     "read_table",
 ]
@@ -137,14 +140,45 @@ def read_idx(raw: bytes) -> tuple[tuple[int, ...], bytes]:
     return shape, values
 
 
-def read_table(raw: bytes, *, delimiter: str = ",", header: bool = False) -> Iterator[list[str]]:
-    """Every row of a delimited text file, as stripped strings, blanks dropped."""
-    rows = csv.reader(io.StringIO(raw.decode("utf-8-sig")), delimiter=delimiter)
+def read_table(
+    raw: bytes, *, delimiter: str | None = ",", header: bool = False, comment: str = ""
+) -> Iterator[list[str]]:
+    """Every row of a delimited text file, as stripped strings, blanks dropped.
+
+    ``delimiter`` is what separates the fields, or ``None`` for any run of
+    whitespace, which is how the older sets are written. ``header`` drops the
+    first line, and ``comment`` drops every line that starts with it.
+    """
+    text = io.StringIO(raw.decode("utf-8-sig"))
+    rows: Iterator[list[str]] = (
+        (line.split() for line in text)
+        if delimiter is None
+        else csv.reader(text, delimiter=delimiter)
+    )
     if header:
         next(rows, None)
     for row in rows:
-        if any(cell.strip() for cell in row):
+        if any(cell.strip() for cell in row) and not (comment and row[0].startswith(comment)):
             yield [cell.strip() for cell in row]
+
+
+def read_arff(raw: bytes) -> Iterator[list[str]]:
+    """The rows of an ARFF file's ``@data`` section, its header and comments gone.
+
+    ARFF is what Weka wrote and half of UCI still publishes: a header of
+    ``@attribute`` lines saying what the columns are, then ``@data`` and a
+    comma-separated table. The header is documentation - what the columns
+    actually hold is declared in :attr:`Table.fields` - so only the rows come
+    back.
+    """
+    lines = raw.decode("utf-8-sig").splitlines()
+    for at, line in enumerate(lines):
+        if line.strip().lower().startswith("@data"):
+            return read_table("\n".join(lines[at + 1 :]).encode(), comment="%")
+    raise ValueError(
+        "this is not an ARFF file: one has a @data line and its rows after it, "
+        "and this has no @data line at all"
+    )
 
 
 def fetch(source: Any, *, config: Any = None) -> bytes:
@@ -188,6 +222,13 @@ def _number(cell: str, cast: Any, name: str, index: int, label: str) -> Any:
         raise ValueError(
             f"row {index} of {label} has {cell!r} in {name}, which is not a number"
         ) from None
+
+
+def _numbered(kinds: Mapping[str, int] | Sequence[str]) -> Mapping[str, int]:
+    """A field's categories as name to code, however they were written down."""
+    if isinstance(kinds, Mapping):
+        return kinds
+    return {name: at for at, name in enumerate(kinds)}
 
 
 def _tidy(text: str) -> tuple[str, ...]:
@@ -243,8 +284,10 @@ class Dataset:
 class Images(Dataset):
     """An image set in IDX format: MNIST, and the two sets built to replace it."""
 
-    #: Where the four files are served from.
-    base: str
+    #: Where the four files are served from, when they are served separately.
+    base: str = ""
+    #: The one archive holding them, when they are not.
+    archive: str = ""
     #: Which two of them each split is, images first.
     files: Mapping[str, tuple[str, str]] = field(default_factory=lambda: IDX_FILES)
     #: How wide and tall one picture is.
@@ -253,7 +296,9 @@ class Images(Dataset):
     shade: str = "greyscale"
 
     def urls(self, split: str) -> dict[str, str]:
-        """The images and the labels of one split."""
+        """The images and the labels of one split, or the archive holding both."""
+        if self.archive:
+            return {"archive": self.archive}
         images, labels = self.files[split]
         return {"images": self.base + images, "labels": self.base + labels}
 
@@ -263,6 +308,10 @@ class Images(Dataset):
 
     def rows(self, raw: Mapping[str, bytes], split: str) -> Loaded:
         """The pixels and the labels, checked against each other."""
+        if self.archive:
+            pictures, names = self.files[split]
+            held = raw["archive"]
+            raw = {"images": _member(held, pictures), "labels": _member(held, names)}
         shape, pixels = read_idx(raw["images"])
         counts, labels = read_idx(raw["labels"])
         if len(shape) != 3 or shape[1:] != (self.side, self.side):
@@ -378,6 +427,116 @@ def _extract(tar: tarfile.TarFile, held: Mapping[str, Any], member: str) -> byte
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class Audio(Dataset):
+    """Recordings in an archive of WAV files, one clip an entry.
+
+    A tree column holds a fixed number of values, so every clip is written
+    into one :attr:`samples` long and the ``length`` column says how much of
+    it is real - the rest is silence this module put there. Nothing is
+    resampled, mixed down or trimmed: a clip that is not what :attr:`rate`
+    says, or is longer than the column, is refused by name.
+    """
+
+    #: The archive holding the recordings.
+    archive: str
+    #: The folder inside it they are in.
+    folder: str
+    #: What the first part of a file name means, as an index into
+    #: :attr:`~Dataset.classes`.
+    labels: Mapping[str, int]
+    #: Who is speaking, in code order, when the file names say. A speaker
+    #: nobody wrote down is refused rather than numbered on the spot.
+    speakers: tuple[str, ...] = ()
+    #: How many samples a second every recording must be.
+    rate: int = 8000
+    #: How long the column is. A clip is padded to it, never cut down to it.
+    samples: int = 20000
+
+    def urls(self, split: str) -> dict[str, str]:
+        """The single archive, whichever split was asked for."""
+        return {"archive": self.archive}
+
+    def entry_title(self, split: str, cls: str) -> str:
+        return (
+            f"{self.label} recordings of class {cls}, {self.rate} Hz mono, "
+            f"{self.samples} samples an entry"
+        )
+
+    def rows(self, raw: Mapping[str, bytes], split: str) -> Loaded:
+        """The recordings under the folder, in name order, and their columns."""
+        archive = zipfile.ZipFile(io.BytesIO(raw["archive"]))
+        try:
+            held = sorted(
+                name
+                for name in archive.namelist()
+                if name.endswith(".wav") and self.folder in name.split("/")[:-1]
+            )
+            if not held:
+                raise ValueError(
+                    f"this archive has no .wav files in a {self.folder!r} folder, and that "
+                    f"is where {self.label} keeps its recordings"
+                )
+            columns: dict[str, Any] = {"audio": ("h", self.samples), "length": "i", "label": "i"}
+            if self.speakers:
+                columns["speaker"] = "i"
+            columns["index"] = "i"
+        except Exception:
+            archive.close()
+            raise
+        return self.classes, columns, self._entries(archive, held)
+
+    def _entries(self, archive: zipfile.ZipFile, held: Sequence[str]) -> Rows:
+        speakers = {name: at for at, name in enumerate(self.speakers)}
+        try:
+            for index, path in enumerate(held):
+                stem = path.rsplit("/", 1)[-1][: -len(".wav")]
+                parts = stem.split("_")
+                if parts[0] not in self.labels:
+                    raise ValueError(
+                        f"{stem} of {self.label} is labelled {parts[0]!r}, and its classes "
+                        f"are {', '.join(sorted(self.labels))}"
+                    )
+                which = self.labels[parts[0]]
+                values, count = self._clip(archive.read(path), stem)
+                row: dict[str, Any] = {
+                    "audio": values,
+                    "length": count,
+                    "label": which,
+                    "index": index,
+                }
+                if self.speakers:
+                    who = parts[1] if len(parts) > 1 else ""
+                    if who not in speakers:
+                        raise ValueError(
+                            f"{stem} of {self.label} is spoken by {who!r}, and the speakers "
+                            f"it knows are {', '.join(self.speakers)}"
+                        )
+                    row["speaker"] = speakers[who]
+                yield which, row
+        finally:
+            archive.close()
+
+    def _clip(self, raw: bytes, stem: str) -> tuple[tuple[int, ...], int]:
+        """One recording's samples, padded out to the width of the column."""
+        with wave.open(io.BytesIO(raw)) as clip:
+            spoken = (clip.getnchannels(), clip.getsampwidth(), clip.getframerate())
+            if spoken != (1, 2, self.rate):
+                channels, width, rate = spoken
+                raise ValueError(
+                    f"{stem} of {self.label} is {channels}-channel {8 * width}-bit at "
+                    f"{rate} Hz, and these recordings are mono 16-bit at {self.rate} Hz"
+                )
+            frames = clip.readframes(clip.getnframes())
+        count = len(frames) // 2
+        if count > self.samples:
+            raise ValueError(
+                f"{stem} of {self.label} is {count} samples long, and the column holds "
+                f"{self.samples}"
+            )
+        return struct.unpack(f"<{count}h", frames) + (0,) * (self.samples - count), count
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Table(Dataset):
     """A delimited table: one row an example, one field a feature or its label."""
 
@@ -385,18 +544,25 @@ class Table(Dataset):
     url: str
     #: Which member of the archive it is, when it arrives in one.
     member: str = ""
-    #: What separates the fields.
-    delimiter: str = ","
+    #: Which member each split is, when the archive holds more than one.
+    files: Mapping[str, str] = field(default_factory=dict)
+    #: What separates the fields, or ``None`` for any run of whitespace.
+    delimiter: str | None = ","
     #: Whether the first line names them rather than holding one.
     header: bool = False
+    #: What a line that is not data starts with, when the file has any.
+    comment: str = ""
+    #: Whether it is an ARFF file, whose rows come after its ``@data`` line.
+    arff: bool = False
     #: The fields in the order the file writes them: a name, and either a
     #: typecode, ``"label"``, or the name of an entry in :attr:`codes`.
     fields: tuple[tuple[str, str], ...]
     #: What each label in the file means, as an index into :attr:`classes`.
     labels: Mapping[str, int]
-    #: How the categorical fields are numbered. A category nobody wrote down
-    #: is refused rather than guessed at.
-    codes: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
+    #: How the categorical fields are numbered, either as a mapping or as the
+    #: categories in code order - a string of them where each is one letter.
+    #: A category nobody wrote down is refused rather than guessed at.
+    codes: Mapping[str, Mapping[str, int] | Sequence[str]] = field(default_factory=dict)
 
     def urls(self, split: str) -> dict[str, str]:
         """The one file it comes in."""
@@ -409,9 +575,11 @@ class Table(Dataset):
         }
         columns["label"] = "i"
         columns["index"] = "i"
-        return self.classes, columns, self._entries(raw["table"])
+        return self.classes, columns, self._entries(raw["table"], split)
 
-    def _cell(self, cell: str, name: str, role: str, index: int) -> Any:
+    def _cell(
+        self, cell: str, name: str, role: str, index: int, coded: Mapping[str, Mapping[str, int]]
+    ) -> Any:
         """One field as the number its column holds, or what a gap means there."""
         if role == "d":
             return nan if cell in MISSING else _number(cell, float, name, index, self.label)
@@ -419,15 +587,23 @@ class Table(Dataset):
             return -1 if cell in MISSING else _number(cell, int, name, index, self.label)
         if cell in MISSING:
             return -1
-        if cell not in self.codes[role]:
+        if cell not in coded[role]:
             raise ValueError(
                 f"row {index} of {self.label} has {cell!r} in {name}, and the ones it knows "
-                f"are {', '.join(sorted(self.codes[role]))}"
+                f"are {', '.join(sorted(coded[role]))}"
             )
-        return self.codes[role][cell]
+        return coded[role][cell]
 
-    def _entries(self, raw: bytes) -> Rows:
-        table = read_table(_member(raw, self.member), delimiter=self.delimiter, header=self.header)
+    def _entries(self, raw: bytes, split: str) -> Rows:
+        held = _member(raw, self.files.get(split, self.member))
+        table = (
+            read_arff(held)
+            if self.arff
+            else read_table(
+                held, delimiter=self.delimiter, header=self.header, comment=self.comment
+            )
+        )
+        coded = {role: _numbered(kinds) for role, kinds in self.codes.items()}
         for index, cells in enumerate(table):
             if len(cells) != len(self.fields):
                 raise ValueError(
@@ -438,7 +614,7 @@ class Table(Dataset):
             row: dict[str, Any] = {}
             for cell, (name, role) in zip(cells, self.fields, strict=True):
                 if role != "label":
-                    row[name] = self._cell(cell, name, role, index)
+                    row[name] = self._cell(cell, name, role, index, coded)
                 elif cell in self.labels:
                     which = self.labels[cell]
                 else:
@@ -473,8 +649,175 @@ _COVER_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
+#: The 47 balanced EMNIST classes: the ten digits, the capitals, and the
+#: eleven lower-case letters that do not look like their own capital.
+_EMNIST_CLASSES: tuple[str, ...] = (
+    *(str(digit) for digit in range(10)),
+    *(f"upper_{chr(letter)}" for letter in range(ord("a"), ord("z") + 1)),
+    *(f"lower_{letter}" for letter in "abdefghnqrt"),
+)
+
+_EMNIST_FILES: dict[str, tuple[str, str]] = {
+    split: (
+        f"gzip/emnist-balanced-{split}-images-idx3-ubyte.gz",
+        f"gzip/emnist-balanced-{split}-labels-idx1-ubyte.gz",
+    )
+    for split in ("train", "test")
+}
+
+#: Each mushroom field and the letters it is written with, in the order the
+#: dataset's own description gives them, so the codes are the published ones.
+_MUSHROOM: tuple[tuple[str, str], ...] = (
+    ("cap_shape", "bcxfks"),
+    ("cap_surface", "fgys"),
+    ("cap_colour", "nbcgrpuewy"),
+    ("bruises", "tf"),
+    ("odour", "alcyfmnps"),
+    ("gill_attachment", "adfn"),
+    ("gill_spacing", "cwd"),
+    ("gill_size", "bn"),
+    ("gill_colour", "knbhgropuewy"),
+    ("stalk_shape", "et"),
+    ("stalk_root", "bcuezr"),
+    ("stalk_surface_above_ring", "fyks"),
+    ("stalk_surface_below_ring", "fyks"),
+    ("stalk_colour_above_ring", "nbcgopewy"),
+    ("stalk_colour_below_ring", "nbcgopewy"),
+    ("veil_type", "pu"),
+    ("veil_colour", "nowy"),
+    ("ring_number", "not"),
+    ("ring_type", "ceflnpsz"),
+    ("spore_print_colour", "knbhrouwy"),
+    ("population", "acnsvy"),
+    ("habitat", "glmpuwd"),
+)
+
+_ADULT_CODES: dict[str, tuple[str, ...]] = {
+    "workclass": (
+        "Federal-gov", "Local-gov", "Never-worked", "Private", "Self-emp-inc",
+        "Self-emp-not-inc", "State-gov", "Without-pay",
+    ),
+    "education": (
+        "10th", "11th", "12th", "1st-4th", "5th-6th", "7th-8th", "9th", "Assoc-acdm",
+        "Assoc-voc", "Bachelors", "Doctorate", "HS-grad", "Masters", "Preschool",
+        "Prof-school", "Some-college",
+    ),
+    "marital_status": (
+        "Divorced", "Married-AF-spouse", "Married-civ-spouse", "Married-spouse-absent",
+        "Never-married", "Separated", "Widowed",
+    ),
+    "occupation": (
+        "Adm-clerical", "Armed-Forces", "Craft-repair", "Exec-managerial", "Farming-fishing",
+        "Handlers-cleaners", "Machine-op-inspct", "Other-service", "Priv-house-serv",
+        "Prof-specialty", "Protective-serv", "Sales", "Tech-support", "Transport-moving",
+    ),
+    "relationship": (
+        "Husband", "Not-in-family", "Other-relative", "Own-child", "Unmarried", "Wife",
+    ),
+    "race": ("Amer-Indian-Eskimo", "Asian-Pac-Islander", "Black", "Other", "White"),
+    "sex": ("Female", "Male"),
+    "native_country": (
+        "Cambodia", "Canada", "China", "Columbia", "Cuba", "Dominican-Republic", "Ecuador",
+        "El-Salvador", "England", "France", "Germany", "Greece", "Guatemala", "Haiti",
+        "Holand-Netherlands", "Honduras", "Hong", "Hungary", "India", "Iran", "Ireland",
+        "Italy", "Jamaica", "Japan", "Laos", "Mexico", "Nicaragua",
+        "Outlying-US(Guam-USVI-etc)", "Peru", "Philippines", "Poland", "Portugal",
+        "Puerto-Rico", "Scotland", "South", "Taiwan", "Thailand", "Trinadad&Tobago",
+        "United-States", "Vietnam", "Yugoslavia",
+    ),
+}
+
+_ADULT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("age", "i"),
+    ("workclass", "workclass"),
+    ("fnlwgt", "i"),
+    ("education", "education"),
+    ("education_years", "i"),
+    ("marital_status", "marital_status"),
+    ("occupation", "occupation"),
+    ("relationship", "relationship"),
+    ("race", "race"),
+    ("sex", "sex"),
+    ("capital_gain", "i"),
+    ("capital_loss", "i"),
+    ("hours_per_week", "i"),
+    ("native_country", "native_country"),
+    ("income", "label"),
+)
+
+_LETTER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("letter", "label"),
+    *(
+        (name, "i")
+        for name in (
+            "x_box", "y_box", "width", "height", "on_pixels", "x_bar", "y_bar", "x2_bar",
+            "y2_bar", "xy_bar", "x2y_bar", "xy2_bar", "x_edge", "x_edge_by_y", "y_edge",
+            "y_edge_by_x",
+        )
+    ),
+)
+
+_DIGIT_FIELDS: tuple[tuple[str, str], ...] = (
+    *((f"pixel_{at:02d}", "i") for at in range(64)),
+    ("digit", "label"),
+)
+
+_WDBC_FIELDS: tuple[tuple[str, str], ...] = (
+    ("id", "i"),
+    ("diagnosis", "label"),
+    *(
+        (f"{name}_{kind}", "d")
+        for kind in ("mean", "error", "worst")
+        for name in (
+            "radius", "texture", "perimeter", "area", "smoothness", "compactness",
+            "concavity", "concave_points", "symmetry", "fractal_dimension",
+        )
+    ),
+)
+
+_WINE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("cultivar", "label"),
+    *(
+        (name, "d")
+        for name in (
+            "alcohol", "malic_acid", "ash", "alcalinity_of_ash", "magnesium", "total_phenols",
+            "flavanoids", "nonflavanoid_phenols", "proanthocyanins", "colour_intensity", "hue",
+            "od280_od315", "proline",
+        )
+    ),
+)
+
+_SEED_FIELDS: tuple[tuple[str, str], ...] = (
+    *(
+        (name, "d")
+        for name in (
+            "area", "perimeter", "compactness", "kernel_length", "kernel_width",
+            "asymmetry_coefficient", "kernel_groove_length",
+        )
+    ),
+    ("variety", "label"),
+)
+
+_BEAN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("area", "i"),
+    ("perimeter", "d"),
+    ("major_axis_length", "d"),
+    ("minor_axis_length", "d"),
+    ("aspect_ratio", "d"),
+    ("eccentricity", "d"),
+    ("convex_area", "i"),
+    ("equivalent_diameter", "d"),
+    ("extent", "d"),
+    ("solidity", "d"),
+    ("roundness", "d"),
+    ("compactness", "d"),
+    *((f"shape_factor_{at}", "d") for at in range(1, 5)),
+    ("bean", "label"),
+)
+
+
 #: Every dataset this module knows, by the name :func:`convert` takes.
-DATASETS: dict[str, Images | CIFAR | Table] = {
+DATASETS: dict[str, Images | CIFAR | Audio | Table] = {
     "mnist": Images(
         name="mnist",
         label="MNIST",
@@ -606,10 +949,152 @@ DATASETS: dict[str, Images | CIFAR | Table] = {
         fields=_COVER_FIELDS,
         labels={str(kind): kind - 1 for kind in range(1, 8)},
     ),
+    "emnist": Images(
+        name="emnist",
+        label="EMNIST",
+        title="131,600 handwritten characters, 28x28 greyscale, 47 balanced classes",
+        licence=(
+            "NIST Special Database 19, a work of the US federal government; "
+            "the EMNIST paper asks to be cited"
+        ),
+        source="https://www.nist.gov/itl/products-and-services/emnist-dataset",
+        classes=_EMNIST_CLASSES,
+        splits=("train", "test"),
+        basket_size=IMAGE_BASKET,
+        archive="https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip",
+        files=_EMNIST_FILES,
+        shade="greyscale, laid out as NIST wrote it with rows and columns swapped",
+    ),
+    "fsdd": Audio(
+        name="fsdd",
+        label="Free Spoken Digit Dataset",
+        title="3,000 recordings of spoken digits, 8 kHz mono, 6 speakers, 10 classes",
+        licence="CC BY-SA 4.0",
+        source="https://github.com/Jakobovski/free-spoken-digit-dataset",
+        classes=tuple(str(digit) for digit in range(10)),
+        basket_size=IMAGE_BASKET,
+        archive=(
+            "https://github.com/Jakobovski/free-spoken-digit-dataset/archive/"
+            "refs/heads/master.zip"
+        ),
+        folder="recordings",
+        labels={str(digit): digit for digit in range(10)},
+        speakers=("george", "jackson", "lucas", "nicolas", "theo", "yweweler"),
+        rate=8000,
+        samples=20000,
+    ),
+    "adult": Table(
+        name="adult",
+        label="Adult",
+        title="48,842 census records, 14 features, 2 income classes, with gaps",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/2/adult",
+        classes=("under_50k", "over_50k"),
+        splits=("train", "test"),
+        url="https://archive.ics.uci.edu/static/public/2/adult.zip",
+        files={"train": "adult.data", "test": "adult.test"},
+        comment="|",
+        fields=_ADULT_FIELDS,
+        labels={"<=50K": 0, ">50K": 1, "<=50K.": 0, ">50K.": 1},
+        codes=_ADULT_CODES,
+    ),
+    "mushroom": Table(
+        name="mushroom",
+        label="Mushroom",
+        title="8,124 mushrooms described 22 ways, edible or poisonous, with gaps",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/73/mushroom",
+        classes=("edible", "poisonous"),
+        url="https://archive.ics.uci.edu/static/public/73/mushroom.zip",
+        member="agaricus-lepiota.data",
+        fields=(("edibility", "label"), *((name, name) for name, _ in _MUSHROOM)),
+        labels={"e": 0, "p": 1},
+        codes=dict(_MUSHROOM),
+    ),
+    "letter": Table(
+        name="letter",
+        label="Letter Recognition",
+        title="20,000 printed capitals measured 16 ways, 26 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/59/letter+recognition",
+        classes=tuple(chr(letter) for letter in range(ord("a"), ord("z") + 1)),
+        url="https://archive.ics.uci.edu/static/public/59/letter+recognition.zip",
+        member="letter-recognition.data",
+        fields=_LETTER_FIELDS,
+        labels={chr(ord("A") + at): at for at in range(26)},
+    ),
+    "digits": Table(
+        name="digits",
+        label="Optical Digits",
+        title="5,620 handwritten digits as 8x8 counts of ink, 10 classes",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/80/optical+recognition+of+handwritten+digits",
+        classes=tuple(str(digit) for digit in range(10)),
+        splits=("train", "test"),
+        url=(
+            "https://archive.ics.uci.edu/static/public/80/"
+            "optical+recognition+of+handwritten+digits.zip"
+        ),
+        files={"train": "optdigits.tra", "test": "optdigits.tes"},
+        fields=_DIGIT_FIELDS,
+        labels={str(digit): digit for digit in range(10)},
+    ),
+    "wine": Table(
+        name="wine",
+        label="Wine",
+        title="178 wines analysed 13 ways, 3 cultivars",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/109/wine",
+        classes=("cultivar_1", "cultivar_2", "cultivar_3"),
+        url="https://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data",
+        fields=_WINE_FIELDS,
+        labels={"1": 0, "2": 1, "3": 2},
+    ),
+    "breast_cancer": Table(
+        name="breast_cancer",
+        label="Breast Cancer Wisconsin",
+        title="569 cell-nucleus images measured 30 ways, benign or malignant",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
+        classes=("benign", "malignant"),
+        url="https://archive.ics.uci.edu/static/public/17/breast+cancer+wisconsin+diagnostic.zip",
+        member="wdbc.data",
+        fields=_WDBC_FIELDS,
+        labels={"B": 0, "M": 1},
+    ),
+    "dry_bean": Table(
+        name="dry_bean",
+        label="Dry Bean",
+        title="13,611 beans measured 16 ways from photographs, 7 varieties",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/602/dry+bean+dataset",
+        classes=("seker", "barbunya", "bombay", "cali", "horoz", "sira", "dermason"),
+        url="https://archive.ics.uci.edu/static/public/602/dry+bean+dataset.zip",
+        member="DryBeanDataset/Dry_Bean_Dataset.arff",
+        arff=True,
+        fields=_BEAN_FIELDS,
+        labels={
+            "SEKER": 0, "BARBUNYA": 1, "BOMBAY": 2, "CALI": 3,
+            "HOROZ": 4, "SIRA": 5, "DERMASON": 6,
+        },
+    ),
+    "seeds": Table(
+        name="seeds",
+        label="Seeds",
+        title="210 wheat kernels measured 7 ways, 3 varieties",
+        licence="CC BY 4.0",
+        source="https://archive.ics.uci.edu/dataset/236/seeds",
+        classes=("kama", "rosa", "canadian"),
+        url="https://archive.ics.uci.edu/static/public/236/seeds.zip",
+        member="seeds_dataset.txt",
+        delimiter=None,
+        fields=_SEED_FIELDS,
+        labels={"1": 0, "2": 1, "3": 2},
+    ),
 }
 
 
-def _spec(name: str) -> Images | CIFAR | Table:
+def _spec(name: str) -> Images | CIFAR | Audio | Table:
     """The dataset called ``name``, or a refusal naming the ones there are."""
     spec = DATASETS.get(name)
     if spec is None:

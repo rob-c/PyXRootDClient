@@ -175,11 +175,15 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.datasets.CIFAR
 
+::: xrd.root.datasets.Audio
+
 ::: xrd.root.datasets.Table
 
 ::: xrd.root.datasets.read_idx
 
 ::: xrd.root.datasets.read_table
+
+::: xrd.root.datasets.read_arff
 
 ::: xrd.root.datasets.fetch
 

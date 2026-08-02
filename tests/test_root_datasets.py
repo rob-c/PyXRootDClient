@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import gzip
 import io
+import struct
 import tarfile
+import wave
 import zipfile
+from collections.abc import Sequence
 from dataclasses import replace
 
 import pytest
@@ -23,11 +26,13 @@ from xrd.root.datasets import (
     DATASETS,
     IDX_FILES,
     MISSING,
+    Audio,
     Dataset,
     Images,
     Table,
     convert,
     describe,
+    read_arff,
     read_table,
 )
 from xrd.root.writer import create
@@ -108,6 +113,77 @@ FLOWERS = Table(
 FLOWER_ROWS = b"1.5,3,north,Red\n2.5,4,south,Blue\n3.5,5,north,Red\n"
 
 
+#: An archive of recordings the shape a spoken-word set ships: a folder of
+#: WAV files named for what was said and who said it.
+SPOKEN = Audio(
+    name="spoken",
+    label="Spoken",
+    title="a few short recordings",
+    licence="CC0",
+    source="https://example.invalid/spoken",
+    classes=("zero", "one"),
+    archive="https://example.invalid/spoken.zip",
+    folder="clips",
+    labels={"0": 0, "1": 1},
+    speakers=("ann", "bob"),
+    rate=8000,
+    samples=6,
+)
+
+#: An image set that arrives in one archive rather than four files, the way
+#: EMNIST does.
+SCRIBBLES = Images(
+    name="scribbles",
+    label="Scribbles",
+    title="a few small scribbles",
+    licence="CC0",
+    source="https://example.invalid/scribbles",
+    classes=("up", "down"),
+    splits=("train", "test"),
+    archive="https://example.invalid/scribbles.zip",
+    files={
+        split: (f"in/{split}-images.gz", f"in/{split}-labels.gz")
+        for split in ("train", "test")
+    },
+    side=2,
+)
+
+
+def waved(samples: Sequence[int], *, rate: int = 8000, channels: int = 1, width: int = 2) -> bytes:
+    """One WAV file, laid out the way a recording arrives in an archive."""
+    raw = io.BytesIO()
+    with wave.open(raw, "wb") as clip:
+        clip.setnchannels(channels)
+        clip.setsampwidth(width)
+        clip.setframerate(rate)
+        clip.writeframes(
+            struct.pack(f"<{len(samples)}h", *samples) if width == 2 else bytes(samples)
+        )
+    return raw.getvalue()
+
+
+def clips(**names: bytes) -> bytes:
+    """A zip of recordings, one folder deep, the way a repository downloads."""
+    return zipped({f"spoken-master/clips/{name}.wav": data for name, data in names.items()})
+
+
+def idx(*shape: int, values: bytes) -> bytes:
+    """IDX bytes: the magic, the shape, and the values, gzipped as they ship."""
+    head = b"\x00\x00\x08" + bytes([len(shape)]) + struct.pack(f">{len(shape)}i", *shape)
+    return gzip.compress(head + values)
+
+
+def scribbled(labels: bytes) -> bytes:
+    """The archive SCRIBBLES describes: two by two pictures and their labels."""
+    members = {}
+    for split in ("train", "test"):
+        members[f"in/{split}-images.gz"] = idx(
+            len(labels), 2, 2, values=bytes(range(4 * len(labels)))
+        )
+        members[f"in/{split}-labels.gz"] = idx(len(labels), values=labels)
+    return zipped(members)
+
+
 def pictures(labels: bytes, *, side: int = 2, coarse: bytes = b"") -> bytes:
     """Records of a label and three colour planes, each pixel its own number."""
     width = 3 * side * side
@@ -128,7 +204,7 @@ def tiny_archive(**names: bytes) -> bytes:
 @pytest.fixture
 def registry(monkeypatch: pytest.MonkeyPatch) -> None:
     """The test's own datasets, alongside the real ones, for the length of a test."""
-    for spec in (TINY, TINY_COARSE, FLOWERS):
+    for spec in (TINY, TINY_COARSE, FLOWERS, SPOKEN, SCRIBBLES):
         monkeypatch.setitem(DATASETS, spec.name, spec)
 
 
@@ -149,7 +225,8 @@ def test_every_dataset_says_what_its_licence_is_and_where_it_came_from():
 def test_the_datasets_asked_for_are_all_there():
     assert set(DATASETS) == {
         "mnist", "fashion_mnist", "kmnist", "cifar10", "cifar100",
-        "iris", "penguins", "covertype",
+        "iris", "penguins", "covertype", "emnist", "fsdd", "adult", "mushroom",
+        "letter", "digits", "wine", "breast_cancer", "dry_bean", "seeds",
     }
 
 
@@ -194,11 +271,18 @@ def test_covertype_has_the_fifty_four_features_and_the_label_the_paper_describes
     assert spec.urls("all") == {"table": spec.url}
 
 
-def test_penguins_names_a_code_for_every_category_it_will_meet():
-    spec = DATASETS["penguins"]
-    assert isinstance(spec, Table)
-    coded = {role for _, role in spec.fields} - {"d", "i", "label"}
-    assert coded == set(spec.codes)
+def test_every_table_names_a_code_for_every_category_it_will_meet():
+    for spec in DATASETS.values():
+        if isinstance(spec, Table):
+            coded = {role for _, role in spec.fields} - {"d", "i", "label"}
+            assert coded == set(spec.codes), spec.name
+
+
+def test_no_dataset_labels_a_class_it_does_not_have():
+    for spec in DATASETS.values():
+        if isinstance(spec, (Table, Audio)) and spec.classes:
+            assert max(spec.labels.values()) == len(spec.classes) - 1, spec.name
+            assert min(spec.labels.values()) == 0, spec.name
 
 
 # --- reading the shapes the archives come in --------------------------------
@@ -376,8 +460,8 @@ def test_a_table_becomes_one_column_per_field_with_the_label_beside_them():
 
 def test_a_table_can_arrive_gzipped_or_as_it_is():
     rows, gz = FLOWER_ROWS, gzip.compress(FLOWER_ROWS)
-    assert [row["index"] for _, row in FLOWERS._entries(rows)] == [0, 1, 2]
-    assert [row["index"] for _, row in FLOWERS._entries(gz)] == [0, 1, 2]
+    assert [row["index"] for _, row in FLOWERS._entries(rows, "all")] == [0, 1, 2]
+    assert [row["index"] for _, row in FLOWERS._entries(gz, "all")] == [0, 1, 2]
 
 
 def test_a_member_is_taken_out_of_a_zip_and_unzipped_again_if_it_is_gzipped():
@@ -387,7 +471,7 @@ def test_a_member_is_taken_out_of_a_zip_and_unzipped_again_if_it_is_gzipped():
         classes=FLOWERS.classes, url="", member="rows.csv.gz", fields=FLOWERS.fields,
         labels=FLOWERS.labels, codes=FLOWERS.codes,
     )
-    assert len(list(spec._entries(inner))) == 3
+    assert len(list(spec._entries(inner, "all"))) == 3
 
 
 def test_a_zip_without_the_member_wanted_names_what_it_does_hold():
@@ -397,7 +481,7 @@ def test_a_zip_without_the_member_wanted_names_what_it_does_hold():
         labels=FLOWERS.labels, codes=FLOWERS.codes,
     )
     with pytest.raises(ValueError, match=r"this zip holds other.csv, and not 'rows.data'"):
-        list(spec._entries(zipped({"other.csv": FLOWER_ROWS})))
+        list(spec._entries(zipped({"other.csv": FLOWER_ROWS}), "all"))
 
 
 def test_a_gap_in_a_number_becomes_a_nan_and_a_gap_in_a_category_a_minus_one():
@@ -550,3 +634,224 @@ def test_a_table_that_needs_no_archive_reads_straight_from_a_path(registry, tmp_
     rows = tmp_path / "flowers.csv"
     rows.write_bytes(FLOWER_ROWS)
     assert convert("flowers", io.BytesIO(), parts={"table": str(rows)}) == {"red": 2, "blue": 1}
+
+
+# --- the ten that came later ------------------------------------------------
+
+
+def test_emnist_takes_the_balanced_split_out_of_the_one_archive_it_ships_in():
+    spec = DATASETS["emnist"]
+    assert isinstance(spec, Images)
+    assert spec.urls("train") == spec.urls("test") == {"archive": spec.archive}
+    assert len(spec.classes) == 47
+    assert spec.classes[:11] == ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "upper_a")
+    assert spec.classes[-1] == "lower_t"
+    for split in ("train", "test"):
+        images, labels = spec.files[split]
+        assert images == f"gzip/emnist-balanced-{split}-images-idx3-ubyte.gz"
+        assert labels == f"gzip/emnist-balanced-{split}-labels-idx1-ubyte.gz"
+
+
+def test_the_spoken_digits_name_each_of_their_speakers_once():
+    spec = DATASETS["fsdd"]
+    assert isinstance(spec, Audio)
+    assert len(set(spec.speakers)) == len(spec.speakers) == 6
+    assert spec.urls("all") == {"archive": spec.archive}
+    assert spec.rate == 8000
+    assert spec.samples > 18262  # the longest recording in the set
+
+
+def test_adult_knows_both_ways_its_two_classes_are_spelled():
+    spec = DATASETS["adult"]
+    assert isinstance(spec, Table)
+    assert set(spec.labels) == {"<=50K", ">50K", "<=50K.", ">50K."}
+    assert spec.files == {"train": "adult.data", "test": "adult.test"}
+    assert spec.comment == "|"
+
+
+def test_mushroom_spells_its_categories_as_the_letters_the_file_uses():
+    spec = DATASETS["mushroom"]
+    assert isinstance(spec, Table)
+    assert len(spec.fields) == 23
+    assert spec.codes["odour"] == "alcyfmnps"
+    assert set(spec.codes) == {name for name, _ in spec.fields[1:]}
+
+
+def test_the_optical_digits_are_sixty_four_counts_of_ink_and_a_label():
+    spec = DATASETS["digits"]
+    assert isinstance(spec, Table)
+    assert len(spec.fields) == 65
+    assert spec.fields[0] == ("pixel_00", "i")
+    assert spec.fields[-1] == ("digit", "label")
+    assert spec.files == {"train": "optdigits.tra", "test": "optdigits.tes"}
+
+
+def test_the_dry_beans_are_read_from_the_arff_and_the_seeds_from_whitespace():
+    beans, seeds = DATASETS["dry_bean"], DATASETS["seeds"]
+    assert isinstance(beans, Table) and isinstance(seeds, Table)
+    assert beans.arff and beans.member.endswith(".arff")
+    assert seeds.delimiter is None
+    assert not seeds.arff
+
+
+# --- reading the shapes the later ten come in -------------------------------
+
+
+def test_a_table_can_be_split_on_any_run_of_whitespace():
+    assert list(read_table(b"1\t2\t\t3\n 4  5\t6 \n", delimiter=None)) == [
+        ["1", "2", "3"],
+        ["4", "5", "6"],
+    ]
+
+
+def test_a_line_the_file_marks_as_not_data_is_dropped():
+    raw = b"|a note\n1,2\n"
+    assert list(read_table(raw)) == [["|a note"], ["1", "2"]]
+    assert list(read_table(raw, comment="|")) == [["1", "2"]]
+
+
+def test_an_arff_file_is_read_from_its_data_line_onwards():
+    raw = b"% who wrote it\n@RELATION beans\n@ATTRIBUTE area INTEGER\n@DATA\n% a note\n1,x\n2,y\n"
+    assert list(read_arff(raw)) == [["1", "x"], ["2", "y"]]
+
+
+def test_the_data_line_of_an_arff_file_is_found_whatever_its_case():
+    assert list(read_arff(b"@relation r\n  @data  \n1,2\n")) == [["1", "2"]]
+
+
+def test_something_with_no_data_line_is_not_an_arff_file():
+    with pytest.raises(ValueError, match="no @data line at all"):
+        read_arff(b"@relation r\n@attribute a REAL\n")
+
+
+def test_an_image_set_can_arrive_in_one_archive_rather_than_four_files():
+    assert SCRIBBLES.urls("train") == {"archive": SCRIBBLES.archive}
+    classes, columns, rows = SCRIBBLES.rows({"archive": scribbled(b"\0\1")}, "test")
+    assert classes == ("up", "down")
+    assert columns == {"image": ("B", 4), "label": "i", "index": "i"}
+    got = list(rows)
+    assert [label for label, _ in got] == [0, 1]
+    assert list(got[1][1]["image"]) == [4, 5, 6, 7]
+
+
+def test_a_split_can_name_its_own_member_of_the_archive():
+    spec = replace(
+        FLOWERS,
+        splits=("train", "test"),
+        files={"train": "a.csv", "test": "b.csv"},
+    )
+    archive = zipped({"a.csv": FLOWER_ROWS, "b.csv": b"9.5,1,south,Blue\n"})
+    assert [row["width"] for _, row in spec._entries(archive, "train")] == [1.5, 2.5, 3.5]
+    assert [row["width"] for _, row in spec._entries(archive, "test")] == [9.5]
+
+
+def test_categories_can_be_spelled_as_the_letters_or_the_names_in_code_order():
+    letters = replace(FLOWERS, codes={"where": "ns"})
+    names = replace(FLOWERS, codes={"where": ("north", "south")})
+    for spec in (letters, names):
+        cells = b"1.5,3,north,Red\n2.5,4,south,Blue\n"
+        if spec is letters:
+            cells = b"1.5,3,n,Red\n2.5,4,s,Blue\n"
+        assert [row["where"] for _, row in spec._entries(cells, "all")] == [0, 1]
+
+
+def test_a_category_nobody_declared_is_refused_however_the_codes_were_spelled():
+    spec = replace(FLOWERS, codes={"where": "ns"})
+    with pytest.raises(ValueError, match="has 'e' in where, and the ones it knows are n, s"):
+        list(spec._entries(b"1.5,3,e,Red\n", "all"))
+
+
+# --- recordings -------------------------------------------------------------
+
+
+def test_a_recording_is_padded_out_to_the_width_of_the_column():
+    archive = clips(**{"0_ann_0": waved([1, -2, 3])})
+    classes, columns, rows = SPOKEN.rows({"archive": archive}, "all")
+    assert classes == ("zero", "one")
+    assert columns == {
+        "audio": ("h", 6), "length": "i", "label": "i", "speaker": "i", "index": "i",
+    }
+    (label, row), = list(rows)
+    assert label == 0
+    assert row == {"audio": (1, -2, 3, 0, 0, 0), "length": 3, "label": 0, "speaker": 0, "index": 0}
+
+
+def test_the_recordings_are_read_in_name_order_with_who_spoke_them():
+    archive = clips(**{"1_bob_1": waved([4]), "0_ann_2": waved([5]), "1_ann_0": waved([6])})
+    _, _, rows = SPOKEN.rows({"archive": archive}, "all")
+    got = [(label, row["speaker"], row["index"], row["audio"][0]) for label, row in rows]
+    assert got == [(0, 0, 0, 5), (1, 0, 1, 6), (1, 1, 2, 4)]
+
+
+def test_a_set_that_names_no_speakers_writes_no_speaker_column():
+    spec = replace(SPOKEN, speakers=())
+    _, columns, rows = spec.rows({"archive": clips(**{"0_ann_0": waved([1])})}, "all")
+    assert "speaker" not in columns
+    assert "speaker" not in next(iter(rows))[1]
+
+
+def test_an_archive_with_no_recordings_where_they_should_be_is_refused():
+    with pytest.raises(ValueError, match=r"no \.wav files in a 'clips' folder"):
+        SPOKEN.rows({"archive": zipped({"spoken-master/notes/read.me": b"hello"})}, "all")
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "said"),
+    [
+        ({"rate": 16000}, "1-channel 16-bit at 16000 Hz"),
+        ({"channels": 2}, "2-channel 16-bit at 8000 Hz"),
+        ({"width": 1}, "1-channel 8-bit at 8000 Hz"),
+    ],
+)
+def test_a_recording_that_is_not_what_the_set_says_is_refused_by_name(kwargs, said):
+    archive = clips(**{"0_ann_0": waved([1, 2], **kwargs)})
+    _, _, rows = SPOKEN.rows({"archive": archive}, "all")
+    with pytest.raises(ValueError, match=rf"0_ann_0 of Spoken is {said}"):
+        list(rows)
+
+
+def test_a_recording_longer_than_the_column_is_refused_rather_than_cut_down():
+    _, _, rows = SPOKEN.rows({"archive": clips(**{"0_ann_0": waved(list(range(9)))})}, "all")
+    with pytest.raises(ValueError, match="is 9 samples long, and the column holds 6"):
+        list(rows)
+
+
+def test_a_recording_of_something_nobody_declared_is_refused():
+    _, _, rows = SPOKEN.rows({"archive": clips(**{"7_ann_0": waved([1])})}, "all")
+    with pytest.raises(ValueError, match="is labelled '7', and its classes are 0, 1"):
+        list(rows)
+
+
+@pytest.mark.parametrize("named", ["0_zoe_0", "0"])
+def test_a_speaker_nobody_declared_is_refused_rather_than_numbered(named):
+    _, _, rows = SPOKEN.rows({"archive": clips(**{named: waved([1])})}, "all")
+    with pytest.raises(ValueError, match=r"is spoken by '(zoe|)', and the speakers it knows"):
+        list(rows)
+
+
+def test_the_archive_is_let_go_of_once_the_recordings_have_been_read():
+    _, _, rows = SPOKEN.rows({"archive": clips(**{"0_ann_0": waved([1])})}, "all")
+    assert len(list(rows)) == 1
+    with pytest.raises(StopIteration):
+        next(rows)
+
+
+def test_recordings_become_one_tree_per_class_with_the_silence_written_out(registry):
+    archive = clips(**{"0_ann_0": waved([1, -2]), "1_bob_0": waved([3, 4, 5])})
+    counts, raw = written("spoken", archive, "archive")
+    assert counts == {"zero": 1, "one": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        assert sorted(back.keys()) == ["about", "one", "zero"]
+        tree = back["one"]
+        assert tree.title == "Spoken recordings of class one, 8000 Hz mono, 6 samples an entry"
+        assert list(tree["audio"].array()) == [3, 4, 5, 0, 0, 0]
+        assert list(tree["length"].array()) == [3]
+        assert list(tree["speaker"].array()) == [1]
+
+
+def test_an_image_set_in_an_archive_converts_like_any_other(registry):
+    counts, raw = written("scribbles", scribbled(b"\1\1\0"), "archive", split="train")
+    assert counts == {"train_up": 1, "train_down": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        assert list(back["train_up"]["image"].array()) == [8, 9, 10, 11]
+        assert back["train_down"].num_entries == 2

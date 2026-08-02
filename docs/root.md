@@ -500,10 +500,10 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of eight. `xrd.root.datasets` converts the sets machine learning
-is actually taught and benchmarked with, all of them the same way — one tree
-per class, the label beside the data, and the row's place in the original file
-so any number can be traced back to where it came from.
+MNIST is one of eighteen. `xrd.root.datasets` converts the sets machine
+learning is actually taught and benchmarked with, all of them the same way —
+one tree per class, the label beside the data, and the row's place in the
+original file so any number can be traced back to where it came from.
 
 ```python
 from xrd.root import datasets
@@ -527,10 +527,20 @@ datasets.convert("iris", "iris.root")
 | `iris` | 150 iris flowers measured four ways, 3 species | CC BY 4.0 | 9 kB |
 | `penguins` | 344 penguins measured at Palmer Station, 3 species | CC0 | 13 kB |
 | `covertype` | 581,012 patches of Colorado forest, 54 features, 7 cover types | CC BY 4.0 | 8.3 MB |
+| `emnist` | 131,600 handwritten characters, 28×28 greyscale, 47 balanced classes | US federal government work | 33.2 MB |
+| `fsdd` | 3,000 recordings of spoken digits, 8 kHz mono, 6 speakers, 10 classes | CC BY-SA 4.0 | 16.1 MB |
+| `adult` | 48,842 census records, 14 features, 2 income classes | CC BY 4.0 | 570 kB |
+| `mushroom` | 8,124 mushrooms described 22 ways, edible or poisonous | CC BY 4.0 | 66 kB |
+| `letter` | 20,000 printed capitals measured 16 ways, 26 classes | CC BY 4.0 | 320 kB |
+| `digits` | 5,620 handwritten digits as 8×8 counts of ink, 10 classes | CC BY 4.0 | 380 kB |
+| `wine` | 178 wines analysed 13 ways, 3 cultivars | CC BY 4.0 | 20 kB |
+| `breast_cancer` | 569 cell-nucleus images measured 30 ways, benign or malignant | CC BY 4.0 | 111 kB |
+| `dry_bean` | 13,611 beans measured 16 ways from photographs, 7 varieties | CC BY 4.0 | 1.4 MB |
+| `seeds` | 210 wheat kernels measured 7 ways, 3 varieties | CC BY 4.0 | 18 kB |
 
 The last column is one file holding every split, written with the default
-`zlib`, as measured on a conversion of all eight — both splits of a set that
-has them, a tree a class, and the `about` key beside them.
+`zlib`, as measured on a conversion of all eighteen — both splits of a set
+that has them, a tree a class, and the `about` key beside them.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
 on the machine doing the converting, and the licences above are what those
@@ -552,7 +562,7 @@ with xrd.root.open_root("cifar10.root") as f:
 The CIFAR sets are taken in their **binary** distribution rather than the
 Python one, on purpose: the Python one is a pickle, and unpickling a download
 is a way to run somebody else's code. Every archive here — IDX, tar, zip,
-gzip, CSV — is read with the standard library and nothing else.
+gzip, WAV, ARFF and CSV — is read with the standard library and nothing else.
 
 Images come out exactly as the archive laid them: CIFAR is 3072 bytes an
 entry, 1024 red then 1024 green then 1024 blue, which is what PyTorch wants,
@@ -572,6 +582,38 @@ for parts in zip(*loaders):
     loss = criterion(model(x.view(-1, 3, 32, 32)), ...)
 ```
 
+EMNIST is MNIST's shape — 28×28 IDX, the same reader — but NIST wrote its
+images with the rows and the columns swapped, and they are kept that way here
+rather than quietly turned round. Measure a `1` and you can see it: in MNIST
+the ink runs down rows 4–24 and across columns 9–19, in EMNIST down rows 9–19
+and across columns 3–25. Each tree says so in its title, so a `view(28, 28)`
+that comes out sideways has an answer in the file itself:
+
+```python
+x = torch.from_numpy(...).view(-1, 28, 28).transpose(1, 2)  # if you want it upright
+```
+
+The set converted is the **balanced** split, 47 classes: the ten digits, the
+26 capitals, and the eleven lower-case letters whose shape differs from the
+capital — `a b d e f g h n q r t`. The other fifteen were merged into their
+capitals by NIST because nothing in a 28×28 bitmap tells `c` from `C`.
+
+Sound is the same idea with a longer row. `fsdd` is 3,000 WAV recordings read
+with the standard library's `wave`, and because a tree column is a fixed size,
+every clip is written into a 20,000-sample column — 2.5 seconds at 8 kHz — with
+a `length` beside it saying how much of that is recording and how much is the
+zeroes after it. A clip longer than the column is refused by name rather than
+truncated, and so is a file that is not 8 kHz mono 16-bit, which is what
+`speaker` being a column can be trusted against:
+
+```python
+with xrd.root.open_root("fsdd.root") as f:
+    for batch in xrd.root.ml.iter_tensors(f["7"], ["audio", "length", "speaker"], step=32):
+        wave = batch["audio"].float().div_(32768)      # int16 -> -1..1
+        mask = torch.arange(20000) < batch["length"][:, None]
+        loss = criterion(model(wave * mask), ...)
+```
+
 The tabular sets become one column per field instead of one wide array:
 
 ```python
@@ -587,6 +629,16 @@ refused rather than guessed at. A measurement nobody took becomes a NaN, which
 is what every reader downstream already means by it; a category nobody
 recorded becomes `-1`, because there is no such code.
 
+Tables do not all arrive as comma-separated files, so `Table` says which shape
+it is and the reader does the rest: `delimiter=None` splits on whitespace
+(`seeds`), `comment=` drops the lines a publisher wrote above the data
+(`adult`), `arff=True` skips everything down to the `@data` line of a Weka
+file (`dry_bean`), and `files=` picks a different member of the one archive
+for each split (`adult`, `digits`). `codes=` may name its categories as a
+mapping or just list them in order — `mushroom`'s 22 columns are the letters
+UCI documents, in UCI's order, so the numbers in the file mean what the
+published description says they mean.
+
 Converting is one pass, and `parts=` takes archives already on disk when you
 would rather not download them twice:
 
@@ -597,9 +649,9 @@ datasets.convert("cifar100", "cifar100.root", split="test",
 
 `base=` points the downloads at a mirror of your own, and `target` may be a
 `WritableFile` already open, which is how several splits end up in one file.
-Adding a dataset of your own is an `Images`, `CIFAR` or `Table` in the
-registry — each is a frozen dataclass saying where the data is and what its
-fields mean, with no code to write for the common shapes.
+Adding a dataset of your own is an `Images`, `CIFAR`, `Audio` or `Table` in
+the registry — each is a frozen dataclass saying where the data is and what
+its fields mean, with no code to write for the common shapes.
 
 ## Compression
 
