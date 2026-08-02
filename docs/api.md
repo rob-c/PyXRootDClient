@@ -149,6 +149,28 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.Jagged
 
+::: xrd.root.Histogram
+
+::: xrd.root.Axis
+
+::: xrd.root.Graph
+
+### Writing
+
+::: xrd.root.create
+
+::: xrd.root.WritableFile
+
+::: xrd.root.WritableTree
+
+::: xrd.root.mnist.convert
+
+::: xrd.root.mnist.read_idx
+
+::: xrd.root.mnist.fetch
+
+### Into a framework
+
 ::: xrd.root.ml.to_tensor
 
 ::: xrd.root.ml.iter_tensors

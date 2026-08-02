@@ -259,3 +259,33 @@ def test_a_tf_dataset_with_no_names_takes_every_numeric_column(tf, flat):
 def test_a_column_that_is_not_numbers_has_no_tensor_shape(tf, flat):
     with pytest.raises(UnsupportedFeatureError, match="which is not numbers"):
         tf_dataset(flat, ["Str"])
+
+
+# -- a tree this library wrote, on its way into a training loop ------------
+
+
+def test_a_written_mnist_tree_batches_into_the_shape_the_demo_expects(torch):
+    """The images this library writes come back out as ``(entries, 784)``,
+    which is what makes the PyTorch recipe in the docs a `view` and no more."""
+    import io
+    import struct
+
+    from xrd.root.mnist import PIXELS, SIDE, convert
+
+    pictures = b"".join(bytes([step]) * PIXELS for step in range(6))
+    images = struct.pack(">BBBBiii", 0, 0, 8, 3, 6, SIDE, SIDE) + pictures
+    labels = struct.pack(">BBBBi", 0, 0, 8, 1, 6) + bytes([4, 2, 4, 4, 2, 4])
+    buf = io.BytesIO()
+    convert(buf, images=images, labels=labels)
+
+    with open_root(io.BytesIO(buf.getvalue())) as back:
+        tree = back["train_4"]
+        assert numeric(tree) == ["image", "label", "index"]
+        batches = list(iter_tensors(tree, ["image", "label"], step=2))
+        assert [batch["image"].shape for batch in batches] == [(2, PIXELS), (2, PIXELS)]
+        assert [len(batch["label"]) for batch in batches] == [2, 2]
+        assert batches[0]["image"].dtype == "uint8"
+        assert batches[0]["label"].dtype == "int32"
+        assert batches[0]["image"].values[:PIXELS] == [0] * PIXELS
+        assert batches[0]["image"].values[PIXELS:] == [2] * PIXELS
+        assert batches[1]["label"].values == [4, 4]

@@ -17,3 +17,6 @@ htmlcov/
 .tox/
 .venv/
 venv/
+
+# Generated datasets
+/mnist.root

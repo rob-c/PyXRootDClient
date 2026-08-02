@@ -24,7 +24,8 @@ import array
 import datetime
 import struct
 import uuid
-from typing import IO, Any
+from collections.abc import Mapping
+from typing import IO, TYPE_CHECKING, Any
 
 from ..url import parse
 from .buffer import BYTE_COUNT_MASK, IS_REFERENCED, NEW_CLASS_TAG
@@ -34,6 +35,9 @@ from .graph import GRAPHS, Graph
 from .hist import HISTOGRAMS, Histogram
 from .interp import ARRAYS, OFFSET_L, OFFSET_P
 from .winfo import INFOS, SUBVERSIONS, WRITER_VERSION, Element
+
+if TYPE_CHECKING:  # pragma: no cover - for the type checker, not for running
+    from .wtree import WritableTree
 
 __all__ = ["create", "WritableFile"]
 
@@ -45,6 +49,10 @@ BEGIN = 100
 BIG = 2_000_000_000
 #: The key version this writer emits: small offsets, which :data:`BIG` protects.
 KEY_VERSION = 4
+#: How many bytes of one tree column gather before that column writes a
+#: basket. ROOT's own default, and a reasonable trade: bigger baskets read
+#: faster in bulk, smaller ones let a reader take a few entries cheaply.
+BASKET_BYTES = 32_000
 
 #: The struct code for each basic streamer type this writer packs.
 FORMS = {
@@ -100,6 +108,9 @@ class WBuffer:
 
     def i32(self, value: int) -> None:
         self.data += struct.pack(">i", value)
+
+    def i64(self, value: int) -> None:
+        self.data += struct.pack(">q", value)
 
     def string(self, text: str) -> None:
         """A ``TString``: one length byte, or ``255`` and then four."""
@@ -414,6 +425,15 @@ def _payload(obj: Any) -> tuple[str, bytes, tuple[str, ...]]:
     )
 
 
+def _keylen(classname: str, name: str, title: str, extra: int = 0) -> int:
+    """How long the key in front of a record is: 26 fixed bytes, then three
+    strings - and whatever else the class writes into its own key, which only
+    a ``TBasket`` does."""
+    return 26 + extra + sum(
+        1 + len(text.encode("utf-8", "surrogateescape")) for text in (classname, name, title)
+    )
+
+
 def _checked(text: str, what: str) -> str:
     """A name or title a key can carry: short enough for its one length byte."""
     if not isinstance(text, str):
@@ -462,6 +482,7 @@ class WritableFile:
         self._keys: list[bytes] = []
         self._cycles: dict[str, int] = {}
         self._used: dict[str, None] = {}
+        self._trees: list[WritableTree] = []
 
     def __repr__(self) -> str:
         state = "closed" if self._closed else f"{len(self._keys)} keys so far"
@@ -474,6 +495,54 @@ class WritableFile:
         twice becomes a second cycle of itself, exactly as in ROOT, and
         reading the file back gives the newest.
         """
+        self._check_name(name)
+        classname, payload, used = _payload(obj)
+        if title is None:
+            title = obj.title if isinstance(obj, (Histogram, Graph)) else ""
+        _checked(title, "title")
+        self._used.update(dict.fromkeys(used))
+        cycle = self._cycles.get(name, 0) + 1
+        self._cycles[name] = cycle
+        self._put(classname, name, title, payload, cycle, listed=True)
+
+    def __setitem__(self, name: str, obj: Any) -> None:
+        self.write(name, obj)
+
+    def tree(
+        self,
+        name: str,
+        columns: Mapping[str, Any],
+        *,
+        title: str | None = None,
+        basket_size: int = BASKET_BYTES,
+    ) -> WritableTree:
+        """A tree in this file, to be filled entry by entry.
+
+            >>> with xrd.root.create("out.root") as f:        # doctest: +SKIP
+            ...     tree = f.tree("events", {"energy": float, "hits": ("i", 4)})
+            ...     tree.fill(energy=12.5, hits=[3, 1, 4, 1])
+
+        ``columns`` maps each column's name to what it holds: a Python
+        ``bool``, ``int`` or ``float``, an :mod:`array` type code such as
+        ``'f'`` for a narrower number, or a pair of either and how many
+        values every entry holds. Entries go out a basket at a time as they
+        gather - ``basket_size`` bytes of a column at a time - so the tree
+        can be far larger than memory, and the tree's own record is written
+        when the file closes.
+        """
+        from .wtree import WritableTree
+
+        self._check_name(name)
+        _checked(title or "", "title")
+        cycle = self._cycles.get(name, 0) + 1
+        self._cycles[name] = cycle
+        tree = WritableTree(self, name, title or "", columns, basket_size, cycle)
+        self._trees.append(tree)
+        self._used.update(dict.fromkeys(tree.classes))
+        return tree
+
+    def _check_name(self, name: str) -> None:
+        """Whether a key could be written under this name, and read back by it."""
         if self._closed:
             raise ValueError("this file is closed; whatever it was going to hold is written")
         _checked(name, "name")
@@ -489,17 +558,13 @@ class WritableFile:
                 f"{name!r} has a ; in it, which is how a reader asks for an old cycle; "
                 f"a name containing one could never be read back"
             )
-        classname, payload, used = _payload(obj)
-        if title is None:
-            title = obj.title if isinstance(obj, (Histogram, Graph)) else ""
-        _checked(title, "title")
-        self._used.update(dict.fromkeys(used))
-        cycle = self._cycles.get(name, 0) + 1
-        self._cycles[name] = cycle
-        self._put(classname, name, title, payload, cycle, listed=True)
 
-    def __setitem__(self, name: str, obj: Any) -> None:
-        self.write(name, obj)
+    @property
+    def _codes(self) -> int:
+        """How ROOT spells this file's compression: the algorithm and the level."""
+        if self._algorithm is None:
+            return 0
+        return CODES[self._algorithm] * 100 + (self._level or 0)
 
     def _put(
         self,
@@ -510,8 +575,14 @@ class WritableFile:
         cycle: int,
         listed: bool,
         packed: bool = True,
-    ) -> int:
+        extra: bytes = b"",
+    ) -> tuple[int, int]:
         """One record: its key, then its payload, compressed when that is smaller.
+
+        Where it went and how long it turned out come back, which is what a
+        tree writes down about each of its baskets. ``extra`` is whatever the
+        class keeps in its own key rather than its payload - only a
+        ``TBasket`` does, and what it keeps is how to slice itself.
 
         The key list and the free list go in raw whatever the file's setting,
         because ROOT - and the reader here - parses both without looking at
@@ -529,9 +600,7 @@ class WritableFile:
             if len(squeezed) < len(payload):
                 body = squeezed
         key = WBuffer()
-        keylen = 26 + sum(
-            1 + len(text.encode("utf-8", "surrogateescape")) for text in (classname, name, title)
-        )
+        keylen = _keylen(classname, name, title, len(extra))
         key.i32(keylen + len(body))
         key.u16(KEY_VERSION)
         key.i32(len(payload))
@@ -543,11 +612,11 @@ class WritableFile:
         key.string(classname)
         key.string(name)
         key.string(title)
-        header = bytes(key.data)
+        header = bytes(key.data) + extra
         if listed:
             self._keys.append(header)
         self._data += header + body
-        return seek
+        return seek, keylen + len(body)
 
     def close(self) -> None:
         """Lay out the bookkeeping, write the whole file out, and let go."""
@@ -566,19 +635,21 @@ class WritableFile:
 
     def _assemble(self) -> None:
         """Everything that could only be placed once the objects were in."""
+        for tree in self._trees:
+            tree._finish()  # its baskets are in; now it can say where they went
+
         info = _streamers(self._used)
-        seek_info = self._put(
+        seek_info, nbytes_info = self._put(
             "TList", "StreamerInfo", "Doubly linked list", info, 1, listed=False
         )
-        nbytes_info = len(self._data) - seek_info
 
         keylist = WBuffer()
         keylist.i32(len(self._keys))
         for header in self._keys:
             keylist.raw(header)
-        seek_keys = len(self._data)
-        self._put("TFile", self._label, "", bytes(keylist.data), 1, listed=False, packed=False)
-        nbytes_keys = len(self._data) - seek_keys
+        seek_keys, nbytes_keys = self._put(
+            "TFile", self._label, "", bytes(keylist.data), 1, listed=False, packed=False
+        )
 
         seek_free = len(self._data)
         free_keylen = 34 + len(self._label.encode())
@@ -617,11 +688,11 @@ class WritableFile:
         head.raw(bytes(12))
         self._data[BEGIN : BEGIN + len(head.data)] = head.data
 
-        codes = 0 if self._algorithm is None else CODES[self._algorithm] * 100 + (self._level or 0)
         struct.pack_into(">4sii", self._data, 0, b"root", WRITER_VERSION, BEGIN)
         struct.pack_into(
             ">iiiiiBiii", self._data, 12,
-            end, seek_free, free_keylen + 10, 1, self._nname, 4, codes, seek_info, nbytes_info,
+            end, seek_free, free_keylen + 10, 1, self._nname, 4, self._codes,
+            seek_info, nbytes_info,
         )
         struct.pack_into(">H16s", self._data, 45, 1, self._uuid)
 

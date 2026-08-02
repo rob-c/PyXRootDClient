@@ -381,10 +381,10 @@ memory and written out in one piece at a clean close; a `with` block that
 raises writes nothing at all, on the principle that no file is better than
 half a file.
 
-What can be written is what can be written *correctly*: histograms and graphs
-— read from another file, or built from plain numbers — plus strings and
-`array.array`s of signed integers or floats, which become the matching
-`TArray`. `Histogram.new` takes every bin edge, one value per bin (two more
+What can be written is what can be written *correctly*: trees of numbers,
+histograms and graphs — read from another file, or built from plain numbers —
+plus strings and `array.array`s of signed integers or floats, which become the
+matching `TArray`. `Histogram.new` takes every bin edge, one value per bin (two more
 fills the flow bins), and optionally per-bin errors and an entry count;
 evenly spaced edges are stored the compact way ROOT stores an even axis.
 `Graph.new` picks its own class: plain points make a `TGraph`, one bar per
@@ -403,6 +403,98 @@ split the output across files.
 otherwise, or `lzma`, `lz4`, `zstd`, `None` to store raw — and `level` the
 effort; an object that did not get smaller is stored raw anyway, exactly as
 ROOT does.
+
+### Trees
+
+`f.tree(name, columns)` declares a tree, and `fill` gives it entries:
+
+```python
+with xrd.root.create("out.root") as f:
+    tree = f.tree("events", {"energy": float, "hits": ("i", 4), "ok": bool})
+    for event in run:
+        tree.fill(energy=event.energy, hits=event.hits, ok=event.passed)
+```
+
+A column is a Python `bool`, `int` or `float`, an [`array`][array] type code
+such as `'f'` for a narrower number, or a pair of either and how many values
+every entry holds — `("i", 4)` is four `int32`s per entry. A Python `int` gets
+the widest ROOT has, because a Python int has no width of its own and a column
+that quietly stopped fitting halfway down the file would be worse. `extend`
+takes an iterable of mappings for the same thing in bulk.
+
+[array]: https://docs.python.org/3/library/array.html
+
+Entries go out a basket at a time as they gather — `basket_size` bytes of a
+column at a time, 32 kB unless said otherwise — so a tree can be far larger
+than memory, and reading a range back later costs one read per basket it
+touches rather than one read of everything. Each column fills its own baskets
+at its own rate, so a wide image column and a one-byte label column do not
+force each other's geometry. The tree's own record says where every basket
+landed, so it is written when the file closes.
+
+An entry that does not fit its columns is refused whole — nothing is kept for
+any column, so the tree is exactly as it was — and it is refused by name:
+which column, what it holds, and what arrived instead. Columns are fixed-size
+by design; rows of varying length, strings and split C++ objects are refused
+rather than approximated, on the same principle as the rest of the writer.
+
+The result is a tree laid out the way ROOT lays one out, down to the record
+versions and the `fLeaves` references pointing at the very leaves the branches
+hold, so ROOT, uproot and this library's own reader all walk it the same way.
+
+### MNIST, end to end
+
+`xrd.root.mnist` is the worked example: it fetches the handwritten digits —
+through this library, so the source can be a URL, a path or bytes already in
+hand — and writes them as one tree per class.
+
+```python
+from xrd.root import create, mnist
+
+with create("mnist.root") as f:
+    for split in ("train", "test"):
+        print(mnist.convert(f, split=split))
+# {'train_0': 5923, 'train_1': 6742, ... 'train_9': 5949}
+# {'test_0': 980, 'test_1': 1135, ... 'test_9': 1009}
+```
+
+That is all 70,000 images in one 11.6 MB file — as small as the gzipped
+originals, and unlike them addressable a range at a time. Each tree holds
+`image` (784 `uint8`, the 28×28 picture flat), `label`, and `index`, the
+entry's place in the original file, so any row can be traced back. One tree
+per digit is the shape a training loop wants: sampling a class reads one part
+of the file rather than seeking all over it, and every tree carries its label
+anyway, so concatenating all ten and shuffling works exactly as well.
+
+Training on it is the loader from [above](#into-pytorch-and-tensorflow), with
+nothing in between:
+
+```python
+import torch, xrd.root, xrd.root.ml
+
+with xrd.root.open_root("mnist.root") as f:
+    loaders = [
+        torch.utils.data.DataLoader(
+            xrd.root.ml.dataset(f[f"train_{digit}"], ["image", "label"], step=64),
+            batch_size=None,
+        )
+        for digit in range(10)
+    ]
+    for parts in zip(*loaders):            # 64 of each digit: a balanced batch
+        x = torch.cat([part["image"] for part in parts]).float().div_(255)
+        y = torch.cat([part["label"] for part in parts]).long()
+        loss = torch.nn.functional.cross_entropy(model(x.view(-1, 1, 28, 28)), y)
+```
+
+The `image` column arrives shaped `(entries, 784)` because the file says it is
+784 wide, so that `view` is the only shaping anybody has to write. Taking one
+batch from each loader is what the per-class layout buys: every batch is class
+balanced without a sampler, and the epoch ends with the smallest class.
+Training on the ten trees as one stream instead is `itertools.chain`, and
+shuffling across them is whatever your training would do anyway.
+
+Point `open_root` at a `root://` or `https://` URL and the same loop trains
+straight off a storage element, reading the baskets it needs and nothing else.
 
 ## Compression
 

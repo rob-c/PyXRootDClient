@@ -42,6 +42,7 @@ from .graph import Graph
 from .hist import Axis, Histogram
 from .tree import Branch, Group, Jagged, TTree
 from .writer import WritableFile, create
+from .wtree import WritableTree
 
 __all__ = [
     # opening
@@ -52,6 +53,7 @@ __all__ = [
     # writing
     "create",
     "WritableFile",
+    "WritableTree",
     # data
     "TTree",
     "Branch",

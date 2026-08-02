@@ -8,6 +8,9 @@ grew later is gated on the same foreign bytes the other way round: what it
 writes must round-trip the histograms and graphs read from these files, its
 streamer descriptions must equal theirs member by member, and its LZ4
 checksums must match ones ROOT itself computed (in `dirs-6.14.00.root`).
+The layouts it writes trees with were harvested the same way — from
+`small-flat-tree.root`, and from `leaves.root` for the three leaf classes no
+6.08 donor here happens to contain — rather than typed out from the sources.
 
 | File | What it is there for |
 | --- | --- |
