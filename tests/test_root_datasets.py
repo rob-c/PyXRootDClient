@@ -411,6 +411,30 @@ def test_the_datasets_asked_for_are_all_there():
         "raisin", "rice", "satellite", "seismic", "servo", "solar_flare",
         "sonar", "soybean", "statlog_heart", "steel_industry", "tic_tac_toe",
         "vertebral_column", "wifi_localisation", "yacht", "zoo",
+        "absenteeism_at_work", "acute_inflammations", "aids_clinical_trials",
+        "android_permissions", "annealing", "appliances_energy", "auction_verification",
+        "audiology", "autism_screening_adult", "autism_screening_child", "beijing_pm25",
+        "bone_marrow_transplant", "breast_cancer_coimbra", "breast_cancer_original",
+        "breast_cancer_prognostic", "breast_cancer_recurrence", "cardiotocography", "cdc_diabetes",
+        "census_income_kdd", "cervical_cancer_behaviour", "cervical_cancer_risk",
+        "challenger_o_rings", "chess_endgame", "chronic_kidney_disease", "communities_crime",
+        "concrete_strength", "congressional_voting", "connect_four", "credit_card_default",
+        "credit_screening", "daily_demand", "darwin", "diabetes_hospitals", "diabetic_retinopathy",
+        "dota2_games", "drug_consumption", "eeg_eye_state", "el_nino", "entrance_exam",
+        "facebook_live_sellers", "facebook_metrics", "flags", "gas_turbine_emissions",
+        "gender_by_name", "glioma_grading", "grid_stability", "hcv_blood_donors",
+        "healthy_aging_poll", "hepatitis_c_egypt", "higher_education_students", "horse_colic",
+        "in_vehicle_coupon", "infrared_thermography", "iot_intrusion", "iranian_churn", "isolet",
+        "istanbul_exchange", "kidney_risk_factors", "land_mines", "metro_traffic", "mice_protein",
+        "monks_problems", "multivariate_gait", "musk_version1", "musk_version2", "news_popularity",
+        "nhanes_age", "obesity_levels", "ozone_level", "page_blocks", "pittsburgh_bridges",
+        "poker_hand", "polish_bankruptcy", "post_operative_patient", "predictive_maintenance",
+        "room_occupancy_count", "secondary_mushroom", "seoul_bike_sharing", "sepsis_survival",
+        "skin_segmentation", "soybean_cultivars", "soybean_small", "spect_heart", "spectf_heart",
+        "splice_junctions", "steel_plates", "student_academics", "student_dropout",
+        "superconductivity", "support2", "taiwanese_bankruptcy", "tennis_majors", "tetouan_power",
+        "thoracic_surgery", "thyroid_recurrence", "user_knowledge", "waveform", "website_phishing",
+        "wholesale_customers", "youtube_spam",
     }
 
 
@@ -1707,3 +1731,255 @@ def test_garment_productivity_reads_its_dates_the_way_that_file_writes_them():
     assert spec.dates == "%m/%d/%Y" and ("when", "date") in spec.fields
     assert spec.codes["weekday"]["Thursday"] == 4
     assert spec.header and not spec.classes
+
+
+# --- what the hundred sets read from the archive's own csv say ---------------
+
+#: The sets the archive serves as one ``data.csv``, header row and all.
+SHELF = (
+    "absenteeism_at_work", "acute_inflammations", "aids_clinical_trials",
+    "android_permissions", "annealing", "appliances_energy", "auction_verification",
+    "audiology", "autism_screening_adult", "autism_screening_child", "beijing_pm25",
+    "bone_marrow_transplant", "breast_cancer_coimbra", "breast_cancer_original",
+    "breast_cancer_prognostic", "breast_cancer_recurrence", "cardiotocography", "cdc_diabetes",
+    "census_income_kdd", "cervical_cancer_behaviour", "cervical_cancer_risk",
+    "challenger_o_rings", "chess_endgame", "chronic_kidney_disease", "communities_crime",
+    "concrete_strength", "congressional_voting", "connect_four", "credit_card_default",
+    "credit_screening", "daily_demand", "darwin", "diabetes_hospitals", "diabetic_retinopathy",
+    "dota2_games", "drug_consumption", "eeg_eye_state", "el_nino", "entrance_exam",
+    "facebook_live_sellers", "facebook_metrics", "flags", "gas_turbine_emissions",
+    "gender_by_name", "glioma_grading", "grid_stability", "hcv_blood_donors",
+    "healthy_aging_poll", "hepatitis_c_egypt", "higher_education_students", "horse_colic",
+    "in_vehicle_coupon", "infrared_thermography", "iot_intrusion", "iranian_churn", "isolet",
+    "istanbul_exchange", "kidney_risk_factors", "land_mines", "metro_traffic", "mice_protein",
+    "monks_problems", "multivariate_gait", "musk_version1", "musk_version2", "news_popularity",
+    "nhanes_age", "obesity_levels", "ozone_level", "page_blocks", "pittsburgh_bridges",
+    "poker_hand", "polish_bankruptcy", "post_operative_patient", "predictive_maintenance",
+    "room_occupancy_count", "secondary_mushroom", "seoul_bike_sharing", "sepsis_survival",
+    "skin_segmentation", "soybean_cultivars", "soybean_small", "spect_heart", "spectf_heart",
+    "splice_junctions", "steel_plates", "student_academics", "student_dropout",
+    "superconductivity", "support2", "taiwanese_bankruptcy", "tennis_majors", "tetouan_power",
+    "thoracic_surgery", "thyroid_recurrence", "user_knowledge", "waveform", "website_phishing",
+    "wholesale_customers", "youtube_spam",
+)
+
+
+def test_the_hundred_shelf_sets_all_read_the_file_the_archive_serves():
+    assert len(SHELF) == len(set(SHELF)) == 100
+    for name in SHELF:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.licence == "CC BY 4.0"
+        number, slug = spec.source.removeprefix("https://archive.ics.uci.edu/dataset/").split("/")
+        assert number.isdigit() and slug
+        assert spec.url == f"https://archive.ics.uci.edu/static/public/{number}/data.csv"
+        assert spec.header and not spec.member and not spec.inner
+        assert spec.splits == ("all",)
+
+
+def test_every_shelf_set_either_names_a_class_or_measures_a_number():
+    for name in SHELF:
+        spec = DATASETS[name]
+        roles = {role for _, role in spec.fields}
+        assert bool(spec.classes) == ("label" in roles), name
+        assert "label" in roles or "target" in roles, name
+
+
+def test_twenty_one_of_the_shelf_sets_have_a_number_to_predict():
+    numbers = {name for name in SHELF if not DATASETS[name].classes}
+    assert numbers == {
+        "absenteeism_at_work", "appliances_energy", "beijing_pm25", "challenger_o_rings",
+        "communities_crime", "concrete_strength", "daily_demand", "el_nino", "facebook_metrics",
+        "gas_turbine_emissions", "infrared_thermography", "istanbul_exchange", "metro_traffic",
+        "multivariate_gait", "news_popularity", "room_occupancy_count", "seoul_bike_sharing",
+        "soybean_cultivars", "steel_plates", "superconductivity", "tetouan_power",
+    }
+
+
+def test_the_six_shelf_sets_that_keep_a_day_or_a_clock_say_how_it_is_written():
+    dated = {name: DATASETS[name].dates for name in SHELF
+             if any(role in ("date", "time") for _, role in DATASETS[name].fields)}
+    assert dated == {
+        "facebook_live_sellers": "%m/%d/%Y %H:%M",
+        "metro_traffic": "%Y-%m-%d %H:%M:%S",
+        "ozone_level": "%m/%d/%Y",
+        "room_occupancy_count": "%H:%M:%S",
+        "seoul_bike_sharing": "%d/%m/%Y",
+        "tetouan_power": "%m/%d/%Y %H:%M",
+    }
+
+
+def test_room_occupancy_keeps_the_clock_and_codes_the_seven_days_it_ran():
+    spec = DATASETS["room_occupancy_count"]
+    assert isinstance(spec, Table)
+    assert ("time", "time") in spec.fields and ("date", "date_code") in spec.fields
+    assert len(spec.codes["date_code"]) == 7
+    assert spec.codes["date_code"][0] == "2017/12/22"
+    assert ("room_occupancy_count", "target") in spec.fields
+
+
+def test_steel_plates_predicts_all_seven_faults_and_sorts_into_none_of_them():
+    spec = DATASETS["steel_plates"]
+    assert isinstance(spec, Table)
+    assert not spec.classes
+    assert [name for name, role in spec.fields if role == "target"] == [
+        "pastry", "z_scratch", "k_scratch", "stains", "dirtiness", "bumps", "other_faults",
+    ]
+
+
+def test_the_challenger_o_rings_predict_the_two_counts_the_launch_gave():
+    spec = DATASETS["challenger_o_rings"]
+    assert isinstance(spec, Table)
+    assert not spec.classes
+    assert ("num_o_rings", "target") in spec.fields
+    assert ("num_thermal_distress", "target") in spec.fields
+    assert ("launch_temp", "i") in spec.fields
+
+
+def test_isolet_is_labelled_by_the_letter_that_was_spoken():
+    spec = DATASETS["isolet"]
+    assert isinstance(spec, Table)
+    assert spec.classes == tuple("abcdefghijklmnopqrstuvwxyz")
+    assert spec.labels["1."] == 0 and spec.labels["26."] == 25
+    assert len(spec.fields) == 618 and spec.fields[-1] == ("class", "label")
+
+
+def test_poker_hands_are_named_rather_than_left_as_the_ten_numbers():
+    spec = DATASETS["poker_hand"]
+    assert isinstance(spec, Table)
+    assert spec.classes == (
+        "nothing", "one_pair", "two_pairs", "three_of_a_kind", "straight",
+        "flush", "full_house", "four_of_a_kind", "straight_flush", "royal_flush",
+    )
+    assert spec.labels["9"] == 9 and spec.fields[0] == ("s1", "i")
+
+
+def test_the_two_musk_versions_are_read_exactly_the_same_way():
+    one, two = DATASETS["musk_version1"], DATASETS["musk_version2"]
+    assert isinstance(one, Table) and isinstance(two, Table)
+    assert one.fields == two.fields
+    assert one.classes == two.classes == ("not_musk", "musk")
+    assert one.labels == two.labels == {"0.": 0, "1.": 1}
+    assert one.fields[0] == ("molecule_name", "text")
+
+
+def test_cardiotocography_is_labelled_by_the_state_and_keeps_the_pattern_number():
+    spec = DATASETS["cardiotocography"]
+    assert isinstance(spec, Table)
+    assert spec.classes == ("normal", "suspect", "pathologic")
+    assert ("nsp", "label") in spec.fields
+    assert ("class", "i") in spec.fields
+
+
+def test_the_two_student_sets_keep_the_bands_in_the_order_they_are_graded():
+    exam, academics = DATASETS["entrance_exam"], DATASETS["student_academics"]
+    assert isinstance(exam, Table) and isinstance(academics, Table)
+    assert exam.classes == ("excellent", "very_good", "good", "average")
+    assert exam.labels == {"Excellent": 0, "Vg": 1, "Good": 2, "Average": 3}
+    assert academics.classes == ("best", "very_good", "good", "pass")
+    assert academics.labels == {"Best": 0, "Vg": 1, "Good": 2, "Pass": 3}
+
+
+def test_user_knowledge_reads_both_spellings_of_very_low_as_the_one_class():
+    spec = DATASETS["user_knowledge"]
+    assert isinstance(spec, Table)
+    assert spec.labels == {"very_low": 0, "Very Low": 0, "Low": 1, "Middle": 2, "High": 3}
+    assert spec.classes == ("very_low", "low", "middle", "high")
+
+
+def test_flags_are_labelled_by_religion_and_keep_the_country_as_text():
+    spec = DATASETS["flags"]
+    assert isinstance(spec, Table)
+    assert len(spec.classes) == 8 and spec.classes[0] == "catholic"
+    assert spec.fields[0] == ("name", "text")
+    assert ("botright", "mainhue") in spec.fields
+    assert spec.codes["mainhue"][0] == "black"
+
+
+def test_annealing_keeps_the_column_name_the_archive_misspelt():
+    spec = DATASETS["annealing"]
+    assert isinstance(spec, Table)
+    assert spec.fields[0] == ("famiily", "famiily")
+    assert spec.classes == ("class_1", "class_2", "class_3", "class_5", "class_u")
+    assert spec.labels == {"1": 0, "2": 1, "3": 2, "5": 3, "U": 4}
+
+
+def test_the_sixty_bases_of_a_splice_junction_share_the_codes_they_are_written_with():
+    spec = DATASETS["splice_junctions"]
+    assert isinstance(spec, Table)
+    assert spec.classes == ("exon_intron", "intron_exon", "neither")
+    assert spec.fields[0] == ("class", "label") and spec.fields[1] == ("instancename", "text")
+    assert spec.fields[-1] == ("base60", "base14")
+    assert set(spec.codes["base14"]) >= {"A", "C", "G", "T"}
+
+
+def test_the_squares_of_a_connect_four_board_are_all_coded_the_one_way():
+    spec = DATASETS["connect_four"]
+    assert isinstance(spec, Table)
+    assert {role for _, role in spec.fields[:42]} == {"a1"}
+    assert spec.codes["a1"] == ("b", "o", "x")
+    assert spec.classes == ("draw", "loss", "win")
+
+
+def test_a_chess_endgame_is_labelled_by_how_many_moves_the_win_takes():
+    spec = DATASETS["chess_endgame"]
+    assert isinstance(spec, Table)
+    assert len(spec.classes) == 18 and "draw" in spec.classes and "sixteen" in spec.classes
+    assert ("black_king_file", "white_rook_file") in spec.fields
+    assert spec.fields[-1] == ("white_depth_of_win", "label")
+
+
+def test_drug_consumption_predicts_the_cannabis_column_and_codes_the_rest():
+    spec = DATASETS["drug_consumption"]
+    assert isinstance(spec, Table)
+    assert spec.classes == ("cl0", "cl1", "cl2", "cl3", "cl4", "cl5", "cl6")
+    assert ("cannabis", "label") in spec.fields
+    assert ("nicotine", "alcohol") in spec.fields
+    assert spec.codes["alcohol"] == ("CL0", "CL1", "CL2", "CL3", "CL4", "CL5", "CL6")
+    assert spec.codes["semer"] == ("CL0", "CL1", "CL2", "CL3", "CL4")
+
+
+def test_support2_reads_the_charge_and_the_urine_as_the_fractions_they_are():
+    spec = DATASETS["support2"]
+    assert isinstance(spec, Table)
+    assert ("charges", "d") in spec.fields and ("urine", "d") in spec.fields
+    assert spec.classes == ("left_hospital", "died_in_hospital")
+
+
+def test_a_youtube_comment_is_long_enough_to_arrive_whole():
+    spec = DATASETS["youtube_spam"]
+    assert isinstance(spec, Table)
+    assert spec.text_size == 1202 and ("content", "text") in spec.fields
+    assert len(spec.codes["video"]) == 5 and spec.classes == ("not_spam", "spam")
+
+
+def test_a_shelf_set_is_written_into_a_tree_for_each_class_it_names():
+    counts, raw = written(
+        "gender_by_name", b"Name,Gender,Count,Probability\nAaban,M,72,1.0\nAabha,F,21,0.5\n",
+        "table",
+    )
+    assert counts == {"female": 1, "male": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["male"]
+        assert tree.title == "Gender by Name rows labelled male"
+        held = tree["name"].array()
+        assert bytes(held[: tree["name_length"].array()[0]]) == b"Aaban"
+        assert list(tree["count"].array()) == [72]
+        assert list(tree["probability"].array()) == [1.0]
+
+
+def test_a_shelf_set_writes_the_code_a_shared_column_was_coded_with():
+    head = (b"id,age,gender,education,country,ethnicity,nscore,escore,oscore,ascore,cscore,"
+            b"impuslive,ss,alcohol,amphet,amyl,benzos,caff,cannabis,choc,coke,crack,ecstasy,"
+            b"heroin,ketamine,legalh,lsd,meth,mushrooms,nicotine,semer,vsa\n")
+    row = (b"1,0.49788,0.48246,-0.05921,0.96082,0.126,0.31287,-0.57545,-0.58331,-0.91699,"
+           b"-0.00665,-0.21712,-1.18084,CL5,CL2,CL0,CL2,CL6,CL3,CL5,CL0,CL0,CL0,CL0,CL0,CL0,"
+           b"CL0,CL0,CL0,CL2,CL0,CL0\n")
+    counts, raw = written("drug_consumption", head + row, "table")
+    assert counts["cl3"] == 1 and sum(counts.values()) == 1
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["cl3"]
+        assert list(tree["alcohol"].array()) == [5]
+        assert list(tree["nicotine"].array()) == [2]
+        assert list(tree["semer"].array()) == [0]
+        assert list(tree["label"].array()) == [3]

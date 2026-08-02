@@ -500,14 +500,15 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of eighty-eight. `xrd.root.datasets` converts the sets machine
-learning is actually taught and benchmarked with, all of them the same way —
-one tree per class, the label beside the data, and the row's place in the
-original file so any number can be traced back to where it came from. The
-eighteen that have a number to predict rather than a class to sort into get one
-tree of every row instead, and the number to predict is a column like any other. What
-ships here is the converter, not the data: no dataset is redistributed in this
-repository, and `datasets/` is where the files it writes are meant to go.
+MNIST is one of a hundred and eighty-eight. `xrd.root.datasets` converts the
+sets machine learning is actually taught and benchmarked with, all of them the
+same way — one tree per class, the label beside the data, and the row's place
+in the original file so any number can be traced back to where it came from.
+The thirty-nine that have a number to predict rather than a class to sort into
+get one tree of every row instead, and the number to predict is a column like
+any other. What ships here is the converter, not the data: no dataset is
+redistributed in this repository, and `datasets/` is where the files it writes
+are meant to go.
 
 ```python
 from xrd.root import datasets
@@ -611,11 +612,112 @@ datasets.convert("iris", "iris.root")
 | `wifi_localisation` | 2,000 readings of 7 wifi points, taken in 4 rooms | CC BY 4.0 | 26 kB |
 | `yacht` | 308 towing tank runs and the resistance each hull made | CC BY 4.0 | 8 kB |
 | `zoo` | 101 animals described 16 ways, 7 kinds of animal | CC BY 4.0 | 26 kB |
+| `absenteeism_at_work` | 740 absences at a Brazilian courier firm and the hours each one lost | CC BY 4.0 | 18 kB |
+| `acute_inflammations` | 120 patients with urinary symptoms, judged for inflammation of the bladder | CC BY 4.0 | 8 kB |
+| `aids_clinical_trials` | 2,139 people on HIV treatment and whose illness went on progressing | CC BY 4.0 | 61 kB |
+| `android_permissions` | 29,332 Android apps described by the permissions they ask for, benign or malware | CC BY 4.0 | 265 kB |
+| `annealing` | 898 steel coils, their chemistry, and the annealing class each took | CC BY 4.0 | 43 kB |
+| `appliances_energy` | 19,735 ten-minute readings of a low-energy house and the watt-hours it drew | CC BY 4.0 | 1.1 MB |
+| `auction_verification` | 2,043 runs of a model checker over simulated spectrum auctions, verified or not | CC BY 4.0 | 21 kB |
+| `audiology` | 200 hearing tests and the diagnosis each led to, 24 classes | CC BY 4.0 | 262 kB |
+| `autism_screening_adult` | 704 adults put through the autism screening questionnaire, 2 classes | CC BY 4.0 | 19 kB |
+| `autism_screening_child` | 292 children put through the autism screening questionnaire, 2 classes | CC BY 4.0 | 15 kB |
+| `beijing_pm25` | 43,824 hours of Beijing weather and the fine particles in the air | CC BY 4.0 | 412 kB |
+| `bone_marrow_transplant` | 187 children given a bone marrow transplant, and who survived it | CC BY 4.0 | 25 kB |
+| `breast_cancer_coimbra` | 116 blood samples from Coimbra, healthy women and cancer patients | CC BY 4.0 | 15 kB |
+| `breast_cancer_original` | 699 breast tissue samples scored nine ways, benign or malignant | CC BY 4.0 | 16 kB |
+| `breast_cancer_prognostic` | 198 breast cancer operations and whether the disease came back | CC BY 4.0 | 54 kB |
+| `breast_cancer_recurrence` | 286 breast cancer cases from Ljubljana and which of them came back | CC BY 4.0 | 10 kB |
+| `cardiotocography` | 2,126 foetal heart traces read by three obstetricians, 3 classes | CC BY 4.0 | 56 kB |
+| `cdc_diabetes` | 253,680 answers to a CDC health survey, and who among them had diabetes | CC BY 4.0 | 2.7 MB |
+| `census_income_kdd` | 199,523 census records from the 1990s and who earned over $50,000 | CC BY 4.0 | 6.2 MB |
+| `cervical_cancer_behaviour` | 72 women answering a behaviour questionnaire, with and without cervical cancer | CC BY 4.0 | 13 kB |
+| `cervical_cancer_risk` | 858 cervical cancer screenings and what the biopsy found | CC BY 4.0 | 30 kB |
+| `challenger_o_rings` | 23 shuttle launches, the temperature at each, and the O-rings that failed | CC BY 4.0 | 6 kB |
+| `chess_endgame` | 28,056 king-and-rook against king-and-king positions, by the moves white needs | CC BY 4.0 | 110 kB |
+| `chronic_kidney_disease` | 400 patients tested for chronic kidney disease, 2 classes | CC BY 4.0 | 20 kB |
+| `communities_crime` | 1,994 American communities described by the census, and the violent crime in each | CC BY 4.0 | 363 kB |
+| `concrete_strength` | 1,030 concrete mixes, how long each cured, and the strength it reached | CC BY 4.0 | 19 kB |
+| `congressional_voting` | 435 congressmen and the sixteen votes that give away the party | CC BY 4.0 | 15 kB |
+| `connect_four` | 67,557 Connect Four positions eight moves in, won, lost or drawn | CC BY 4.0 | 494 kB |
+| `credit_card_default` | 30,000 Taiwanese credit cards and which of them defaulted the next month | CC BY 4.0 | 1.1 MB |
+| `credit_screening` | 690 credit card applications with every field anonymised, approved or not | CC BY 4.0 | 20 kB |
+| `daily_demand` | 60 days at a Brazilian logistics firm and the orders each brought in | CC BY 4.0 | 10 kB |
+| `darwin` | 174 people writing on a graphics tablet, with and without Alzheimer's | CC BY 4.0 | 588 kB |
+| `diabetes_hospitals` | 101,766 hospital stays for diabetes, and who came back | CC BY 4.0 | 2.9 MB |
+| `diabetic_retinopathy` | 1,151 eye images scored by a lesion detector, with and without retinopathy | CC BY 4.0 | 92 kB |
+| `dota2_games` | 102,944 games of Dota 2, the heroes each side picked, and who won | CC BY 4.0 | 2.1 MB |
+| `drug_consumption` | 1,885 personality profiles, and how recently each person last used cannabis | CC BY 4.0 | 95 kB |
+| `eeg_eye_state` | 14,980 moments of EEG from fourteen electrodes, eyes open or shut | CC BY 4.0 | 370 kB |
+| `el_nino` | 178,080 readings from the Pacific buoy array and the air temperature at each | CC BY 4.0 | 2.3 MB |
+| `entrance_exam` | 666 students sitting an engineering entrance exam, and how well each did | CC BY 4.0 | 18 kB |
+| `facebook_live_sellers` | 7,050 posts by Thai fashion sellers, by what kind of post each one was | CC BY 4.0 | 117 kB |
+| `facebook_metrics` | 500 posts by a cosmetics brand and the reaction each of them drew | CC BY 4.0 | 23 kB |
+| `flags` | 194 national flags, their colours and shapes, and the country's religion | CC BY 4.0 | 46 kB |
+| `gas_turbine_emissions` | 36,733 hours of a gas turbine and the carbon monoxide and nitrogen oxides it made | CC BY 4.0 | 1.2 MB |
+| `gender_by_name` | 147,269 first names and the sex of the babies given them | CC BY 4.0 | 1.2 MB |
+| `glioma_grading` | 839 glioma patients, the genes mutated in each, and the grade of the tumour | CC BY 4.0 | 23 kB |
+| `grid_stability` | 10,000 simulated four-node power grids, stable or not | CC BY 4.0 | 1.0 MB |
+| `hcv_blood_donors` | 615 blood samples from donors and hepatitis C patients, 5 classes | CC BY 4.0 | 33 kB |
+| `healthy_aging_poll` | 714 older Americans polled on their health, by how many doctors each sees | CC BY 4.0 | 19 kB |
+| `hepatitis_c_egypt` | 1,385 Egyptian hepatitis C patients and how far the fibrosis had gone | CC BY 4.0 | 85 kB |
+| `higher_education_students` | 145 students answering how they live and study, and the grade each got | CC BY 4.0 | 62 kB |
+| `horse_colic` | 368 horses with colic and whether the lesion turned out to need surgery | CC BY 4.0 | 24 kB |
+| `in_vehicle_coupon` | 12,684 drivers offered a coupon at the wheel, and who took one | CC BY 4.0 | 112 kB |
+| `infrared_thermography` | 1,020 thermal images of a face and the oral temperature measured after each | CC BY 4.0 | 97 kB |
+| `iot_intrusion` | 123,117 network flows from an IoT testbed, ordinary traffic and twelve attacks | CC BY 4.0 | 5.0 MB |
+| `iranian_churn` | 3,150 customers of an Iranian telecom and which of them left | CC BY 4.0 | 45 kB |
+| `isolet` | 7,797 spoken letters described 617 ways, 26 classes | CC BY 4.0 | 25.7 MB |
+| `istanbul_exchange` | 536 trading days of the Istanbul exchange beside eight other indices | CC BY 4.0 | 45 kB |
+| `kidney_risk_factors` | 200 villagers in India screened for chronic kidney disease | CC BY 4.0 | 15 kB |
+| `land_mines` | 338 passes of a metal detector and the kind of mine underneath | CC BY 4.0 | 13 kB |
+| `metro_traffic` | 48,204 hours on an interstate near Minneapolis and the cars that went by | CC BY 4.0 | 557 kB |
+| `mice_protein` | 1,080 measurements of 77 proteins in the cortex of mice, 8 classes | CC BY 4.0 | 738 kB |
+| `monks_problems` | 432 toy robots described six ways, and whether the rule holds of each | CC BY 4.0 | 9 kB |
+| `multivariate_gait` | 181,800 joint angles measured as ten people walked at three speeds | CC BY 4.0 | 1.8 MB |
+| `musk_version1` | 476 molecular conformations described 166 ways, musk or not | CC BY 4.0 | 174 kB |
+| `musk_version2` | 6,598 conformations of 102 molecules, musk or not | CC BY 4.0 | 1.4 MB |
+| `news_popularity` | 39,644 Mashable articles described 58 ways, and the times each was shared | CC BY 4.0 | 6.7 MB |
+| `nhanes_age` | 2,278 people in an American health survey, adult or senior | CC BY 4.0 | 40 kB |
+| `obesity_levels` | 2,111 people's eating and moving habits, and the weight class each fell in | CC BY 4.0 | 114 kB |
+| `ozone_level` | 5,070 days of Houston weather, and which of them broke the ozone limit | CC BY 4.0 | 400 kB |
+| `page_blocks` | 5,473 blocks of a scanned document page, 5 classes | CC BY 4.0 | 125 kB |
+| `pittsburgh_bridges` | 108 bridges over the three rivers of Pittsburgh, by the era each was built in | CC BY 4.0 | 16 kB |
+| `poker_hand` | 1,025,010 poker hands of five cards, by what each is worth | CC BY 4.0 | 8.3 MB |
+| `polish_bankruptcy` | 43,405 years of Polish company accounts and which firms went bankrupt | CC BY 4.0 | 13.5 MB |
+| `post_operative_patient` | 90 patients leaving the recovery room, and where each was sent next | CC BY 4.0 | 10 kB |
+| `predictive_maintenance` | 10,000 simulated hours of a milling machine, and the tools that broke | CC BY 4.0 | 134 kB |
+| `room_occupancy_count` | 10,129 minutes of light, sound, temperature and CO2, and the people in the room | CC BY 4.0 | 118 kB |
+| `secondary_mushroom` | 61,069 mushrooms grown from a field guide's own descriptions, edible or poisonous | CC BY 4.0 | 591 kB |
+| `seoul_bike_sharing` | 8,760 hours in Seoul, the weather at each, and the bikes rented | CC BY 4.0 | 118 kB |
+| `sepsis_survival` | 110,341 hospital admissions for sepsis in Norway, and who lived | CC BY 4.0 | 411 kB |
+| `skin_segmentation` | 245,057 pixels of face and background, as three colour channels | CC BY 4.0 | 1.1 MB |
+| `soybean_cultivars` | 320 soybean plants of forty cultivars, and the grain each yielded | CC BY 4.0 | 14 kB |
+| `soybean_small` | 47 soybean plants with one of four diseases, described 35 ways | CC BY 4.0 | 29 kB |
+| `spect_heart` | 267 cardiac SPECT images reduced to 22 binary patterns, normal or not | CC BY 4.0 | 13 kB |
+| `spectf_heart` | 267 cardiac SPECT images described by 44 counts, normal or not | CC BY 4.0 | 31 kB |
+| `splice_junctions` | 3,190 stretches of DNA and the splice junction, if any, in the middle | CC BY 4.0 | 140 kB |
+| `steel_plates` | 1,941 steel plates and the seven kinds of surface fault found on them | CC BY 4.0 | 123 kB |
+| `student_academics` | 131 students in Kalyani and the band each ended the semester in | CC BY 4.0 | 19 kB |
+| `student_dropout` | 4,424 university students, and whether each dropped out, stayed on or graduated | CC BY 4.0 | 133 kB |
+| `superconductivity` | 21,263 superconductors described by their chemistry, and the critical temperature | CC BY 4.0 | 5.8 MB |
+| `support2` | 9,105 seriously ill hospital patients, and who died before going home | CC BY 4.0 | 562 kB |
+| `taiwanese_bankruptcy` | 6,819 Taiwanese companies described by 95 financial ratios, solvent or bankrupt | CC BY 4.0 | 3.7 MB |
+| `tennis_majors` | 943 matches at the 2013 grand slams, point by point, and who won | CC BY 4.0 | 65 kB |
+| `tetouan_power` | 52,416 ten-minute readings of Tetouan's weather and the power its three zones drew | CC BY 4.0 | 1.3 MB |
+| `thoracic_surgery` | 470 lung cancer operations and who was still alive a year later | CC BY 4.0 | 15 kB |
+| `thyroid_recurrence` | 383 thyroid cancer patients followed fifteen years, and whose cancer came back | CC BY 4.0 | 13 kB |
+| `user_knowledge` | 403 students studying DC machines, and how well each knew the subject | CC BY 4.0 | 16 kB |
+| `waveform` | 5,000 generated waveforms of three kinds, described by 21 noisy attributes | CC BY 4.0 | 255 kB |
+| `website_phishing` | 1,353 web pages judged phishing, suspicious or legitimate on nine signs | CC BY 4.0 | 17 kB |
+| `wholesale_customers` | 440 wholesale customers and what each spent on six kinds of goods | CC BY 4.0 | 15 kB |
+| `youtube_spam` | 1,956 comments under five pop videos, spam or not | CC BY 4.0 | 242 kB |
 
-Eighteen of them have a number to predict rather than a class; the rest sort
-rows into classes. The last column is one file holding every split, written with
-the default `zlib`, as measured on a conversion of all eighty-eight — every split of a
-set that has them, a tree a class, and the `about` key beside them.
+Thirty-nine of them have a number to predict rather than a class; the rest sort
+rows into classes. The last column is one file holding every split, written
+with the default `zlib`, as measured on a conversion of all hundred and
+eighty-eight — every split of a set that has them, a tree a class, and the
+`about` key beside them.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
 on the machine doing the converting, and the licences above are what those
