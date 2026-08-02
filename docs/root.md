@@ -53,9 +53,11 @@ f["h1d"]                # a histogram is a Histogram, and a graph a Graph
 ```
 
 Objects held by pointer are followed, whether the class promises they are there
-or writes the name of the class in front of them; a `TList`, `TObjArray` or
-`TArray` member is read the way it streams itself rather than by the members it
-declares; and a container of objects is read one object after another. A class
+or writes the name of the class in front of them; a `TList`, `TObjArray`,
+`TClonesArray` or `TArray` member is read the way it streams itself rather than
+by the members it declares — a `TClonesArray` names the one class it holds at
+the front, and a slot never filled comes back as `None` rather than shifting
+the rest along; and a container of objects is read one object after another. A class
 inside an entry that this reader cannot walk — one the file does not describe,
 or one that streams itself some way of its own — comes back as the name of its
 class, because the length written in front of it says how to step over it
@@ -348,7 +350,8 @@ What is named that way:
   last and there is no length in front of a member to step over it by;
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;
-- a container written field by field rather than value by value;
+- a container, or a `TClonesArray`, written field by field rather than value
+  by value;
 - trees written by ROOT 3 or older.
 
 ## Errors

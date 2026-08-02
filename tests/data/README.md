@@ -1,6 +1,6 @@
 # ROOT files used by the tests
 
-Twenty-nine small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
+Thirty-one small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
 project's `groot/testdata`, and used here to check that `xrd.root` reads what
 ROOT wrote. They are here rather than generated because nothing in this
 library can write a ROOT file: the only honest test of a reader is bytes
@@ -31,6 +31,8 @@ somebody else's writer produced.
 | `g4-like.root` | a tree written by ROOT 4, whose baskets are inside the branch rather than out in the file |
 | `stdvec-bool-fullsplit-6.10.08.root` | `std::vector<bool>`, which is a byte per element and not a bit |
 | `graphs.root` | a graph, one with error bars and one whose bars differ each side |
+| `tclonesarray-no-streamerbypass.root` | a `TClonesArray`, which names the one class it holds at the front |
+| `tclonesarray-with-streamerbypass.root` | the same array written field by field, which is refused |
 | `gauss-h1.root` | one-dimensional histograms, evenly binned and with every edge written out |
 | `gauss-h2.root` | two-dimensional histograms, for the order the bins are written in |
 | `streamers.root` | objects held by pointer, arrays of them, and the class names written in front |

@@ -60,6 +60,10 @@ OBJECTS_POINTED = (64, 69)
 LISTS = ("TList", "THashList", "TSortedList")
 OBJECT_ARRAYS = ("TObjArray",)
 
+#: The array of one class, which names that class once at the front rather
+#: than in front of every object it holds.
+CLONES = ("TClonesArray",)
+
 #: The arrays ROOT's own kit keeps numbers in - the contents of a histogram is
 #: one - each of which streams itself as a count and then that many values,
 #: with no record round it and nothing of the base class it inherits.
@@ -577,6 +581,9 @@ def _embedded(name: str, source: Source, seen: tuple[str, ...]) -> Callable[[Buf
     if name in OBJECT_ARRAYS:
         held = _Described(source, seen)
         return lambda buf: buf.objarray(held)
+    if name in CLONES:
+        pool = _Described(source, seen)
+        return lambda buf: buf.clones(pool)
     if name in ARRAYS:
         prim = ARRAYS[name]
         return lambda buf: _numbers(prim, None, buf, buf.i32())
@@ -831,6 +838,11 @@ def whole_object(name: str, source: Source) -> Values | Refused:
         return Values("str", _string)  # a string key is its length and its bytes
     if name == "TDatime":
         return Values("datetime", _datime)
+    if name in ARRAYS:
+        return Values(ARRAYS[name].typename, _embedded(name, source, ()))
+    if name in LISTS + OBJECT_ARRAYS + CLONES:
+        # A collection streams itself, so the file describing it would not help.
+        return Values("list", _embedded(name, source, ()))
     if not source.streamers().get(name):
         return Refused("this file's streamer information does not describe its layout")
     try:

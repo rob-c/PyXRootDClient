@@ -738,6 +738,46 @@ def test_a_graph_with_only_one_side_of_its_bars_written_has_neither():
     assert graph.xerr is None
 
 
+def clones_bytes(
+    *, version: int = 4, bits: int = 0, held: str = "Thing;1", slots: tuple[int, ...] = (1, 0)
+) -> bytes:
+    """A ``TClonesArray`` of a class whose objects are one byte each."""
+    body = struct.pack(">HII", 1, 0, bits) if version > 2 else b""
+    body += tstring("arr") if version > 1 else b""
+    body += tstring(held) + struct.pack(">ii", len(slots), 0)
+    for filled in slots:
+        body += bytes([filled]) + (b"\x2a" if filled else b"")
+    return record(version, body)
+
+
+def test_an_array_of_one_class_names_that_class_once_at_the_front():
+    with opened("tclonesarray-no-streamerbypass") as root:
+        held = root["clones"]
+        assert [one["fString"] for one in held] == ["Elem-0", "elem-1", "Elem-20"]
+
+    #: A slot that was never filled is a byte saying so and nothing else.
+    one = {"Thing": lambda buf: buf.u8()}
+    assert Buffer(clones_bytes()).clones(one) == [42, None]
+    assert Buffer(clones_bytes(version=1)).clones(one) == [42, None]
+
+
+def test_an_array_of_numbers_standing_on_its_own_is_read_as_numbers():
+    """A ``TArrayD`` key is a count and that many values, with no record round it."""
+    payload = struct.pack(">i", 2) + struct.pack(">dd", 1.5, 2.5)
+    assert keyed(payload, "TArrayD", {})["thing"] == array.array("d", [1.5, 2.5])
+
+
+def test_an_array_of_one_class_written_field_by_field_is_refused():
+    with opened("tclonesarray-with-streamerbypass") as root:
+        with pytest.raises(UnsupportedFeatureError, match="TObjString was written field by field"):
+            root["clones"]
+
+
+def test_an_array_of_a_class_this_file_does_not_describe_is_refused_by_name():
+    with pytest.raises(UnsupportedFeatureError, match="holds Mystery, which this file"):
+        Buffer(clones_bytes(held="Mystery;2")).clones({})
+
+
 def test_an_object_pointed_at_rather_than_held_is_read_where_it_points():
     """A member that may be null carries the class it points at, or nothing."""
     with opened("streamers") as root:

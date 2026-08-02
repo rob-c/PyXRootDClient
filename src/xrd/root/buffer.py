@@ -18,7 +18,7 @@ import struct
 import sys
 from typing import Any
 
-from .errors import FormatError
+from .errors import FormatError, UnsupportedFeatureError
 
 __all__ = ["Buffer", "as_datetime", "to_native"]
 
@@ -57,6 +57,11 @@ NEW_CLASS_TAG = 0xFFFFFFFF
 CLASS_MASK = 0x80000000
 MAP_OFFSET = 2
 IS_REFERENCED = 1 << 4
+#: The bits a ``TClonesArray`` carries that say how it wrote what it holds:
+#: the first asks ROOT to write the objects field by field rather than one
+#: after another, and the second takes that back for a class that cannot be.
+BYPASS_STREAMER = 1 << 12
+NO_MEMBER_WISE = 1 << 17
 
 _U8 = struct.Struct(">B")
 _I8 = struct.Struct(">b")
@@ -292,5 +297,35 @@ class Buffer:
         self.string()  # the array's own name, always empty in a tree
         size, _low = self.i32(), self.i32()
         items = [self.any(classes) for _ in range(size)]
+        self.resume(end)
+        return items
+
+    def clones(self, classes: dict[str, Any]) -> list[Any]:
+        """A ``TClonesArray``: many objects of one class, the class written once.
+
+        ROOT keeps a pool of objects of a single class and reuses it entry
+        after entry, which is the whole point of the thing, so the class is
+        named at the front of the array rather than in front of every object.
+        A byte before each object says whether that slot was ever filled; an
+        empty one comes back as ``None`` rather than shifting the rest along.
+        """
+        version, end = self.header()
+        bits = self.tobject()[1] if version > 2 else 0
+        if version > 1:
+            self.string()  # the name the array was given
+        held = self.string().partition(";")[0]  # the class, and the version of it
+        count, _low = abs(self.i32()), self.i32()
+        if bits & BYPASS_STREAMER and not bits & NO_MEMBER_WISE:
+            raise UnsupportedFeatureError(
+                f"a TClonesArray of {held} was written field by field, which is a "
+                f"shape this reader does not decode"
+            )
+        one = classes.get(held)
+        if one is None:
+            raise UnsupportedFeatureError(
+                f"a TClonesArray holds {held}, which this file's streamer information "
+                f"does not describe well enough to read one"
+            )
+        items = [one(self) if self.u8() else None for _ in range(count)]
         self.resume(end)
         return items
