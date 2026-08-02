@@ -219,6 +219,8 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.testing.FakeServer
 
+::: xrd.testing.from_directory
+
 ::: xrd.testing.FakeDAVServer
 
 ::: xrd.testing.FakeS3Server

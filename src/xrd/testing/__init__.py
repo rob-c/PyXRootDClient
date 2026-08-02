@@ -21,6 +21,14 @@ from __future__ import annotations
 from .faults import FaultProxy
 from .http import FakeDAVServer
 from .s3 import FakeS3Server
-from .server import FakeServer, error, frame
+from .server import FakeServer, error, frame, from_directory
 
-__all__ = ["FakeServer", "FakeDAVServer", "FakeS3Server", "FaultProxy", "frame", "error"]
+__all__ = [
+    "FakeServer",
+    "FakeDAVServer",
+    "FakeS3Server",
+    "FaultProxy",
+    "frame",
+    "error",
+    "from_directory",
+]

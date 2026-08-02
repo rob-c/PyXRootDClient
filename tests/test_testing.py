@@ -15,8 +15,8 @@ import pytest
 
 import xrd
 from xrd.proto import constants as c
-from xrd.testing import FakeServer
-from xrd.testing.server import _checksum, _clean, _fattr_reply, _splice
+from xrd.testing import FakeServer, from_directory
+from xrd.testing.server import _checksum, _clean, _fattr_reply, _splice, main
 
 # ---------------------------------------------------------------------------
 # Contents
@@ -536,3 +536,63 @@ def test_a_client_that_resets_the_connection_ends_it_quietly():
         with xrd.FileSystem(srv.url) as fs:
             fs.ping()  # a fresh client is served as if nothing had happened
         assert c.kXR_ping in srv.seen
+
+
+# ---------------------------------------------------------------------------
+# Sharing a directory
+# ---------------------------------------------------------------------------
+
+
+def test_a_directory_is_served_under_both_its_bare_names_and_its_real_paths(tmp_path):
+    (tmp_path / "mnist.root").write_bytes(b"pretend ROOT")
+    (tmp_path / "notes.txt").write_bytes(b"not a dataset")
+    (tmp_path / "inner").mkdir()
+    server = from_directory(tmp_path, port=0)
+    assert set(server.files) == {
+        "/mnist.root", "/notes.txt",
+        (tmp_path / "mnist.root").as_posix(), (tmp_path / "notes.txt").as_posix(),
+    }
+    with server, xrd.FileSystem(server.url) as fs:
+        assert fs.read_bytes("/mnist.root") == b"pretend ROOT"
+        assert fs.read_bytes((tmp_path / "mnist.root").as_posix()) == b"pretend ROOT"
+
+
+def test_a_pattern_takes_only_the_files_it_names(tmp_path):
+    (tmp_path / "a.root").write_bytes(b"one")
+    (tmp_path / "b.txt").write_bytes(b"two")
+    assert set(from_directory(tmp_path, port=0, pattern="*.root").files) == {
+        "/a.root", (tmp_path / "a.root").as_posix()}
+
+
+def test_serving_a_directory_from_the_command_line_reads_back_over_the_wire(tmp_path, capsys):
+    (tmp_path / "held.root").write_bytes(b"payload")
+    read = []
+
+    def wait():
+        port = int(capsys.readouterr().out.split("root://127.0.0.1:")[1].split("/")[0])
+        with xrd.FileSystem(f"root://127.0.0.1:{port}/") as fs:
+            read.append(fs.read_bytes("/held.root"))
+
+    assert main([str(tmp_path), "--port", "0", "--pattern", "*.root"], wait=wait) == 0
+    assert read == [b"payload"]
+
+
+def test_the_command_line_server_stops_when_the_terminal_interrupts_it(tmp_path, capsys):
+    (tmp_path / "held.root").write_bytes(b"payload")
+    ports = []
+
+    def wait():
+        ports.append(int(capsys.readouterr().out.split("root://127.0.0.1:")[1].split("/")[0]))
+        raise KeyboardInterrupt
+
+    assert main([str(tmp_path), "--port", "0"], wait=wait) == 0
+    assert "stopping" in capsys.readouterr().out
+    with pytest.raises(OSError):
+        xrd.FileSystem(f"root://127.0.0.1:{ports[0]}/").stat("/held.root")
+
+
+def test_the_module_entry_point_hands_the_command_line_straight_to_main():
+    """``python -m xrd.testing`` is the documented way in, so it must import."""
+    import xrd.testing.__main__ as entry
+
+    assert entry.main is main

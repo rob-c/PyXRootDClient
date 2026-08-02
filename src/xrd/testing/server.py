@@ -21,7 +21,10 @@ TLS is not implemented; point a client at it with ``root://``, not
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
+import pathlib
 import posixpath
 import socket
 import socketserver
@@ -29,7 +32,7 @@ import struct
 import threading
 import time
 import zlib
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import cast
 from urllib.parse import parse_qs
@@ -39,7 +42,7 @@ from ..proto import constants as c
 from ..proto.buffer import Reader, Writer
 from ..url import XRootDURL, parse
 
-__all__ = ["FakeServer", "frame", "error"]
+__all__ = ["FakeServer", "frame", "error", "from_directory", "main"]
 
 #: Requests whose body is payload rather than a path, so nothing about them
 #: belongs in :attr:`FakeServer.arguments`.
@@ -1131,3 +1134,73 @@ def _checksum(algorithm: str, data: bytes) -> str:
         return checksum_bytes(algorithm, data)
     except ValueError:
         return f"{zlib.adler32(data):08x}"
+
+
+def from_directory(
+    directory: str | os.PathLike[str],
+    *,
+    host: str = "127.0.0.1",
+    port: int = 1094,
+    pattern: str = "*",
+) -> FakeServer:
+    """A server holding every file in ``directory`` that matches ``pattern``.
+
+        >>> server = from_directory("datasets", port=21094)   # doctest: +SKIP
+        >>> with server:                                      # doctest: +SKIP
+        ...     xrd.root.open_root(f"{server.url}mnist.root")
+
+    Each file is offered twice: under its name alone, and under the absolute
+    path it has on this machine - so both ``root://host:port//mnist.root`` and
+    ``root://host:port//home/you/datasets/mnist.root`` reach the same bytes.
+    The files are read into memory, because that is what this server holds.
+    """
+    root = pathlib.Path(directory).resolve()
+    files = {}
+    for path in sorted(root.glob(pattern)):
+        if path.is_file():
+            data = path.read_bytes()
+            files[f"/{path.name}"] = data
+            files[path.as_posix()] = data
+    return FakeServer(files=files, host=host, port=port)
+
+
+def _block() -> None:  # pragma: no cover - waits for a signal that ends it
+    """Wait until the terminal interrupts us."""
+    threading.Event().wait()
+
+
+def main(argv: Sequence[str] | None = None, *, wait: Callable[[], None] = _block) -> int:
+    """Share a directory over ``root://`` on an unprivileged port, no login::
+
+        $ python -m xrd.testing datasets --port 21094
+
+    Anyone who can reach the port can read - and write - everything served,
+    which is why the default is loopback. It is a demonstration and a test
+    fixture, not a storage element.
+    """
+    parser = argparse.ArgumentParser(
+        prog="python -m xrd.testing",
+        description="Serve a directory over root:// with no authentication.",
+    )
+    parser.add_argument("directory", help="the directory whose files to serve")
+    parser.add_argument("--host", default="127.0.0.1", help="address to listen on")
+    parser.add_argument("--port", type=int, default=1094, help="port to listen on")
+    parser.add_argument("--pattern", default="*", help="which files to take, as a glob")
+    args = parser.parse_args(argv)
+
+    server = from_directory(args.directory, host=args.host, port=args.port,
+                            pattern=args.pattern).start()
+    host, port = server.address
+    # Flushed as they go: this is a program whose next act is to block, and an
+    # unflushed buffer would leave the terminal with nothing to connect to.
+    print(f"serving {len(server.files) // 2} files on root://{host}:{port}/ with no login",
+          flush=True)
+    for path in sorted(server.files):
+        print(f"  root://{host}:{port}/{path}  {len(server.files[path]):,} bytes", flush=True)
+    try:
+        wait()
+    except KeyboardInterrupt:
+        print("stopping", flush=True)
+    finally:
+        server.stop()
+    return 0

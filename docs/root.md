@@ -1386,10 +1386,64 @@ datasets.convert("cifar100", "cifar100.root", split="test",
 ```
 
 `base=` points the downloads at a mirror of your own, and `target` may be a
-`WritableFile` already open, which is how several splits end up in one file.
+`WritableFile` already open, which is how several splits end up in one file:
+
+```python
+from xrd.root import create, datasets
+
+with create("mnist.root") as out:
+    for split in ("train", "test"):
+        datasets.convert("mnist", out, split=split)
+```
+
 Adding a dataset of your own is an `Images`, `CIFAR`, `Audio`, `Matrix` or
 `Table` in the registry — each is a frozen dataclass saying where the data is
 and what its fields mean, with no code to write for the common shapes.
+
+### Training off a `root://` URL
+
+Converted, a dataset is a ROOT file like any other, so a training loop reads it
+the way it would read events. If there is no storage element to hand, share the
+directory over `root://` yourself — an unprivileged port, no login, no daemon:
+
+```console
+$ python -m xrd.testing datasets --port 21094 --pattern '*.root'
+serving 5 files on root://127.0.0.1:21094/ with no login
+```
+
+Then the ten class trees are ten streams, mixed a batch at a time. Nothing is
+downloaded first; each pull is one basket off the wire:
+
+```python
+import itertools, torch
+from xrd.root import open_root
+from xrd.root.ml import dataset
+
+URL = "root://127.0.0.1:21094//home/you/datasets/mnist.root"
+
+with open_root(URL) as handle:
+    loaders = [
+        torch.utils.data.DataLoader(
+            dataset(handle[f"train_{cls}"], ["image", "label"], step=512),
+            batch_size=None)
+        for cls in range(10)
+    ]
+    for parts in itertools.zip_longest(*loaders):
+        parts = [part for part in parts if part is not None]
+        x = torch.cat([p["image"] for p in parts]).cuda().float().div_(255)
+        y = torch.cat([p["label"] for p in parts]).cuda().long()
+        train(x.view(-1, 1, 28, 28), y)          # 60,000 rows an epoch
+```
+
+A regression set is simpler still, being one tree of every row, with the number
+to predict a column beside the rest:
+
+```python
+with open_root("root://127.0.0.1:21094//victorian_electricity.root") as handle:
+    loader = torch.utils.data.DataLoader(
+        dataset(handle["rows"], ["temperature", "holiday", "time", "demand"], step=4096),
+        batch_size=None)
+```
 
 ## Compression
 

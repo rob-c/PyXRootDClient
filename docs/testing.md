@@ -99,6 +99,37 @@ A handler that yields nothing and closes `conn.sock` is a server that crashed
 between doing the work and answering for it - the one case where a client must
 *not* repeat a `write`, an `rm` or an `mv`.
 
+### Sharing a directory over `root://`
+
+The same server will hold files you already have, which is the shortest way to
+put a `root://` URL in front of something on your own disk - a converted
+dataset, a file you are debugging - without a daemon, a configuration file or
+a port you need permission to bind:
+
+```console
+$ python -m xrd.testing datasets --port 21094 --pattern '*.root'
+serving 2 files on root://127.0.0.1:21094/ with no login
+  root://127.0.0.1:21094//home/you/datasets/mnist.root  11,561,483 bytes
+  root://127.0.0.1:21094//mnist.root  11,561,483 bytes
+```
+
+Every file is offered twice, under its bare name and under the absolute path
+it has here, so either URL reaches it. `from_directory` is the same thing from
+Python, and takes the same arguments:
+
+```python
+from xrd.testing import from_directory
+
+with from_directory("datasets", port=21094, pattern="*.root") as server:
+    with xrd.root.open_root(f"{server.url}mnist.root") as f:
+        print(f["train_7"])
+```
+
+It listens on loopback and authorises everyone, and it reads the files into
+memory, which is the whole of what this server is: a demonstration and a test
+fixture, not a storage element. Point it at a directory of gigabytes and it
+will try to hold gigabytes.
+
 ## `FakeDAVServer` - HTTP and WebDAV
 
 ```python
