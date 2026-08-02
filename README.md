@@ -118,7 +118,11 @@ point at a time, inside another object as well as in a key. Containers written
 field by field, `TClonesArray` however it was told to write itself, and
 `vector<pair>` all read back as what they are. The few columns this reader will not decode are listed with the
 reason rather than silently missing, because a plausible misreading of
-physics data is worse than a refusal.
+physics data is worse than a refusal. Histograms and graphs draw themselves —
+`.plot()` onto matplotlib axes when matplotlib is there, `.text()` into plain
+characters when it is not — and `xrd.root.create` writes a new ROOT file:
+histograms, graphs, strings and arrays of numbers, under every compression
+ROOT itself writes, still from nothing but the standard library.
 
 ```python
 import torch, xrd.root, xrd.root.ml
@@ -238,8 +242,8 @@ bucket — signatures checked against the AWS specification rather than trusted.
 The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
-reader are implemented and tested —
-2675 tests, of which the great majority need no network, no KDC and no
+reader and writer are implemented and tested —
+2741 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

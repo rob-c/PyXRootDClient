@@ -2,9 +2,12 @@
 
 Thirty-one small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
 project's `groot/testdata`, and used here to check that `xrd.root` reads what
-ROOT wrote. They are here rather than generated because nothing in this
-library can write a ROOT file: the only honest test of a reader is bytes
-somebody else's writer produced.
+ROOT wrote. They are here rather than generated because the only honest test
+of a reader is bytes somebody else's writer produced. The writer this library
+grew later is gated on the same foreign bytes the other way round: what it
+writes must round-trip the histograms and graphs read from these files, its
+streamer descriptions must equal theirs member by member, and its LZ4
+checksums must match ones ROOT itself computed (in `dirs-6.14.00.root`).
 
 | File | What it is there for |
 | --- | --- |

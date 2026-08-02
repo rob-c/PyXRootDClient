@@ -11,9 +11,11 @@ under :attr:`Histogram.members`, so nothing is hidden by being tidied away.
 from __future__ import annotations
 
 import array
+import itertools
 import math
 from typing import Any
 
+from .draw import axes, bar, missing_picture, shade
 from .errors import FormatError
 
 __all__ = ["HISTOGRAMS", "Axis", "Histogram"]
@@ -21,6 +23,29 @@ __all__ = ["HISTOGRAMS", "Axis", "Histogram"]
 #: The histogram classes this reads: one, two and three dimensions, in each of
 #: the types ROOT keeps bin contents in.
 HISTOGRAMS = tuple(f"TH{dimension}{kind}" for dimension in (1, 2, 3) for kind in "CSILFD")
+
+#: What a freshly made object draws like: ROOT's own defaults, spelled out.
+LINE = {"fLineColor": 1, "fLineStyle": 1, "fLineWidth": 1}
+FILL = {"fFillColor": 0, "fFillStyle": 1001}
+MARKER = {"fMarkerColor": 1, "fMarkerStyle": 1, "fMarkerSize": 1.0}
+AXIS_STYLE = {
+    "fNdivisions": 510, "fAxisColor": 1, "fLabelColor": 1, "fLabelFont": 42,
+    "fLabelOffset": 0.005, "fLabelSize": 0.035, "fTickLength": 0.03,
+    "fTitleOffset": 1.0, "fTitleSize": 0.035, "fTitleColor": 1, "fTitleFont": 42,
+}
+
+
+def _axis(name: str, nbins: int, low: float, high: float, edges: list[float]) -> dict[str, Any]:
+    """The members of one freshly made ``TAxis``."""
+    return {
+        "TNamed": {"fName": name, "fTitle": ""},
+        "TAttAxis": dict(AXIS_STYLE),
+        "fNbins": nbins, "fXmin": low, "fXmax": high,
+        "fXbins": array.array("d", edges),
+        "fFirst": 0, "fLast": 0, "fBits2": 0,
+        "fTimeDisplay": False, "fTimeFormat": "",
+        "fLabels": None, "fModLabs": None,
+    }
 
 
 class Axis:
@@ -193,6 +218,141 @@ class Histogram:
 
         return cut(0, 0)
 
+    @classmethod
+    def new(
+        cls,
+        name: str,
+        edges: Any,
+        values: Any,
+        *,
+        title: str = "",
+        errors: Any = None,
+        entries: float | None = None,
+    ) -> Histogram:
+        """A one-dimensional histogram built from Python numbers, ready to write.
+
+            >>> h = Histogram.new("counts", [0, 1, 2, 4], [5, 3, 1])
+            >>> h.values()
+            array('d', [5.0, 3.0, 1.0])
+
+        ``edges`` is every bin edge, one more of them than there are bins, in
+        increasing order; evenly spaced ones are stored the compact way ROOT
+        stores an even axis. ``values`` is what is in each bin - give two
+        extra values to fill the flow bins at the ends, which are otherwise
+        zero. ``errors`` is the uncertainty per bin, shaped like ``values``;
+        without it a bin's error is the square root of its count, as ROOT
+        gives for a histogram filled without weights. ``entries`` is how many
+        fills the histogram represents, taken to be the sum of the values
+        unless said otherwise.
+        """
+        edges = [float(edge) for edge in edges]
+        if len(edges) < 2:
+            raise ValueError("a histogram needs at least two edges to have a bin")
+        if any(second <= first for first, second in itertools.pairwise(edges)):
+            raise ValueError("edges must increase: each bin has to be wider than nothing")
+        nbins = len(edges) - 1
+        values = _flowed(values, nbins, "values")
+        if errors is not None:
+            errors = _flowed(errors, nbins, "errors")
+        low, high = edges[0], edges[-1]
+        width = (high - low) / nbins
+        even = [low + width * step for step in range(nbins)] + [high]
+        stored = [] if edges == even else edges
+        inner = values[1:-1]
+        centers = [(edges[step] + edges[step + 1]) / 2 for step in range(nbins)]
+        weights = errors[1:-1] if errors is not None else None
+        core = {
+            "TNamed": {"fName": str(name), "fTitle": str(title)},
+            "TAttLine": dict(LINE), "TAttFill": dict(FILL), "TAttMarker": dict(MARKER),
+            "fNcells": nbins + 2,
+            "fXaxis": _axis("xaxis", nbins, low, high, stored),
+            "fYaxis": _axis("yaxis", 1, 0.0, 1.0, []),
+            "fZaxis": _axis("zaxis", 1, 0.0, 1.0, []),
+            "fBarOffset": 0, "fBarWidth": 1000,
+            "fEntries": float(entries) if entries is not None else math.fsum(values),
+            "fTsumw": math.fsum(inner),
+            "fTsumw2": (
+                math.fsum(error * error for error in weights)
+                if weights is not None
+                else math.fsum(inner)
+            ),
+            "fTsumwx": math.fsum(v * c for v, c in zip(inner, centers, strict=True)),
+            "fTsumwx2": math.fsum(v * c * c for v, c in zip(inner, centers, strict=True)),
+            "fMaximum": -1111.0, "fMinimum": -1111.0, "fNormFactor": 0.0,
+            "fContour": array.array("d"),
+            "fSumw2": array.array(
+                "d", [error * error for error in errors] if errors is not None else []
+            ),
+            "fOption": "",
+            "fFunctions": [],
+            "fBufferSize": 0, "fBuffer": array.array("d"),
+            "fBinStatErrOpt": 0,
+        }
+        return cls("TH1D", {"TH1": core, "TArrayD": array.array("d", values)})
+
+    def plot(self, ax: Any = None, **options: Any) -> Any:
+        """Draw onto matplotlib axes, made fresh unless ``ax`` brings some.
+
+        One dimension draws as steps, two as a shaded mesh; three have no
+        flat picture and refuse rather than pretending. The axes come back,
+        so styling and saving carry on where this left off - and matplotlib
+        not being installed refuses with the two ways out by name.
+        """
+        if len(self.axes) > 2:
+            raise missing_picture("histogram", len(self.axes))
+        if ax is None:
+            ax = axes()
+        if len(self.axes) == 1:
+            ax.stairs(self.values(), self.edges(), **options)
+        else:
+            columns = [list(column) for column in zip(*self.values(), strict=True)]
+            ax.pcolormesh(self.edges(0), self.edges(1), columns, **options)
+        if self.title:
+            ax.set_title(self.title)
+        if self.axes[0].title:
+            ax.set_xlabel(self.axes[0].title)
+        if len(self.axes) > 1 and self.axes[1].title:
+            ax.set_ylabel(self.axes[1].title)
+        return ax
+
+    def text(self, width: int = 60) -> str:
+        """The histogram drawn with characters, for a terminal or a log file.
+
+        One line per bin - its edges, a bar and the value - for one
+        dimension; a shaded grid with y upward for two; a refusal for three,
+        which have no flat picture.
+        """
+        if len(self.axes) == 1:
+            values = self.values()
+            edges = self.edges()
+            top = max((value for value in values if value > 0), default=0.0)
+            return "\n".join(
+                f"[{edges[step]:g}, {edges[step + 1]:g})".rjust(24)
+                + f" {bar(value / top if top else 0.0, width):<{width}} {value:g}"
+                for step, value in enumerate(values)
+            )
+        if len(self.axes) == 2:
+            rows = self.values()
+            top = max((value for row in rows for value in row if value > 0), default=0.0)
+            return "\n".join(
+                "".join(shade(row[step] / top if top else 0.0) for row in rows)
+                for step in reversed(range(len(self.axes[1])))
+            )
+        raise missing_picture("histogram", len(self.axes))
+
     def __repr__(self) -> str:
         shape = " x ".join(str(count) for count in self.shape)
         return f"<{self.classname} {self.name!r} of {shape} bins, {self.entries:g} entries>"
+
+
+def _flowed(values: Any, nbins: int, what: str) -> list[float]:
+    """One value per bin as floats, the flow bins zeroed unless given."""
+    given = [float(value) for value in values]
+    if len(given) == nbins:
+        return [0.0, *given, 0.0]
+    if len(given) == nbins + 2:
+        return given
+    raise ValueError(
+        f"{len(given)} {what} for {nbins} bins: give one per bin, or two "
+        f"more counting the flow at each end"
+    )

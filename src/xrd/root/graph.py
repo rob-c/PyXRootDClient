@@ -11,7 +11,9 @@ from __future__ import annotations
 import array
 from typing import Any
 
+from .draw import axes
 from .errors import FormatError, UnsupportedFeatureError
+from .hist import FILL, LINE, MARKER
 
 __all__ = ["GRAPHS", "Graph"]
 
@@ -147,5 +149,126 @@ class Graph:
             )
         return layers[0] if layers else None
 
+    @classmethod
+    def new(
+        cls,
+        name: str,
+        x: Any,
+        y: Any,
+        *,
+        title: str = "",
+        xerr: Any = None,
+        yerr: Any = None,
+    ) -> Graph:
+        """A graph built from Python numbers, ready to write.
+
+            >>> g = Graph.new("scan", [1, 2, 3], [2.0, 3.9, 6.1], yerr=[0.1, 0.2, 0.2])
+            >>> g.classname
+            'TGraphErrors'
+
+        ``xerr`` and ``yerr`` are each either one bar per point, or a
+        ``(low, high)`` pair of runs for bars of different lengths each side.
+        The class picks itself: plain points make a ``TGraph``, even bars a
+        ``TGraphErrors``, and any uneven pair a ``TGraphAsymmErrors`` with
+        the even ones carried on both sides.
+        """
+        xs = array.array("d", (float(value) for value in x))
+        ys = array.array("d", (float(value) for value in y))
+        if len(xs) != len(ys):
+            raise ValueError(f"{len(xs)} x values and {len(ys)} y values are not points")
+        count = len(xs)
+        across = _sides(xerr, count, "xerr")
+        upward = _sides(yerr, count, "yerr")
+        core: dict[str, Any] = {
+            "TNamed": {"fName": str(name), "fTitle": str(title)},
+            "TAttLine": dict(LINE), "TAttFill": dict(FILL), "TAttMarker": dict(MARKER),
+            "fNpoints": count, "fX": xs, "fY": ys,
+            "fFunctions": None, "fHistogram": None,
+            "fMinimum": -1111.0, "fMaximum": -1111.0,
+        }
+        if across is None and upward is None:
+            return cls("TGraph", core)
+        zeros = array.array("d", [0.0]) * count
+        if (across is None or not across[2]) and (upward is None or not upward[2]):
+            return cls("TGraphErrors", {
+                "TGraph": core,
+                "fEX": across[0] if across is not None else zeros,
+                "fEY": upward[0] if upward is not None else zeros,
+            })
+        return cls("TGraphAsymmErrors", {
+            "TGraph": core,
+            "fEXlow": across[0] if across is not None else zeros,
+            "fEXhigh": across[1] if across is not None else zeros,
+            "fEYlow": upward[0] if upward is not None else zeros,
+            "fEYhigh": upward[1] if upward is not None else zeros,
+        })
+
+    def plot(self, ax: Any = None, **options: Any) -> Any:
+        """Draw onto matplotlib axes, made fresh unless ``ax`` brings some.
+
+        Points with their error bars; a graph keeping layers of them draws
+        every layer over the same points. The axes come back, so styling and
+        saving carry on where this left off - and matplotlib not being
+        installed refuses with the two ways out by name.
+        """
+        if ax is None:
+            ax = axes()
+        style: dict[str, Any] = {"fmt": "o", "markersize": 4}
+        style.update(options)
+        for index, bars in enumerate(self.layers or (None,)):
+            ax.errorbar(self.x, self.y, yerr=bars, xerr=self.xerr if index == 0 else None, **style)
+        if self.title:
+            ax.set_title(self.title)
+        return ax
+
+    def text(self, width: int = 60, height: int = 16) -> str:
+        """The graph as a grid of points, for a terminal or a log file."""
+        if not self.x:
+            return "(a graph of no points)"
+        xlo, xhi = min(self.x), max(self.x)
+        ylo, yhi = min(self.y), max(self.y)
+        xspan, yspan = (xhi - xlo) or 1.0, (yhi - ylo) or 1.0
+        grid = [[" "] * width for _ in range(height)]
+        for x, y in self:
+            column = round((x - xlo) / xspan * (width - 1))
+            line = round((y - ylo) / yspan * (height - 1))
+            grid[height - 1 - line][column] = "*"
+        lines = []
+        for index, cells in enumerate(grid):
+            label = f"{yhi:g}" if index == 0 else f"{ylo:g}" if index == height - 1 else ""
+            lines.append(f"{label:>10} |{''.join(cells)}|")
+        left, right = f"{xlo:g}", f"{xhi:g}"
+        lines.append(f"{'':>10}  {left:<{width - len(right)}}{right}")
+        return "\n".join(lines)
+
     def __repr__(self) -> str:
         return f"<{self.classname} {self.name!r} of {len(self)} points>"
+
+
+def _sides(
+    err: Any, count: int, label: str
+) -> tuple[array.array[float], array.array[float], bool] | None:
+    """The bars along one axis: low, high, and whether they were given uneven.
+
+    One bar per point is both sides of it; a pair of runs is a side each,
+    which is only tellable from two points' worth of bars because runs are
+    not numbers.
+    """
+    if err is None:
+        return None
+    given = list(err)
+    if len(given) == 2 and not any(isinstance(side, (int, float)) for side in given):
+        low = array.array("d", (float(value) for value in given[0]))
+        high = array.array("d", (float(value) for value in given[1]))
+        if len(low) != count or len(high) != count:
+            raise ValueError(
+                f"{label} has {len(low)} low and {len(high)} high bars for {count} points"
+            )
+        return (low, high, True)
+    bars = array.array("d", (float(value) for value in given))
+    if len(bars) != count:
+        raise ValueError(
+            f"{label} has {len(bars)} bars for {count} points: give one per "
+            f"point, or a (low, high) pair of runs"
+        )
+    return (bars, bars, False)

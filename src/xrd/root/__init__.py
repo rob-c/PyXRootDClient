@@ -23,6 +23,13 @@ file does not describe, or one that streams itself in some way of its own, is
 refused by name with the class in the message, because a plausible misreading
 of physics data is worse than a refusal.
 
+It writes, too: :func:`create` makes a new ROOT file anywhere this library
+can put bytes, holding histograms and graphs - read from another file, or
+built from plain numbers with :meth:`Histogram.new` and :meth:`Graph.new` -
+along with strings and arrays. And both classes draw themselves: ``.plot()``
+onto matplotlib axes if matplotlib is there, ``.text()`` into characters
+with nothing installed at all.
+
 :mod:`xrd.root.ml` turns what comes out into tensors, if PyTorch or
 TensorFlow is there.
 """
@@ -34,6 +41,7 @@ from .file import Directory, Key, ROOTFile, open_root
 from .graph import Graph
 from .hist import Axis, Histogram
 from .tree import Branch, Group, Jagged, TTree
+from .writer import WritableFile, create
 
 __all__ = [
     # opening
@@ -41,6 +49,9 @@ __all__ = [
     "ROOTFile",
     "Directory",
     "Key",
+    # writing
+    "create",
+    "WritableFile",
     # data
     "TTree",
     "Branch",

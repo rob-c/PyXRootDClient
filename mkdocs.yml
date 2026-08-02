@@ -38,7 +38,7 @@ nav:
       - Asynchronous use: async.md
       - HTTP and WebDAV: http.md
       - S3 object storage: s3.md
-      - Reading ROOT files: root.md
+      - ROOT files: root.md
       - fsspec: fsspec.md
       - Command line: cli.md
       - Safety: safety.md

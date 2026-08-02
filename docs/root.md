@@ -1,8 +1,10 @@
-# Reading ROOT files
+# ROOT files
 
 `xrd.root` opens a ROOT file and reads its trees in pure Python — over
 `root://`, `https://`, WebDAV, `s3://` or a local path, with no ROOT, no
-`uproot`, no `numpy` and no compiled extension anywhere in the way.
+`uproot`, no `numpy` and no compiled extension anywhere in the way. It
+[writes new files](#writing) too, and histograms and graphs
+[draw themselves](#drawing), onto matplotlib axes or into plain characters.
 
 ```python
 import xrd.root
@@ -136,6 +138,34 @@ every other graph `layers` is simply `(yerr,)`, or `()` when none were kept.
 A graph or histogram met *inside* another object — in the list a `TMultiGraph`
 keeps, behind a pointer in a `TEfficiency` — comes back as a `Graph` or
 `Histogram` too, the same as it would standing in a key of its own.
+
+## Drawing
+
+ROOT draws through a `TCanvas`, which this library does not carry. What it
+has instead is the two ways Python usually looks at data. `plot()` draws onto
+matplotlib axes — made on demand, or brought along — and returns them, so
+styling and saving carry on where it left off:
+
+```python
+ax = f["h1d"].plot()                       # steps for 1D, a shaded mesh for 2D
+f["tge"].plot(ax=ax, color="crimson")      # points with their error bars
+ax.figure.savefig("both.png")
+```
+
+matplotlib is not a dependency; `pip install pyxrootdclient[plot]` brings it,
+and without it `plot()` refuses with both ways out by name. The other way is
+`text()`, which needs nothing installed at all and goes anywhere a string
+goes — a terminal, a log file, a CI transcript:
+
+```python
+print(f["h1d"].text())     # one line per bin: its edges, a bar and the value
+print(f["h2d"].text())     # a shaded grid, y upward
+print(f["tge"].text())     # a grid of stars with the axis ends labelled
+```
+
+A graph of layered error bars draws every layer over the same points; a
+three-dimensional histogram has no honest flat picture and refuses both ways,
+saying to slice `values()` down to the two dimensions you want to see.
 
 ## Columns
 
@@ -325,13 +355,63 @@ for batch in data:
 With no column names, either dataset takes every numeric column and leaves the
 strings and objects out, rather than leaving them in to fail later.
 
+## Writing
+
+`create` makes a new ROOT file anywhere this library can put bytes — a local
+path, any URL scheme it writes, or an already-open binary file, used as it is
+and left open:
+
+```python
+import xrd.root
+
+with xrd.root.create("root://eos.example.org//store/user/me/out.root") as f:
+    f["counts"] = xrd.root.Histogram.new("counts", edges, values)
+    f["scan"] = xrd.root.Graph.new("scan", xs, ys, yerr=bars)
+    f["note"] = "made from run 4711"
+    f["weights"] = array.array("d", weights)
+```
+
+The file is a mapping from name to object, closed with `with` or `close()`. It
+is the real thing — keys, directory, free list, and the streamer information
+describing its classes exactly as the ROOT the layouts were harvested from
+would — so ROOT, uproot and this library's own reader all read it back by its
+own self-description. A name written twice becomes a second cycle of itself,
+exactly as in ROOT, and reading back gives the newest. Everything is built in
+memory and written out in one piece at a clean close; a `with` block that
+raises writes nothing at all, on the principle that no file is better than
+half a file.
+
+What can be written is what can be written *correctly*: histograms and graphs
+— read from another file, or built from plain numbers — plus strings and
+`array.array`s of signed integers or floats, which become the matching
+`TArray`. `Histogram.new` takes every bin edge, one value per bin (two more
+fills the flow bins), and optionally per-bin errors and an entry count;
+evenly spaced edges are stored the compact way ROOT stores an even axis.
+`Graph.new` picks its own class: plain points make a `TGraph`, one bar per
+point a `TGraphErrors`, and any `(low, high)` pair of runs a
+`TGraphAsymmErrors`.
+
+Anything else is refused by name rather than guessed at — a
+`TGraphMultiErrors`, an unsigned array ROOT has no class for, a histogram
+with fits attached or an axis with labels (empty them first, rather than
+have them silently dropped), a name a reader could never ask back for —
+because a plausible-looking file that ROOT misreads is worse than an error
+message. Files past 2 GB, which need ROOT's wide layout, are refused too:
+split the output across files.
+
+`create(..., compression="zstd")` chooses the algorithm — zlib unless said
+otherwise, or `lzma`, `lz4`, `zstd`, `None` to store raw — and `level` the
+effort; an object that did not get smaller is stored raw anyway, exactly as
+ROOT does.
+
 ## Compression
 
-Every algorithm ROOT writes with is read here: zlib, lzma, LZ4, zstd, and the
-bare-deflate blocks ROOT wrote before 2005. The LZ4 decoder is Python, because
-a physics file should not need a wheel to be read; zstd uses Python 3.14's own
-`compression.zstd` where there is one and the `zstandard` package otherwise,
-and is the one case where a file may need something installed.
+Every algorithm ROOT writes with is read here — and written: zlib, lzma, LZ4,
+zstd, and the bare-deflate blocks ROOT wrote before 2005 (read only). The LZ4
+coder is Python both ways, checksum and all, because a physics file should not
+need a wheel; zstd uses Python 3.14's own `compression.zstd` where there is
+one and the `zstandard` package otherwise, and is the one case where a file
+may need something installed.
 
 ## Old files
 

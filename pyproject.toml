@@ -22,6 +22,7 @@ dependencies = []
 [project.optional-dependencies]
 krb5 = ["gssapi>=1.8"]
 fsspec = ["fsspec>=2024.2.0"]
+plot = ["matplotlib>=3.5"]
 dev = ["pytest>=8", "pytest-timeout", "pytest-xdist", "pytest-cov", "mypy>=1.10", "ruff>=0.5"]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.25"]
 
@@ -93,6 +94,14 @@ mypy_path = "src"
 # them rather than a hole in our own checking.
 [[tool.mypy.overrides]]
 module = ["gssapi.*", "google_crc32c.*", "fsspec.*", "zstandard.*", "tensorflow.*"]
+ignore_missing_imports = true
+
+# matplotlib drags numpy in, whose stubs use syntax newer than the floor this
+# package is checked against; neither is followed into.
+[[tool.mypy.overrides]]
+module = ["matplotlib", "matplotlib.*", "numpy", "numpy.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
 ignore_missing_imports = true
 
 # ``AbstractFileSystem`` is therefore ``Any``, and subclassing it is the whole
