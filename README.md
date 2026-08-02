@@ -107,7 +107,8 @@ Python — no ROOT, no `uproot`, no `numpy`, no compiled extension. Nothing is
 downloaded: a tree is read a basket at a time, so a hundred-gigabyte file is
 walked from a laptop over the network, and `xrd.root.ml` turns those batches
 into tensors for a PyTorch `DataLoader` or a `tf.data.Dataset`. Split C++
-classes — member by member, or the whole object per entry as a dictionary —
+classes — member by member, or the whole object per entry as a dictionary,
+and unsplit ones walked straight out of the file's own layout —
 STL containers, `std::map`, both kinds of string and the packed
 `Double32_t`/`Float16_t` floats are read, under every compression ROOT
 writes. The few columns this reader will not decode are listed with the
@@ -233,7 +234,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader are implemented and tested —
-2607 tests, of which the great majority need no network, no KDC and no
+2620 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

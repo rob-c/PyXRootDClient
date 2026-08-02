@@ -28,28 +28,39 @@ KEY_WINDOW = 512
 class Member:
     """One data member of one class, as the file describes it."""
 
-    __slots__ = ("name", "title", "stype", "typename", "length")
+    __slots__ = ("name", "title", "stype", "typename", "length", "count")
 
-    def __init__(self, name: str, title: str, stype: int, typename: str, length: int) -> None:
+    def __init__(
+        self,
+        name: str,
+        title: str,
+        stype: int,
+        typename: str,
+        length: int,
+        count: str = "",
+    ) -> None:
         self.name = name
         #: The declaration's trailing comment, where a packed float keeps its range.
         self.title = title
         self.stype = stype
         self.typename = typename
         self.length = length
+        #: The member holding how many of these there are, for a counted pointer.
+        self.count = count
 
     def __repr__(self) -> str:
         return f"<Member {self.typename} {self.name}>"
 
 
-def read_element(buf: Buffer, depth: int = 1) -> Member:
+def read_element(buf: Buffer, depth: int = 1, counted: bool = False) -> Member:
     """A ``TStreamerElement``, under whichever subclass wrote it.
 
     Every one of them is the same record with more fields bolted underneath,
     and the fields this reader wants are in the part they share. ``depth`` is
     how many records deep that shared part is: one for nearly every subclass,
     two for the single one that derives from another subclass rather than
-    from the element itself.
+    from the element itself. ``counted`` is for the two subclasses that add
+    the name of the member saying how many there are.
     """
     _version, end = buf.header()
     for _ in range(depth - 1):
@@ -63,8 +74,17 @@ def read_element(buf: Buffer, depth: int = 1) -> Member:
     buf.i32s(buf.i32() if base == 1 else 5)
     typename = buf.string()
     buf.resume(inner)
+    count = ""
+    if counted:
+        buf.i32()  # the version of the class the counter belongs to
+        count = buf.string()
     buf.resume(end)
-    return Member(name, title, stype, typename, length)
+    return Member(name, title, stype, typename, length, count)
+
+
+def read_counted(buf: Buffer) -> Member:
+    """A ``TStreamerBasicPointer`` or ``TStreamerLoop``, which name their counter."""
+    return read_element(buf, counted=True)
 
 
 def read_info(buf: Buffer) -> tuple[str, dict[str, Member]]:
@@ -111,6 +131,8 @@ def read_objarray(buf: Buffer) -> list[Any]:
 
 
 CLASSES: dict[str, Any] = dict.fromkeys(ELEMENTS, read_element)
+CLASSES["TStreamerBasicPointer"] = read_counted
+CLASSES["TStreamerLoop"] = read_counted
 CLASSES["TStreamerSTLstring"] = read_stl_string
 CLASSES["TStreamerInfo"] = read_info
 CLASSES["TObjArray"] = read_objarray

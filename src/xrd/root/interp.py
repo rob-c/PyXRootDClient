@@ -24,6 +24,7 @@ from .errors import FormatError, UnsupportedFeatureError
 if TYPE_CHECKING:
     from .file import Source
     from .objects import BranchRecord, LeafRecord
+    from .streamers import Member
     from .tree import Basket
 
 __all__ = ["Column", "Flat", "Rows", "Values", "Members", "Refused", "build"]
@@ -39,6 +40,10 @@ RECORD = 6
 #: ``fType`` is the fundamental type plus one of these.
 OFFSET_L = 20  # a fixed-size array, ``x[10]``
 OFFSET_P = 40  # a pointer to a counted one, ``x[n]``
+
+#: The streamer types that are a class instance written into the entry: a base
+#: class, and a member held by value with or without a dictionary of its own.
+OBJECTS = (0, 61, 62)
 
 #: The two fundamental types that are not their own width: a float squeezed
 #: into a range the declaration's comment spells out. ``True`` for the one
@@ -244,9 +249,10 @@ def _block(node: Any, buf: Buffer, count: int) -> Any:
     """One member-wise block: a run of values of one type, all together.
 
     A block of a class is introduced by a record of its own; a block of
-    numbers, or of ``TString``, is simply the values.
+    numbers, or of ``TString``, is simply the values. An empty container has
+    no blocks at all, not even the records that would introduce them.
     """
-    if not isinstance(node, Prim) and not (isinstance(node, Str) and not node.record):
+    if count and not isinstance(node, Prim) and not (isinstance(node, Str) and not node.record):
         buf.header()
     return _items(node, buf, count)
 
@@ -449,6 +455,169 @@ def _packed_member(
     return Flat(prim, leaf.length, unpack)
 
 
+# -- a whole object, written into the entry ---------------------------------
+
+
+class _Unreadable(Exception):
+    """Why a class cannot be read member by member, in words."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+#: How one member of a whole object reads: from the buffer, and from the
+#: members read before it, which is where a counted one finds its count.
+Step = Callable[[Buffer, "dict[str, Any]"], Any]
+
+
+def _numbers(prim: Prim, unpack: Unpack | None, buf: Buffer, count: int) -> Any:
+    """``count`` numbers of one type, packed or plain."""
+    raw = buf.take(count * prim.itemsize)
+    if unpack is not None:
+        return unpack(raw)
+    return to_native(array.array(prim.typecode, raw))
+
+
+def _one(prim: Prim, unpack: Unpack | None) -> Step:
+    """A single number, which comes back as a number rather than a run of one."""
+    return lambda buf, _row: _numbers(prim, unpack, buf, 1)[0]
+
+
+def _run(prim: Prim, unpack: Unpack | None, length: int) -> Step:
+    """A fixed-size array, ``x[10]``, whose length the declaration fixes."""
+    return lambda buf, _row: _numbers(prim, unpack, buf, length)
+
+
+def _pointer(prim: Prim, unpack: Unpack | None, count: str) -> Step:
+    """A counted array, ``x[n]``, behind the marker byte that says it is there."""
+
+    def step(buf: Buffer, row: dict[str, Any]) -> Any:
+        buf.u8()  # the marker saying the pointer was not null when it was written
+        return _numbers(prim, unpack, buf, int(row[count]))
+
+    return step
+
+
+def _plainly(read: Callable[[Buffer], Any]) -> Step:
+    """A member that reads the same whatever came before it."""
+    return lambda buf, _row: read(buf)
+
+
+def _instance(read: Callable[[Buffer], Any]) -> Step:
+    """A class instance inside another one, which carries a record of its own."""
+
+    def step(buf: Buffer, _row: dict[str, Any]) -> Any:
+        version, end = buf.header()
+        if version == 0:
+            buf.u32()  # a class with no version of its own says so with a checksum
+        value = read(buf)
+        buf.resume(end)
+        return value
+
+    return step
+
+
+def _reader(node: Any) -> Callable[[Buffer], Any]:
+    """How a string or a container written inside an entry reads back."""
+    if isinstance(node, Str):
+        return _member_string if node.record else _string
+    reason = _unusable(node)
+    if reason:
+        raise _Unreadable(reason)
+    if isinstance(node, Mapping):
+        return _mapping(node)
+    assert isinstance(node, Seq)
+    return _sequence(node.item)
+
+
+def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str]) -> Step:
+    """How to read one member, or a refusal to read the class it belongs to."""
+    for base in (0, OFFSET_L, OFFSET_P):
+        kind = member.stype - base
+        if kind not in BASIC and kind not in PACKED:
+            continue
+        unpack = None
+        prim = BASIC.get(kind)
+        if prim is None:
+            found = _packing(member.title, PACKED[kind])
+            if found is None:
+                raise _Unreadable(
+                    f"{member.name!r}, a packed float whose range is written "
+                    f"{member.title!r}, which is not a spelling this reader can "
+                    f"turn into numbers"
+                )
+            prim, unpack = found
+        if base == OFFSET_P:
+            if member.count not in before:
+                raise _Unreadable(
+                    f"{member.name!r}, which says it holds as many values as "
+                    f"{member.count or 'a member with no name'} but is written "
+                    f"before it"
+                )
+            return _pointer(prim, unpack, member.count)
+        if base == OFFSET_L:
+            return _run(prim, unpack, member.length)
+        return _one(prim, unpack)
+    node = parse(member.typename)
+    if node is not None:
+        return _plainly(_reader(node))
+    if member.stype in OBJECTS:
+        return _instance(_members(member.typename, source, seen))
+    raise _Unreadable(
+        f"{member.name!r}, which is {KINDS.get(member.stype, 'of a kind')} that "
+        f"this reader does not decode inside an entry"
+    )
+
+
+def _members(
+    name: str, source: Source, seen: tuple[str, ...] = ()
+) -> Callable[[Buffer], dict[str, Any]]:
+    """How every member of one class reads, in the order the class declares."""
+    if name in seen:
+        raise _Unreadable(f"{name}, which is written inside itself")
+    described = source.streamers().get(name)
+    if not described:
+        raise _Unreadable(
+            f"a member of type {name or 'with no name'}, which this file's streamer "
+            f"information does not describe"
+        )
+    steps: list[tuple[str, Step]] = []
+    before: set[str] = set()
+    for member in described.values():
+        steps.append((member.name, _step(member, source, (*seen, name), before)))
+        before.add(member.name)
+
+    def read(buf: Buffer) -> dict[str, Any]:
+        row: dict[str, Any] = {}
+        for label, step in steps:
+            row[label] = step(buf, row)
+        return row
+
+    return read
+
+
+def _whole(name: str, source: Source) -> Column:
+    """A whole C++ object written into the entry, rather than split into branches.
+
+    Nothing about it is in the file except its bytes and the layout the file's
+    streamer information gives for the class, so this walks that layout member
+    by member and gives back a :class:`dict` per entry - the same shape a split
+    object comes back as, from a file that was written the other way.
+    """
+    if not source.streamers().get(name):
+        return Refused(
+            f"{name or 'an unnamed type'}, which is a C++ type this reader does not "
+            f"decode: this file's streamer information does not describe its layout, "
+            f"and a file written split would have its members as branches of their own"
+        )
+    try:
+        read = _members(name, source)
+    except _Unreadable as why:
+        return Refused(f"{name or 'an unnamed type'}, which holds {why.reason}")
+    return Values("dict", read)
+
+
 def _plain(leaf: LeafRecord) -> Column:
     """A ``TLeafI`` and its kind: the type is the class of the leaf itself."""
     if leaf.classname == "TLeafC":
@@ -474,6 +643,8 @@ def _declared(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
 
     node = parse(name)
     if node is None:
+        if not header:
+            return _whole(name, source)  # the whole object, member by member
         return Refused(
             f"{name or 'an unnamed type'}, which is a C++ type this reader does not "
             f"decode; a split file has its members as branches of their own"

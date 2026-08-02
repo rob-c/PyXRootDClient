@@ -560,3 +560,151 @@ def test_a_branch_holding_data_keeps_its_children_as_columns_beside_it():
     tree = TTree("t", "", 0, [parent], Nothing())
     assert tree.keys() == ["top", "top.sub"]
     assert tree.groups() == []
+
+
+# -- a whole object, written into the entry -------------------------------
+
+
+class Layout:
+    """A source describing exactly the classes a test needs it to."""
+
+    def __init__(self, **classes: dict[str, Member]) -> None:
+        self.classes = classes
+
+    def streamers(self) -> dict[str, dict[str, Member]]:
+        return self.classes
+
+
+def declared(name: str, stype: int, typename: str = "", **rest) -> dict[str, Member]:
+    """One class of one member, as a file's streamer information gives it."""
+    kept = {"title": "", "length": 1, "count": ""} | rest
+    return {name: Member(name, kept["title"], stype, typename, kept["length"], kept["count"])}
+
+
+@pytest.fixture
+def nosplit():
+    with opened("small-evnt-tree-nosplit") as handle:
+        yield handle["tree"]
+
+
+def test_an_unsplit_object_is_a_dictionary_of_everything_the_class_declares(nosplit):
+    # What the C++ that wrote this file put in entry 1, member for member.
+    row = nosplit["evt"].array(1, 2)[0]
+    assert row["Beg"] == "beg-001"
+    assert (row["I16"], row["U64"], row["F64"]) == (1, 1, 1.0)
+    assert row["Str"] == "evt-001"
+    assert row["P3"] == {"Px": 0, "Py": 1.0, "Pz": 0}
+    assert row["ArrayF32"].tolist() == [1.0] * 10
+    assert (row["N"], row["SliceI16"].tolist()) == (1, [1])
+    assert (row["StdStr"], row["StlVecStr"]) == ("std-001", ["vec-001"])
+    assert row["End"] == "end-001"
+    assert nosplit.typenames()["evt"] == "dict"
+    assert nosplit.readable() == ["evt"] and nosplit.unreadable == {}
+
+
+def test_the_same_events_written_split_and_unsplit_read_back_the_same(nosplit, event):
+    """The two files hold the same 100 events, written the two ways ROOT can.
+
+    A split file names a fixed-size array's branch ``ArrayF32[10]`` where the
+    class calls the member ``ArrayF32``, so the names are compared without the
+    size C++ never had in them either.
+    """
+
+    def plain(row):
+        return {
+            name.partition("[")[0]: value.tolist() if hasattr(value, "tolist") else value
+            for name, value in row.items()
+        }
+
+    unsplit, split = nosplit["evt"].array(), event["evt"].array()
+    assert len(unsplit) == len(split) == 100
+    assert [plain(row) for row in unsplit] == [plain(row) for row in split]
+
+
+def test_an_unsplit_tree_of_maps_reads_them_including_the_empty_one():
+    with opened("std-map-split0") as handle:
+        tree = handle["tree"]
+        empty = {name: {} for name in ("mi32", "msi32", "mss", "msvs", "msvi32")}
+        assert tree["evt"].array(0, 1) == [empty]
+        row = tree["evt"].array(2, 3)[0]
+        assert row["mi32"] == {0: 0, 1: 1}
+        assert row["mss"] == {"key-000": "val-000", "key-001": "val-001"}
+        assert row["msvs"]["key-001"] == ["val-001", "val-002", "val-003"]
+
+
+def test_a_member_whose_class_the_file_does_not_describe_is_refused_by_name():
+    source = Layout(Event=declared("p", 62, "P3"))
+    assert "a member of type P3, which this file's streamer information does not describe" in (
+        column_of("Event", source=source).reason
+    )
+
+
+def test_a_class_written_inside_itself_is_refused_rather_than_read_forever():
+    source = Layout(Event=declared("inner", 62, "Event"))
+    assert "Event, which is written inside itself" in column_of("Event", source=source).reason
+
+
+def test_a_counted_member_written_before_its_count_is_refused():
+    source = Layout(Event=declared("SliceI32", 43, "int*", count="N"))
+    assert "holds as many values as N but is written before it" in (
+        column_of("Event", source=source).reason
+    )
+    unnamed = Layout(Event=declared("SliceI32", 43, "int*"))
+    assert "as a member with no name" in column_of("Event", source=unnamed).reason
+
+
+def test_a_member_of_a_kind_this_reader_does_not_decode_is_named_in_the_refusal():
+    source = Layout(Event=declared("obj", 66))
+    assert "'obj', which is a TObject that this reader does not decode inside an entry" in (
+        column_of("Event", source=source).reason
+    )
+
+
+def test_a_container_no_dict_can_hold_is_refused_inside_an_unsplit_object():
+    source = Layout(Event=declared("m", 500, "map<vector<int>,int>"))
+    assert "keyed by a container" in column_of("Event", source=source).reason
+
+
+def test_a_packed_float_inside_an_unsplit_object_is_unpacked_by_its_range():
+    source = Layout(Event=declared("d", 9, "Double32_t", title="[0,4,2]"))
+    column = column_of("Event", source=source)
+    assert isinstance(column, Values)
+    assert column.value(Buffer(struct.pack(">I", 2)), 0) == {"d": 2.0}
+
+
+def test_a_packed_float_whose_range_makes_no_sense_is_refused_inside_one_too():
+    source = Layout(Event=declared("d", 9, "Double32_t", title="[1,2,3,4]"))
+    assert "'d', a packed float whose range is written '[1,2,3,4]'" in (
+        column_of("Event", source=source).reason
+    )
+
+
+def test_a_class_inside_one_with_a_version_of_its_own_carries_no_checksum():
+    source = Layout(Event=declared("p", 62, "P3"), P3=declared("x", 3, "int"))
+    column = column_of("Event", source=source)
+    written = struct.pack(">IHi", BYTE_COUNT_MASK | 6, 5, 42)
+    assert column.value(Buffer(written), 0) == {"p": {"x": 42}}
+
+
+def test_a_split_member_of_a_type_this_reader_does_not_know_is_still_refused():
+    """A member of a split class is refused by type, not read member by member.
+
+    Only the branch holding a whole object has the bytes of one; a member that
+    is a class of its own was split into branches beneath it, and if it was
+    not, the file says so with a type this reader has no reader for.
+    """
+    source = Layout(Event=declared("vtx", 500, "TLorentzVector"))
+    column = column_of("Event", member="vtx", ltype=300, source=source)
+    assert "TLorentzVector, which is a C++ type this reader does not decode" in column.reason
+
+
+def test_a_branch_this_reader_cannot_decode_is_named_in_the_tree_not_dropped():
+    """A refused column is still a key: it is listed, with the reason, not hidden."""
+    record_ = BranchRecord()
+    record_.name = "obj"
+    leaf = LeafRecord("TLeafObject")
+    leaf.name = "obj"
+    record_.leaves = [leaf]
+    tree = TTree("t", "", 0, [record_], Nothing())
+    assert tree.keys() == ["obj"] and tree.readable() == []
+    assert tree.unreadable["obj"] == tree["obj"].column.reason

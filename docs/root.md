@@ -116,6 +116,26 @@ their own names and taking both would read every basket twice. A member this
 reader will not decode is absent from the dictionary and named in
 `tree["evt"].unreadable`, with the same sentence `tree.unreadable` gives it.
 
+A file written with splitting turned off puts the whole object in one branch,
+with nothing under it. That reads as the same dictionary per entry, walked
+member by member in the order the class declares them, using the layout the
+file's own streamer information gives:
+
+```python
+tree.keys()                    # ['evt'] - the object, and nothing under it
+tree["evt"].array(1, 2)
+# [{'Beg': 'beg-001', 'I32': 1, 'P3': {'Px': 0, 'Py': 1.0, 'Pz': 0}, ...}]
+```
+
+The same events written the two ways read back the same values, member for
+member. Splitting is still the cheaper way to have written them - a split file
+lets you read one member without touching the rest, and an unsplit one cannot -
+but neither is a file this reader has to refuse. A class the file's streamer
+information does not describe is refused, because its layout is then not
+knowable, and so is a member of a kind this reader has no reader for: an
+unsplit object is read from first byte to last, so one member it cannot walk
+past is the whole entry.
+
 A member that is an STL container comes back as the Python thing it most
 nearly is, one per entry:
 
@@ -210,10 +230,10 @@ with the same sentence if it is asked for:
 
 What is named that way:
 
-- a whole object written per entry rather than split into members — for a
-  split file the members are branches, and those read, and the object reads
-  as well;
-- a class with no layout this reader knows, such as `TLorentzVector`;
+- a class whose layout the file's streamer information does not describe, so
+  that reading it whole would be a guess;
+- a member of an unsplit object of a kind this reader has no reader for, such
+  as a pointer to another object, which stops the entry it is in;
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;
 - a container written field by field rather than value by value;

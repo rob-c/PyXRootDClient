@@ -1,6 +1,6 @@
 # ROOT files used by the tests
 
-Twelve small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
+Fourteen small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
 project's `groot/testdata`, and used here to check that `xrd.root` reads what
 ROOT wrote. They are here rather than generated because nothing in this
 library can write a ROOT file: the only honest test of a reader is bytes
@@ -19,6 +19,8 @@ somebody else's writer produced.
 | `std-map-split1.root` | an object split into sub-branches, five kinds of `std::map` among them |
 | `std-containers-split00.root` | forty columns of every STL container ROOT will write, unsplit |
 | `small-evnt-tree-fullsplit.root` | a C++ class split all the way down: members, arrays, slices, strings and vectors |
+| `small-evnt-tree-nosplit.root` | the same class and the same hundred events written whole, one object per entry |
+| `std-map-split0.root` | the same maps as `std-map-split1.root`, written whole rather than split |
 | `stdvec-bool-fullsplit-6.10.08.root` | `std::vector<bool>`, which is a byte per element and not a bit |
 
 go-hep is BSD-3-Clause; the licence is in `LICENSE.go-hep` next to these
