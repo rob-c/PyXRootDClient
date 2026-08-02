@@ -13,13 +13,14 @@ object back-references written into the stream are absolute in those terms.
 from __future__ import annotations
 
 import array
+import datetime
 import struct
 import sys
 from typing import Any
 
 from .errors import FormatError
 
-__all__ = ["Buffer", "to_native"]
+__all__ = ["Buffer", "as_datetime", "to_native"]
 
 if sys.byteorder == "little":  # pragma: no cover - one of two, decided by the machine
 
@@ -33,6 +34,22 @@ else:  # pragma: no cover - big-endian machines, where ROOT's order is ours
     def to_native(values: array.array[Any]) -> array.array[Any]:
         return values
 
+
+
+def as_datetime(packed: int) -> datetime.datetime:
+    """ROOT's packed date word, which counts its years from 1995.
+
+        >>> as_datetime(0x2C44F105)
+        datetime.datetime(2006, 1, 2, 15, 4, 5)
+    """
+    return datetime.datetime(
+        (packed >> 26) + 1995,
+        (packed >> 22) & 0xF,
+        (packed >> 17) & 0x1F,
+        (packed >> 12) & 0x1F,
+        (packed >> 6) & 0x3F,
+        packed & 0x3F,
+    )
 
 
 BYTE_COUNT_MASK = 0x40000000

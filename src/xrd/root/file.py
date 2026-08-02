@@ -14,7 +14,7 @@ import struct
 from typing import IO, TYPE_CHECKING, Any
 
 from ..url import parse
-from .buffer import Buffer
+from .buffer import Buffer, as_datetime
 from .compression import decompress
 from .errors import FormatError, UnsupportedFeatureError
 
@@ -117,15 +117,7 @@ class Key:
     @property
     def time(self) -> datetime.datetime:
         """When this record was written, out of ROOT's packed date word."""
-        packed = self.datime
-        return datetime.datetime(
-            (packed >> 26) + 1995,
-            (packed >> 22) & 0xF,
-            (packed >> 17) & 0x1F,
-            (packed >> 12) & 0x1F,
-            (packed >> 6) & 0x3F,
-            packed & 0x3F,
-        )
+        return as_datetime(self.datime)
 
     @property
     def compressed(self) -> bool:
@@ -233,10 +225,31 @@ class Directory:
 
         if key.classname in TREE_CLASSES:
             return read_tree(key.buffer(self._source), self._source, key.name, key.classname)
-        raise UnsupportedFeatureError(
-            f"{key.name!r} is a {key.classname}, and this reader does trees rather than "
-            f"every ROOT class; ask the file what it holds with .classnames()"
-        )
+        from .interp import Refused, whole_object
+
+        column = whole_object(key.classname, self._source)
+        if isinstance(column, Refused):
+            raise UnsupportedFeatureError(
+                f"{key.name!r} is a {key.classname}, and this reader will not guess at "
+                f"one: {column.reason}; ask the file what it holds with .classnames()"
+            )
+        buf = key.buffer(self._source)
+        try:
+            value = column.value(buf, buf.pos)
+            over = buf.remaining
+        except FormatError as why:
+            raise UnsupportedFeatureError(
+                f"{key.name!r} is a {key.classname} whose bytes are not laid out the way "
+                f"this file describes the class ({why}), which a class that streams "
+                f"itself its own way looks exactly like"
+            ) from why
+        if over:
+            raise UnsupportedFeatureError(
+                f"{key.name!r} is a {key.classname} that left {over} bytes over when it "
+                f"was read the way this file describes the class, so it streams itself "
+                f"its own way and reading it would be a guess"
+            )
+        return value
 
     def _subdirectory(self, key: Key) -> Directory:
         record = _directory_record(self._source, key.seek_key + key.keylen)

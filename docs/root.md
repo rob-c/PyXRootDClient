@@ -41,6 +41,20 @@ f["Events;1"]        # an older cycle, when a file kept several
 `classnames()` is the first thing to try when something will not open: it says
 what a name is without reading any of it.
 
+A name that is not a tree is read too, when the file describes the class it
+holds — which is the usual case for a C++ class somebody wrote, and the usual
+*not* case for a histogram or a canvas out of ROOT's own kit:
+
+```python
+f["tlv"]                # {'TObject': {...}, 'fP': {'fX': 10.0, ...}, 'fE': 40.0}
+f["FileSummaryRecord"]  # a std::string key is a str
+f["written"]            # a TDatime is a datetime.datetime
+```
+
+The bytes have to account for themselves: a class that streams itself in some
+way of its own leaves the object a different length than the layout says, and
+that is refused by name rather than read into a plausible wrong answer.
+
 ## Columns
 
 ```python
@@ -168,6 +182,7 @@ nearly is, one per entry:
 | `std::vector<bool>` | rows of 0 and 1, a byte an element, which is how ROOT wrote it |
 | `ROOT::VecOps::RVec<T>` | whatever the same `std::vector<T>` gives, which is what it is written as |
 | `std::bitset<N>` | rows of 0 and 1, `bs[0]` first, a byte a bit as ROOT wrote it |
+| `TDatime` | a `datetime.datetime`, out of the one word it packs itself into |
 
 `Double32_t` and `Float16_t` are floats squeezed into three or four bytes by a
 recipe written as `[xmin,xmax,nbits]`, where the ends may be given in units of

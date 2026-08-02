@@ -10,6 +10,7 @@ reader's history begins.
 from __future__ import annotations
 
 import array
+import datetime
 import io
 import pathlib
 import struct
@@ -33,6 +34,7 @@ from xrd.root.compression import _lz4, algorithm, decompress
 from xrd.root.file import Source, _directory_record
 from xrd.root.interp import Refused, build
 from xrd.root.objects import BranchRecord, LeafRecord, read_branch, read_tree
+from xrd.root.streamers import Member
 from xrd.root.tree import Basket
 
 DATA = pathlib.Path(__file__).parent / "data"
@@ -459,6 +461,65 @@ def test_a_directory_holding_no_tree_says_so_when_asked_for_one():
             root.tree()
         with pytest.raises(UnsupportedFeatureError, match="is a TH1F"):
             root["dir1/dir11/h1"]
+
+
+def keyed(payload: bytes, classname: str, classes: dict) -> Directory:
+    """A directory of one crafted key, whose class the source describes as asked."""
+    pad = 64
+    data = bytes(pad) + key_bytes(classname, "thing", seek_key=pad, payload=payload)
+    source = source_over(data)
+    source._streamers = classes
+    return Directory(source, [Key(Buffer(data[pad:]))])
+
+
+def test_a_key_holding_an_object_the_file_describes_reads_as_a_dictionary():
+    """`WriteObjectAny` puts one object in a key, and this is that object."""
+    bookkeeping = {"fUniqueID": 0, "fBits": 50331648}
+    with opened("tlv-split99") as root:
+        assert root["tlv"] == {
+            "TObject": bookkeeping,
+            "fP": {"TObject": bookkeeping, "fX": 10.0, "fY": 20.0, "fZ": 30.0},
+            "fE": 40.0,
+        }
+
+
+def test_a_key_holding_a_string_is_that_string():
+    with opened("string-example") as root:
+        summary = root["FileSummaryRecord"]
+    assert summary.startswith('{"LumiCounter.eventsByRun"') and summary.endswith("}")
+
+
+def test_a_tdatime_is_the_moment_it_stands_for():
+    """`TDatime` streams one packed word and no record, and always has."""
+    stamp = datetime.datetime(2006, 1, 2, 15, 4, 5)
+    with opened("tdatime") as root:
+        assert root["tda"] == stamp
+        assert root["foo"]["d"] == stamp
+        assert root["dat"] == {"d": stamp, "pad": array.array("b", b"12345\x00")}
+        tree = root["tree"]
+        assert tree.typenames()["b0"] == "datetime"
+        assert tree["b0"].array() == [stamp, stamp.replace(day=3)]
+        assert [row["d"] for row in tree["b3"].array()] == [stamp, stamp.replace(day=3)]
+
+
+def test_a_key_of_a_class_the_file_says_nothing_about_is_refused_by_name():
+    directory = keyed(b"", "Mystery", {})
+    with pytest.raises(UnsupportedFeatureError, match="does not describe its layout"):
+        directory["thing"]
+
+
+def test_a_key_whose_bytes_run_out_early_is_a_class_that_streams_itself():
+    described = {"Thing": {"n": Member("n", "", 3, "int", 1)}}
+    directory = keyed(record(1, b"\x00\x00"), "Thing", described)
+    with pytest.raises(UnsupportedFeatureError, match="are not laid out the way"):
+        directory["thing"]
+
+
+def test_a_key_with_bytes_left_over_is_a_class_that_streams_itself():
+    described = {"Thing": {"n": Member("n", "", 3, "int", 1)}}
+    directory = keyed(record(1, struct.pack(">i", 5)) + bytes(4), "Thing", described)
+    with pytest.raises(UnsupportedFeatureError, match="left 4 bytes over"):
+        directory["thing"]
 
 
 def test_the_only_tree_in_a_file_opens_without_being_named():

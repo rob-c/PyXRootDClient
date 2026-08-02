@@ -12,12 +12,13 @@ refusal, which is why this module says no as precisely as it says yes.
 from __future__ import annotations
 
 import array
+import datetime
 import math
 import struct
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from .buffer import Buffer, to_native
+from .buffer import Buffer, as_datetime, to_native
 from .cxx import Mapping, Prim, Seq, Str, parse, py_name
 from .errors import FormatError, UnsupportedFeatureError
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from .streamers import Member
     from .tree import Basket
 
-__all__ = ["Column", "Flat", "Rows", "Values", "Members", "Refused", "build"]
+__all__ = ["Column", "Flat", "Rows", "Values", "Members", "Refused", "build", "whole_object"]
 
 #: Set in a record's version when a container was written field by field
 #: rather than object by object: all the keys, then all the values.
@@ -544,6 +545,16 @@ def _named(name: str, read: Callable[[Buffer], Any]) -> Callable[[Buffer], Any]:
     return value
 
 
+def _datime(buf: Buffer) -> datetime.datetime:
+    """A ``TDatime``, which streams itself as one packed word and no record.
+
+    It is the one class in ROOT's own kit small enough to have skipped the
+    version header, so nothing about the layout can be worked out from the
+    file: this is what it has always been.
+    """
+    return as_datetime(buf.u32())
+
+
 def _bookkeeping(buf: Buffer) -> dict[str, Any]:
     """A ``TObject`` base: the identifier and bits every ROOT object carries."""
     unique, bits = buf.tobject()
@@ -597,6 +608,8 @@ def _step(member: Member, source: Source, seen: tuple[str, ...], before: set[str
         if base == OFFSET_L:
             return _run(prim, unpack, member.length)
         return _one(prim, unpack)
+    if member.typename == "TDatime":
+        return _plainly(_datime)  # a class of its own that writes no record
     if member.stype == TOBJECT:
         return _plainly(_bookkeeping)
     if member.stype == TNAMED:
@@ -654,6 +667,8 @@ def _whole(name: str, source: Source, streamed: bool = False, named: bool = Fals
     members; ``named`` is for the older branch that writes the class name in
     front of every entry as well.
     """
+    if name == "TDatime":  # its word is the whole entry, with no record round it
+        return Values("datetime", _named(name, _datime) if named else _datime)
     if not source.streamers().get(name):
         return Refused(
             f"{name or 'an unnamed type'}, which is a C++ type this reader does not "
@@ -669,6 +684,25 @@ def _whole(name: str, source: Source, streamed: bool = False, named: bool = Fals
     if named:
         read = _named(name, read)
     return Values("dict", read)
+
+
+def whole_object(name: str, source: Source) -> Values | Refused:
+    """One object standing on its own, the way a key in a file holds one.
+
+    A key's bytes are the object and nothing else: the record its class puts
+    in front of itself, and then its members in the order the file's streamer
+    information declares them - the same walk an unsplit branch entry takes.
+    """
+    if isinstance(parse(name), Str):
+        return Values("str", _string)  # a string key is its length and its bytes
+    if name == "TDatime":
+        return Values("datetime", _datime)
+    if not source.streamers().get(name):
+        return Refused("this file's streamer information does not describe its layout")
+    try:
+        return Values("dict", _streamed(_members(name, source)))
+    except _Unreadable as why:
+        return Refused(f"it holds {why.reason}")
 
 
 def _plain(leaf: LeafRecord) -> Column:
