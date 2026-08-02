@@ -500,12 +500,12 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of three hundred and eighty-eight. `xrd.root.datasets` converts
+MNIST is one of five hundred and eighty-eight. `xrd.root.datasets` converts
 the sets machine learning is actually taught and benchmarked with, all of them
 the same way — one tree per class, the label beside the data, and the row's
 place in the original file so any number can be traced back to where it came
-from. The hundred and seventy-seven that have a number to predict rather than
-a class to sort into get one tree of every row instead, and the number to
+from. The three hundred and thirty-nine that have a number to predict rather
+than a class to sort into get one tree of every row instead, and the number to
 predict is a column like any other. What ships here is the converter, not the
 data: no dataset is redistributed in this repository, and `datasets/` is where
 the files it writes are meant to go.
@@ -912,14 +912,214 @@ datasets.convert("iris", "iris.root")
 | `adult_literacy` | 1,833 country-years and the share of adults who could read and write | CC BY 4.0 | 20 kB |
 | `human_development_index` | 6,604 country-years scored on health, schooling and income together | CC BY 4.0 | 42 kB |
 | `sea_level` | 563 monthly readings of how far the sea has risen since 1880, in millimetres | CC BY 4.0 | 15 kB |
+| `abortion_and_crime` | 19,584 state-years used to ask whether legal abortion cut crime | MIT | 320 kB |
+| `adult_services` | 1,787 sessions sold by escorts and what each one was paid for | MIT | 39 kB |
+| `affair_counts` | 601 married people and how many affairs each admitted to | GPL-2 | 12 kB |
+| `alone_episodes` | 172 episodes of the survival show and how viewers rated each | CC0 | 29 kB |
+| `alone_loadouts` | 1,240 items survivalists chose to carry into the wild | CC0 | 23 kB |
+| `alone_seasons` | 21 seasons of the survival show and where each was filmed | CC0 | 6 kB |
+| `alone_survivalists` | 160 survivalists dropped in the wild and how many days each lasted | CC0 | 20 kB |
+| `ancient_shipwrecks` | 1,784 ancient wrecks and how deep in the Mediterranean each lies | GPL-3 or later | 57 kB |
+| `animal_attributes` | 20 animals and which of six attributes each of them has | GPL-2 or later | 6 kB |
+| `anscombe_quartet` | 44 points of the four sets that share a mean and a fit and nothing else | MIT | 9 kB |
+| `ansett_passengers` | 7,407 weeks of passengers flown between Australian cities | GPL-3 | 54 kB |
+| `arbuthnot_christenings` | 82 years of London christenings and how many of each sex were baptised | GPL | 8 kB |
+| `arctic_pit_houses` | 45 pit houses in arctic Norway and how large each was built | GPL-2 or later | 9 kB |
+| `arizona_cardiac_stays` | 3,589 Arizona cardiac patients and how many days each stayed | GPL-2 | 28 kB |
+| `arthritis_treatment` | 84 patients given a new treatment for arthritis and how each fared | GPL-2 | 9 kB |
+| `ashkenazi_breast_cancer` | 3,920 Ashkenazi women and whether each carried the mutation | CC0 | 30 kB |
+| `atmospheric_radiocarbon` | 620 air samples measured for the radiocarbon the bomb tests left | GPL-3 or later | 20 kB |
+| `australian_car_policies` | 67,856 Australian car policies and what each claimed in a year | GPL-2 | 737 kB |
+| `australian_livestock` | 29,364 months of animals sent to slaughter across Australia | GPL-3 | 194 kB |
+| `australian_production` | 218 quarters of Australian beer, bricks, cement and electricity | GPL-3 | 10 kB |
+| `australian_retail` | 64,532 months of retail takings by state and by trade | GPL-3 | 577 kB |
+| `automobile_claims` | 6,773 car insurance claims and what each one paid out | GPL-2 | 67 kB |
+| `bad_health_visits` | 1,127 Germans and how often each went to a doctor in a year | GPL-2 | 11 kB |
+| `bakeoff_bakers` | 120 bakers who competed and how far into the series each got | MIT | 18 kB |
+| `bakeoff_challenges` | 1,136 bakes and how the baker who made each one fared that week | MIT | 62 kB |
+| `bakeoff_episodes` | 94 episodes and how many bakers were left in each of them | MIT | 8 kB |
+| `bakeoff_ratings` | 94 episodes and how many people watched each one | MIT | 9 kB |
+| `barley_yields` | 120 plots of barley grown in the 1930s and what each yielded | GPL-2 or later | 6 kB |
+| `benthic_oxygen_stack` | 2,115 points of the deep-sea record of the last five million years | GPL-3 or later | 23 kB |
+| `big_tech_shares` | 5,032 trading days of four big technology shares | GPL-3 | 136 kB |
+| `blood_storage` | 316 men transfused during surgery and whether the cancer came back | MIT | 18 kB |
+| `bodily_injury_claims` | 1,340 bodily injury claims and what each cost, in thousands | GPL-2 | 22 kB |
+| `bone_marrow_leukaemia` | 137 leukaemia patients given a bone marrow transplant | GPL-3 or later | 11 kB |
+| `bornholm_brooches` | 77 Danish iron age graves and the brooch types found in each | GPL-2 or later | 45 kB |
+| `bowley_wages` | 45 years of the average British wage, in pounds a year | GPL | 5 kB |
+| `breast_feeding` | 927 American mothers and how many weeks each breast fed | GPL-3 or later | 14 kB |
+| `breslau_life_table` | 100 ages and how many people of each died in Breslau in the 1680s | GPL | 7 kB |
+| `bronze_age_cups` | 60 Italian bronze age cups measured and dated to a phase | GPL-2 or later | 8 kB |
+| `bundesliga_matches` | 14,018 German league matches and how many goals each side scored | GPL-2 | 145 kB |
+| `bundestag_2005` | 80 seat counts by party and state in the 2005 German election | GPL-2 | 6 kB |
+| `burn_wound_infection` | 154 burn patients and how long each went before the wound was infected | GPL-3 or later | 9 kB |
+| `care_home_incidents` | 1,216 care home inspections and whether the home was found to be failing | MIT | 17 kB |
+| `cavendish_density` | 29 weighings of the earth against water | GPL | 6 kB |
+| `chinese_bronzes` | 369 Chinese bronzes assayed and dated to a dynasty | GPL-3 or later | 21 kB |
+| `cholera_deaths_1849` | 730 days of 1849 and how many Londoners died of cholera or of diarrhoea | GPL | 12 kB |
+| `choral_singers` | 235 singers in the New York Choral Society and what each sings | GPL-2 or later | 13 kB |
+| `coal_miners_breathing` | 36 groupings of British coal miners by age and by what ailed them | GPL-2 | 6 kB |
+| `college_proximity` | 3,010 American men and what each earned, near a college or far from one | MIT | 32 kB |
+| `college_scorecard` | 11,300 American colleges and who runs each of them | CC0 | 639 kB |
+| `corporal_punishment` | 36 groupings of Germans asked whether children should be smacked | GPL-2 | 6 kB |
+| `covid_testing` | 15,524 COVID tests run in 2020 and what each came back as | MIT | 336 kB |
+| `csgo_matches` | 1,133 Counter-Strike matches and how each one ended | MIT | 36 kB |
+| `cytomegalovirus` | 64 stem cell transplants and whether the virus woke up afterwards | MIT | 17 kB |
+| `danish_welfare` | 180 groupings of Danes by drink, income, marriage and where they lived | GPL-2 | 6 kB |
+| `dart_points` | 91 dart points from Texas and which of five types each is | GPL-2 or later | 26 kB |
+| `datasaurus_dozen` | 1,846 points of the thirteen sets that share every summary there is | MIT | 52 kB |
+| `deep_sea_fish` | 147 trawls of the deep Atlantic and how many fish each brought up | GPL-2 | 9 kB |
+| `drag_race_appearances` | 2,320 appearances by a queen in an episode and how each placed | GPL-2 | 22 kB |
+| `drag_race_contestants` | 184 queens who competed and how old each was on entering | GPL-2 | 11 kB |
+| `drag_race_episodes` | 191 episodes and how many queens were still in the running | GPL-2 | 26 kB |
+| `drinks_and_wages` | 70 trades in 1910 Britain and what a man in each earned a week | GPL | 7 kB |
+| `end_scrapers` | 48 groupings of end scraper shape and how many were found in each | GPL-2 or later | 6 kB |
+| `epica_carbon_dioxide` | 1,096 readings of the carbon dioxide trapped in Antarctic ice | GPL-3 or later | 15 kB |
+| `ernest_witte_burials` | 49 burials in a Texas cemetery and whether each was given grave goods | GPL-2 or later | 9 kB |
+| `esophageal_cancer` | 88 groupings by age, drink and tobacco and how many in each had cancer | MIT | 6 kB |
+| `ethanol_engine` | 88 runs of an ethanol engine and how much nitric oxide came out | GPL-2 or later | 7 kB |
+| `familial_polyposis` | 22 patients treated for bowel polyps and how many each had a year on | MIT | 6 kB |
+| `fingerprint_patterns` | 36 pairings of whorls and loops and how many hands showed each | GPL | 5 kB |
+| `fish_adult_growth` | 16,795 readings taken down the ear stones of adult fish | GPL-3 | 178 kB |
+| `fish_juvenile_catches` | 496 juvenile fish caught off New Zealand and where each was taken | GPL-3 | 13 kB |
+| `fish_juvenile_growth` | 496 juvenile fish and how fast each grew in its first year | GPL-3 | 23 kB |
+| `funnel_beaker_pottery` | 118 Neolithic pots outlined by hand and sorted by shape | GPL-2 or later | 20 kB |
+| `furze_platt_handaxes` | 600 Acheulian handaxes measured at Furze Platt | GPL-2 or later | 15 kB |
+| `galton_families` | 934 children of 205 Victorian families and how tall each grew | GPL | 13 kB |
+| `galton_parent_child` | 928 children of Victorian parents and how tall each grew | GPL | 9 kB |
+| `geologic_time_scale` | 176 named divisions of geologic time and when each began | GPL-3 or later | 18 kB |
+| `german_health_1984` | 3,874 Germans in 1984 and how often each went to a doctor | GPL-2 | 46 kB |
+| `german_health_reform` | 2,227 Germans seen before and after the 1997 health reform | GPL-2 | 29 kB |
+| `german_suicides` | 306 groupings of German suicides by age, by sex and by method | GPL-2 | 8 kB |
+| `global_economy` | 15,150 country-years of output, trade and population | GPL-3 | 539 kB |
+| `gosset_yeast_cells` | 36 counts of yeast cells under a haemacytometer | GPL | 5 kB |
+| `government_transfers` | 1,948 households either side of the cut-off for a cash transfer | MIT | 32 kB |
+| `guerry_moral_statistics` | 86 French departments and the moral statistics Guerry gathered in 1833 | GPL | 14 kB |
+| `hare_and_lynx_pelts` | 91 years of pelts traded by the Hudson's Bay Company | GPL-3 | 6 kB |
+| `hepatocellular_carcinoma` | 227 liver cancer patients and how long each survived surgery | CC0 | 37 kB |
+| `hiv_test_results` | 4,820 Malawians offered a little money to come back for their result | MIT | 55 kB |
+| `household_budgets` | 88 country-years of what households owed, saved and spent | GPL-3 | 10 kB |
+| `indomethacin_trial` | 602 patients given indomethacin or a placebo after an endoscopy | MIT | 23 kB |
+| `infant_pneumonia` | 3,470 infants and how old each was when pneumonia struck | GPL-3 or later | 39 kB |
+| `intcal20_curve` | 9,501 points of the curve radiocarbon dates are calibrated against | GPL-3 or later | 114 kB |
+| `interaction_triptych` | 2,700 points of the three sets that show an interaction three ways | MIT | 41 kB |
+| `iron_age_fibulae` | 30 brooches from an iron age cemetery, measured every way | GPL-2 or later | 8 kB |
+| `iron_age_graves` | 52 graves in a Yorkshire cemetery and the goods found in each | GPL-2 or later | 8 kB |
+| `jevons_guesses` | 50 guesses at how many beans had been thrown and how far each was out | GPL | 6 kB |
+| `kidney_transplant` | 863 kidney transplant patients and how long each lived after surgery | GPL-3 or later | 13 kB |
+| `kommos_pottery` | 88 pots from Bronze Age Crete assayed and sorted by ware | GPL-3 or later | 26 kB |
+| `laryngoscope_trial` | 99 intubations and how long each took from start to finish | MIT | 10 kB |
+| `larynx_cancer` | 90 men with cancer of the larynx and how long each lived | GPL-3 or later | 6 kB |
+| `law_dome_gases` | 2,004 years of greenhouse gas read out of Antarctic ice | GPL-3 or later | 31 kB |
+| `letters_to_politicians` | 5,593 American legislators written to and which of them wrote back | MIT | 168 kB |
+| `licorice_gargle` | 235 patients gargling before surgery and how sore each throat was after | MIT | 11 kB |
+| `london_cholera_districts` | 38 London districts and how many in each died of cholera in 1849 | GPL | 9 kB |
+| `long_stay_patients` | 768 hospital admissions and whether the patient ended up stranded | MIT | 16 kB |
+| `macdonell_criminals` | 924 pairings of height and finger length among three thousand criminals | GPL | 9 kB |
+| `medicare_stays` | 1,495 Medicare patients in Arizona and how many days each stayed | GPL-2 | 15 kB |
+| `medieval_glass` | 398 pieces of medieval glass assayed for what it was made of | GPL-3 or later | 21 kB |
+| `mesolithic_tools` | 33 Mesolithic assemblages and the tools counted in each | GPL-2 or later | 6 kB |
+| `michelsberg_pottery` | 109 Neolithic assemblages and which Michelsberg phase each belongs to | GPL-2 or later | 73 kB |
+| `minard_troops` | 51 points along Napoleon's march and how many men were still alive | GPL | 6 kB |
+| `mississippi_pottery` | 20 sites on the Mississippi and the pottery types found at each | GPL-3 or later | 7 kB |
+| `ngrip_ice_core` | 6,114 readings of oxygen isotopes down a Greenland ice core | GPL-3 or later | 77 kB |
+| `nightingale_mortality` | 24 months of the Crimean war and what the British army died of | GPL | 7 kB |
+| `olympic_running` | 312 Olympic running finals and how fast each was won | GPL-3 | 8 kB |
+| `organ_donations` | 162 state-quarters of organ donor registration in America | MIT | 8 kB |
+| `oxford_pottery` | 30 Romano-British sites and the share of pottery from the Oxford kilns | GPL-2 or later | 7 kB |
+| `ozone_and_weather` | 111 summer days in New York and how much ozone hung in the air | GPL-2 or later | 7 kB |
+| `paris_registrations` | 516 months of nineteenth-century Paris and how many women registered | GPL | 10 kB |
+| `pearson_lee_heights` | 746 pairings of parent and child height in Edwardian families | GPL | 10 kB |
+| `plant_carbon_isotopes` | 155 plants and whether each fixes carbon the C3 way or the C4 way | GPL-3 or later | 10 kB |
+| `plant_traits` | 136 plants of north-west France and the traits each one carries | GPL-2 or later | 12 kB |
+| `playfair_wheat` | 53 years of the price of wheat set against a labourer's wage | GPL | 6 kB |
+| `portal_rodents` | 35,549 animals trapped in the Arizona desert and what each turned out to be | CC0 | 472 kB |
+| `portal_species` | 54 species trapped in the Arizona desert and what kind of animal each is | CC0 | 12 kB |
+| `prediabetes` | 3,059 patients with prediabetes and how long each took to develop diabetes | MIT | 53 kB |
+| `prostate_survival` | 14,294 men with prostate cancer and how long each lived after diagnosis | CC0 | 103 kB |
+| `prussian_horse_kicks` | 280 corps-years of the Prussian army and how many horses kicked dead | GPL-2 | 7 kB |
+| `rashomon_quartet` | 2,000 points of the set four different models fit equally well | MIT | 74 kB |
+| `repeat_victimisation` | 64 pairings of a first crime and a second against the same person | GPL-2 | 6 kB |
+| `republican_vote_share` | 50 American states and the Republican share at every election since 1856 | GPL-2 or later | 16 kB |
+| `restaurant_inspections` | 27,178 restaurant inspections and what each one scored | MIT | 445 kB |
+| `rice_farmer_insurance` | 1,410 Chinese rice farmers and whether each took the insurance offered | MIT | 29 kB |
+| `rochdale_women` | 256 groupings of Rochdale women by whether each held a job | GPL-2 | 7 kB |
+| `roman_street_networks` | 125 Roman cities and how much of each was given over to streets | GPL-3 or later | 9 kB |
+| `romano_british_glass` | 105 pieces of Roman glass assayed and traced to the town that made it | GPL-2 or later | 12 kB |
+| `romano_british_pottery` | 48 Roman pots assayed and traced to the kiln that fired them | GPL-2 or later | 19 kB |
+| `ruspini_points` | 75 points in the plane that fall into four clusters | GPL-2 or later | 6 kB |
+| `sea_level_reconstruction` | 799 points of sea level reconstructed across the last ice ages | GPL-3 or later | 26 kB |
+| `ship_damage` | 40 groupings of cargo ships and how many came to harm | GPL-2 | 6 kB |
+| `singapore_car_claims` | 7,483 Singaporean car policies and how many claims each one made | GPL-2 | 77 kB |
+| `smartpill_motility` | 95 readings from a pill swallowed to time the gut | MIT | 16 kB |
+| `smoking_cessation` | 125 smokers given a patch or a combination and how long each held out | CC0 | 9 kB |
+| `snodgrass_houses` | 91 house pits at Snodgrass and whether each stood inside the wall | GPL-2 or later | 13 kB |
+| `snow_cholera_deaths` | 578 deaths in the Broad Street outbreak, each placed on Snow's map | GPL | 16 kB |
+| `std_reinfection` | 877 patients and how long each went before a second infection | GPL-3 or later | 20 kB |
+| `stone_age_sites` | 43 Danish stone age sites and the tools found at each | GPL-2 or later | 7 kB |
+| `streptomycin_tuberculosis` | 107 patients in the first randomised trial and whether each improved | MIT | 11 kB |
+| `stroke_classification` | 5,110 patients and whether each went on to have a stroke | MIT | 76 kB |
+| `supported_work_programme` | 445 people in a job training trial and what each earned afterwards | MIT | 12 kB |
+| `supraclavicular_block` | 103 nerve blocks and how long each took to numb the arm | MIT | 10 kB |
+| `swedish_motorcycles` | 64,548 Swedish motorcycle policies and what each claimed | GPL-2 | 512 kB |
+| `texas_prisons` | 816 state-years of prison building and who was locked up in them | MIT | 32 kB |
+| `tongue_cancer` | 80 tongue cancer patients and how long each lived after diagnosis | GPL-3 or later | 6 kB |
+| `trial_of_the_pyx` | 72 weighings of coin from the royal mint and how far each strayed | GPL | 6 kB |
+| `us_regional_mortality` | 400 death rates by region, cause, sex and town or country | GPL-2 or later | 9 kB |
+| `victorian_electricity` | 52,608 half-hours of electricity demand in Victoria, and how warm it was | GPL-3 | 841 kB |
+| `virgil_dactyls` | 60 counts of how often each foot of a hexameter line was a dactyl | GPL | 6 kB |
+| `woodland_birds` | 35 bird species and how many of each were counted in three woods | GPL-3 or later | 6 kB |
+| `workers_compensation` | 847 workers compensation losses, by class of work and by year | GPL-2 | 16 kB |
+| `xclara_clusters` | 3,000 points in the plane that fall into three clusters | GPL-2 or later | 56 kB |
+| `yule_pauperism` | 32 English districts and how poor relief moved with pauperism | MIT | 6 kB |
+| `zuni_pottery` | 420 rooms of a Zuni pueblo and the wares found in each | GPL-3 or later | 12 kB |
+| `fossil_electricity_share` | 7,182 country-years and the share of electricity burnt out of fossil fuels | CC BY 4.0 | 63 kB |
+| `nuclear_electricity_share` | 7,718 country-years and the share of electricity split out of atoms | CC BY 4.0 | 45 kB |
+| `wind_electricity_share` | 7,661 country-years and the share of electricity taken from the wind | CC BY 4.0 | 54 kB |
+| `solar_electricity_share` | 7,869 country-years and the share of electricity taken from the sun | CC BY 4.0 | 54 kB |
+| `hydro_electricity_share` | 7,777 country-years and the share of electricity taken from falling water | CC BY 4.0 | 70 kB |
+| `electricity_per_person` | 7,071 country-years of electricity generated for every person living there | CC BY 4.0 | 64 kB |
+| `electricity_demand` | 6,378 country-years of electricity asked for, in terawatt-hours | CC BY 4.0 | 42 kB |
+| `fossil_fuel_energy` | 6,405 country-years of energy taken from fossil fuels, in terawatt-hours | CC BY 4.0 | 59 kB |
+| `electricity_carbon_intensity` | 6,332 country-years and the carbon a kilowatt-hour of electricity cost | CC BY 4.0 | 46 kB |
+| `coal_production` | 17,032 country-years of coal dug up, counted in terawatt-hours | CC BY 4.0 | 118 kB |
+| `oil_production` | 17,992 country-years of oil pumped, counted in terawatt-hours | CC BY 4.0 | 116 kB |
+| `gas_production` | 17,251 country-years of gas drawn, counted in terawatt-hours | CC BY 4.0 | 106 kB |
+| `consumption_co2_emissions` | 5,053 country-years of carbon dioxide emitted for what each country used | CC BY 4.0 | 43 kB |
+| `methane_emissions` | 38,150 country-years of methane let go, weighed as carbon dioxide | CC BY 4.0 | 282 kB |
+| `nitrous_oxide_emissions` | 38,500 country-years of nitrous oxide let go, weighed as carbon dioxide | CC BY 4.0 | 289 kB |
+| `greenhouse_gas_emissions` | 38,150 country-years of every greenhouse gas together, weighed as carbon dioxide | CC BY 4.0 | 286 kB |
+| `temperature_anomaly` | 531 yearly readings of how far the air has warmed since the 1860s | CC BY 4.0 | 20 kB |
+| `sea_surface_temperature` | 531 yearly readings of how far the sea surface has warmed since the 1860s | CC BY 4.0 | 20 kB |
+| `ice_sheet_mass` | 384 monthly weighings of the ice lost from Greenland and Antarctica | CC BY 4.0 | 8 kB |
+| `annual_precipitation` | 16,770 country-years and how much rain and snow fell on each | CC BY 4.0 | 140 kB |
+| `forest_cover` | 8,078 country-years and the share of the land each still keeps under trees | CC BY 4.0 | 75 kB |
+| `agricultural_land` | 12,940 country-years and the share of the land each gives over to farming | CC BY 4.0 | 107 kB |
+| `fertilizer_use` | 12,606 country-years of fertiliser spread on every hectare of cropland | CC BY 4.0 | 80 kB |
+| `pesticide_use` | 8,225 country-years of pesticide sprayed on the fields, in tonnes | CC BY 4.0 | 50 kB |
+| `wheat_yields` | 9,799 country-years of wheat harvested, in tonnes a hectare | CC BY 4.0 | 79 kB |
+| `maize_yields` | 12,478 country-years of maize harvested, in tonnes a hectare | CC BY 4.0 | 99 kB |
+| `rice_yields` | 9,934 country-years of rice harvested, in tonnes a hectare | CC BY 4.0 | 79 kB |
+| `cereal_production` | 13,538 country-years of cereal brought in, in tonnes | CC BY 4.0 | 100 kB |
+| `cattle_numbers` | 14,468 country-years and how many head of cattle stood in each | CC BY 4.0 | 99 kB |
+| `fish_consumption` | 13,220 country-years of fish and seafood eaten for every person living there | CC BY 4.0 | 127 kB |
+| `gdp_per_capita_growth` | 12,246 country-years and how fast output per person grew or shrank | CC BY 4.0 | 134 kB |
+| `trade_share_of_gdp` | 9,739 country-years and how much of what each made was traded | CC BY 4.0 | 95 kB |
+| `foreign_direct_investment` | 10,031 country-years and how much foreign money came in, against output | CC BY 4.0 | 111 kB |
+| `labour_force_participation` | 7,186 country-years and the share of grown-ups working or looking for work | CC BY 4.0 | 53 kB |
+| `world_population` | 58,824 country-years and how many people lived in each, back to 10,000 BC | CC BY 4.0 | 382 kB |
+| `birth_rate` | 18,722 country-years and how many were born for every thousand living | CC BY 4.0 | 118 kB |
+| `maternal_mortality` | 9,264 country-years and how many mothers died for every hundred thousand born | CC BY 4.0 | 98 kB |
+| `international_migrants` | 2,176 country-years and how many people living in each were born elsewhere | CC BY 4.0 | 23 kB |
+| `broadband_subscriptions` | 4,590 country-years and how many broadband lines each had per hundred people | CC BY 4.0 | 55 kB |
 
-A hundred and seventy-seven of them have a number to predict rather than a
+Three hundred and thirty-nine of them have a number to predict rather than a
 class; the rest sort rows into classes. The last column is one file holding
 every split, written with the default `zlib`, as measured on a conversion of
-all three hundred and eighty-eight — every split of a set that has them, a
+all five hundred and eighty-eight — every split of a set that has them, a
 tree a class, and the `about` key beside them.
 
-The last two hundred come from two places that publish whole shelves at once.
+The last four hundred come from two places that publish whole shelves at once.
 The R teaching tables are read from the CSV Rdatasets serves for each: a
 header row naming the columns the way the R package documents them, a first
 column of row names, then a row per example. A row-name column that counts
@@ -930,6 +1130,23 @@ and CC0 all appear. The country-year tables are the CSV behind an Our World in
 Data chart: a place, its three-letter code where it has one — a continent or
 an income group has none — the year, and the one thing measured, which is the
 number to predict.
+
+The second two hundred are the same two shelves read further along. From R
+come the tables the history of statistics was written from — Arbuthnot's
+christenings, Cavendish weighing the earth, Snow's cholera deaths, Galton on
+parents and children, Nightingale's mortality of the army, the Prussian horse
+kicks — the trials medicine is taught with, what archaeologists dig up and
+measure, the quartets built to show that a summary hides the shape of a thing,
+and the series forecasting is practised on. A survey question nobody answered
+is kept as a class of its own rather than dropped, so `bakeoff_challenges`
+sorts a baker into `not_recorded` and `geologic_time_scale` into `unranked`.
+A column named after something Python already uses is renamed out of the way:
+the German health survey's `self` is written as `self_`. From Our World in
+Data come what the world burns and generates, what it lets into the air, how
+warm the air and the sea have grown, what the land is put to and what it
+yields, and how many people live off it; where a chart measures a band as well
+as a value — the temperature anomaly and its low and high — the value is the
+number to predict and the band is carried beside it.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
 on the machine doing the converting, and the licences above are what those

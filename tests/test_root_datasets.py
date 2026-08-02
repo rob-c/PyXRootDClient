@@ -483,6 +483,59 @@ def test_the_datasets_asked_for_are_all_there():
         "internet_use", "internet_users", "life_expectancy_at_birth", "mobile_subscriptions",
         "population_density", "primary_energy", "renewable_electricity", "renewable_energy",
         "sea_level", "unemployment_rate", "urban_population",
+        "abortion_and_crime", "adult_services", "affair_counts", "alone_episodes",
+        "alone_loadouts", "alone_seasons", "alone_survivalists", "ancient_shipwrecks",
+        "animal_attributes", "anscombe_quartet", "ansett_passengers", "arbuthnot_christenings",
+        "arctic_pit_houses", "arizona_cardiac_stays", "arthritis_treatment",
+        "ashkenazi_breast_cancer", "atmospheric_radiocarbon", "australian_car_policies",
+        "australian_livestock", "australian_production", "australian_retail", "automobile_claims",
+        "bad_health_visits", "bakeoff_bakers", "bakeoff_challenges", "bakeoff_episodes",
+        "bakeoff_ratings", "barley_yields", "benthic_oxygen_stack", "big_tech_shares",
+        "blood_storage", "bodily_injury_claims", "bone_marrow_leukaemia", "bornholm_brooches",
+        "bowley_wages", "breast_feeding", "breslau_life_table", "bronze_age_cups",
+        "bundesliga_matches", "bundestag_2005", "burn_wound_infection", "care_home_incidents",
+        "cavendish_density", "chinese_bronzes", "cholera_deaths_1849", "choral_singers",
+        "coal_miners_breathing", "college_proximity", "college_scorecard", "corporal_punishment",
+        "covid_testing", "csgo_matches", "cytomegalovirus", "danish_welfare", "dart_points",
+        "datasaurus_dozen", "deep_sea_fish", "drag_race_appearances", "drag_race_contestants",
+        "drag_race_episodes", "drinks_and_wages", "end_scrapers", "epica_carbon_dioxide",
+        "ernest_witte_burials", "esophageal_cancer", "ethanol_engine", "familial_polyposis",
+        "fingerprint_patterns", "fish_adult_growth", "fish_juvenile_catches",
+        "fish_juvenile_growth", "funnel_beaker_pottery", "furze_platt_handaxes", "galton_families",
+        "galton_parent_child", "geologic_time_scale", "german_health_1984", "german_health_reform",
+        "german_suicides", "global_economy", "gosset_yeast_cells", "government_transfers",
+        "guerry_moral_statistics", "hare_and_lynx_pelts", "hepatocellular_carcinoma",
+        "hiv_test_results", "household_budgets", "indomethacin_trial", "infant_pneumonia",
+        "intcal20_curve", "interaction_triptych", "iron_age_fibulae", "iron_age_graves",
+        "jevons_guesses", "kidney_transplant", "kommos_pottery", "laryngoscope_trial",
+        "larynx_cancer", "law_dome_gases", "letters_to_politicians", "licorice_gargle",
+        "london_cholera_districts", "long_stay_patients", "macdonell_criminals", "medicare_stays",
+        "medieval_glass", "mesolithic_tools", "michelsberg_pottery", "minard_troops",
+        "mississippi_pottery", "ngrip_ice_core", "nightingale_mortality", "olympic_running",
+        "organ_donations", "oxford_pottery", "ozone_and_weather", "paris_registrations",
+        "pearson_lee_heights", "plant_carbon_isotopes", "plant_traits", "playfair_wheat",
+        "portal_rodents", "portal_species", "prediabetes", "prostate_survival",
+        "prussian_horse_kicks", "rashomon_quartet", "repeat_victimisation",
+        "republican_vote_share", "restaurant_inspections", "rice_farmer_insurance",
+        "rochdale_women", "roman_street_networks", "romano_british_glass",
+        "romano_british_pottery", "ruspini_points", "sea_level_reconstruction", "ship_damage",
+        "singapore_car_claims", "smartpill_motility", "smoking_cessation", "snodgrass_houses",
+        "snow_cholera_deaths", "std_reinfection", "stone_age_sites", "streptomycin_tuberculosis",
+        "stroke_classification", "supported_work_programme", "supraclavicular_block",
+        "swedish_motorcycles", "texas_prisons", "tongue_cancer", "trial_of_the_pyx",
+        "us_regional_mortality", "victorian_electricity", "virgil_dactyls", "woodland_birds",
+        "workers_compensation", "xclara_clusters", "yule_pauperism", "zuni_pottery",
+        "agricultural_land", "annual_precipitation", "birth_rate", "broadband_subscriptions",
+        "cattle_numbers", "cereal_production", "coal_production", "consumption_co2_emissions",
+        "electricity_carbon_intensity", "electricity_demand", "electricity_per_person",
+        "fertilizer_use", "fish_consumption", "foreign_direct_investment", "forest_cover",
+        "fossil_electricity_share", "fossil_fuel_energy", "gas_production",
+        "gdp_per_capita_growth", "greenhouse_gas_emissions", "hydro_electricity_share",
+        "ice_sheet_mass", "international_migrants", "labour_force_participation", "maize_yields",
+        "maternal_mortality", "methane_emissions", "nitrous_oxide_emissions",
+        "nuclear_electricity_share", "oil_production", "pesticide_use", "rice_yields",
+        "sea_surface_temperature", "solar_electricity_share", "temperature_anomaly",
+        "trade_share_of_gdp", "wheat_yields", "wind_electricity_share", "world_population",
     }
 
 
@@ -2230,3 +2283,236 @@ def test_a_chart_writes_every_country_year_into_the_one_tree():
         assert list(tree["code_length"].array()) == [3, 0]
         held = tree["entity"].array()
         assert bytes(held[: tree["entity_length"].array()[0]]) == b"France"
+
+
+# --- what the second shelf of teaching tables reads -------------------------
+
+#: The rest of the Rdatasets shelf: the tables the history of statistics was
+#: written from, the trials medicine is taught with, what archaeologists dig up
+#: and measure, and the series forecasting is practised on.
+RDATASETS_TWO = (
+    "abortion_and_crime", "adult_services", "affair_counts", "alone_episodes", "alone_loadouts",
+    "alone_seasons", "alone_survivalists", "ancient_shipwrecks", "animal_attributes",
+    "anscombe_quartet", "ansett_passengers", "arbuthnot_christenings", "arctic_pit_houses",
+    "arizona_cardiac_stays", "arthritis_treatment", "ashkenazi_breast_cancer",
+    "atmospheric_radiocarbon", "australian_car_policies", "australian_livestock",
+    "australian_production", "australian_retail", "automobile_claims", "bad_health_visits",
+    "bakeoff_bakers", "bakeoff_challenges", "bakeoff_episodes", "bakeoff_ratings", "barley_yields",
+    "benthic_oxygen_stack", "big_tech_shares", "blood_storage", "bodily_injury_claims",
+    "bone_marrow_leukaemia", "bornholm_brooches", "bowley_wages", "breast_feeding",
+    "breslau_life_table", "bronze_age_cups", "bundesliga_matches", "bundestag_2005",
+    "burn_wound_infection", "care_home_incidents", "cavendish_density", "chinese_bronzes",
+    "cholera_deaths_1849", "choral_singers", "coal_miners_breathing", "college_proximity",
+    "college_scorecard", "corporal_punishment", "covid_testing", "csgo_matches", "cytomegalovirus",
+    "danish_welfare", "dart_points", "datasaurus_dozen", "deep_sea_fish", "drag_race_appearances",
+    "drag_race_contestants", "drag_race_episodes", "drinks_and_wages", "end_scrapers",
+    "epica_carbon_dioxide", "ernest_witte_burials", "esophageal_cancer", "ethanol_engine",
+    "familial_polyposis", "fingerprint_patterns", "fish_adult_growth", "fish_juvenile_catches",
+    "fish_juvenile_growth", "funnel_beaker_pottery", "furze_platt_handaxes", "galton_families",
+    "galton_parent_child", "geologic_time_scale", "german_health_1984", "german_health_reform",
+    "german_suicides", "global_economy", "gosset_yeast_cells", "government_transfers",
+    "guerry_moral_statistics", "hare_and_lynx_pelts", "hepatocellular_carcinoma",
+    "hiv_test_results", "household_budgets", "indomethacin_trial", "infant_pneumonia",
+    "intcal20_curve", "interaction_triptych", "iron_age_fibulae", "iron_age_graves",
+    "jevons_guesses", "kidney_transplant", "kommos_pottery", "laryngoscope_trial", "larynx_cancer",
+    "law_dome_gases", "letters_to_politicians", "licorice_gargle", "london_cholera_districts",
+    "long_stay_patients", "macdonell_criminals", "medicare_stays", "medieval_glass",
+    "mesolithic_tools", "michelsberg_pottery", "minard_troops", "mississippi_pottery",
+    "ngrip_ice_core", "nightingale_mortality", "olympic_running", "organ_donations",
+    "oxford_pottery", "ozone_and_weather", "paris_registrations", "pearson_lee_heights",
+    "plant_carbon_isotopes", "plant_traits", "playfair_wheat", "portal_rodents", "portal_species",
+    "prediabetes", "prostate_survival", "prussian_horse_kicks", "rashomon_quartet",
+    "repeat_victimisation", "republican_vote_share", "restaurant_inspections",
+    "rice_farmer_insurance", "rochdale_women", "roman_street_networks", "romano_british_glass",
+    "romano_british_pottery", "ruspini_points", "sea_level_reconstruction", "ship_damage",
+    "singapore_car_claims", "smartpill_motility", "smoking_cessation", "snodgrass_houses",
+    "snow_cholera_deaths", "std_reinfection", "stone_age_sites", "streptomycin_tuberculosis",
+    "stroke_classification", "supported_work_programme", "supraclavicular_block",
+    "swedish_motorcycles", "texas_prisons", "tongue_cancer", "trial_of_the_pyx",
+    "us_regional_mortality", "victorian_electricity", "virgil_dactyls", "woodland_birds",
+    "workers_compensation", "xclara_clusters", "yule_pauperism", "zuni_pottery",
+)
+
+
+def test_the_second_shelf_of_r_tables_reads_the_csv_rdatasets_serves_as_well():
+    assert len(RDATASETS_TWO) == len(set(RDATASETS_TWO)) == 161
+    assert not set(RDATASETS_TWO) & set(RDATASETS)
+    stem = "https://vincentarelbundock.github.io/Rdatasets/"
+    for name in RDATASETS_TWO:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.url.startswith(f"{stem}csv/") and spec.url.endswith(".csv")
+        assert spec.source == spec.url.replace("/csv/", "/doc/").removesuffix(".csv") + ".html"
+        assert spec.header and spec.splits == ("all",)
+        assert not spec.member and not spec.inner
+
+
+def test_every_table_on_the_second_shelf_passes_on_its_own_packages_licence():
+    held: dict[str, list[str]] = {}
+    for name in RDATASETS_TWO:
+        held.setdefault(DATASETS[name].licence, []).append(name)
+    assert {licence: len(names) for licence, names in sorted(held.items())} == {
+        "CC0": 11, "GPL": 22, "GPL-2": 27, "GPL-2 or later": 27, "GPL-3": 13,
+        "GPL-3 or later": 25, "MIT": 36,
+    }
+
+
+def test_every_table_on_the_second_shelf_names_a_class_or_measures_a_number():
+    numbers = [name for name in RDATASETS_TWO if not DATASETS[name].classes]
+    assert len(numbers) == 123
+    for name in RDATASETS_TWO:
+        roles = {role for _, role in DATASETS[name].fields}
+        assert bool(DATASETS[name].classes) == ("label" in roles), name
+        assert "label" in roles or "target" in roles, name
+
+
+def test_the_second_shelf_tells_a_counted_row_from_one_that_names_a_thing():
+    named = [name for name in RDATASETS_TWO if DATASETS[name].fields[0] == ("name", "text")]
+    assert named == [
+        "animal_attributes", "atmospheric_radiocarbon", "ernest_witte_burials", "kommos_pottery",
+        "michelsberg_pottery", "mississippi_pottery", "plant_traits", "republican_vote_share",
+        "snodgrass_houses", "woodland_birds", "zuni_pottery",
+    ]
+    assert all(DATASETS[name].fields[0] == ("row", "i")
+               for name in RDATASETS_TWO if name not in named)
+
+
+def test_the_second_shelf_says_how_every_day_and_clock_it_keeps_is_written():
+    dated = {name: DATASETS[name].dates for name in RDATASETS_TWO
+             if any(role in ("date", "time") for _, role in DATASETS[name].fields)}
+    assert dated == {
+        "alone_episodes": "%Y-%m-%d", "alone_seasons": "%Y-%m-%d",
+        "atmospheric_radiocarbon": "%Y-%m-%d", "bakeoff_bakers": "%Y-%m-%d",
+        "bakeoff_ratings": "%Y-%m-%d", "big_tech_shares": "%Y-%m-%d",
+        "bundesliga_matches": "%Y-%m-%dT%H:%M:%SZ", "cholera_deaths_1849": "%Y-%m-%d",
+        "drag_race_contestants": "%Y-%m-%d", "drag_race_episodes": "%Y-%m-%d",
+        "fish_juvenile_catches": "%Y-%m-%d", "fish_juvenile_growth": "%Y-%m-%d",
+        "nightingale_mortality": "%Y-%m-%d", "paris_registrations": "%Y-%m-%d",
+        "victorian_electricity": "%Y-%m-%dT%H:%M:%SZ",
+    }
+
+
+def test_a_table_that_keeps_a_clock_beside_a_calendar_writes_the_calendar_out():
+    spec = DATASETS["victorian_electricity"]
+    assert isinstance(spec, Table)
+    assert spec.dates == "%Y-%m-%dT%H:%M:%SZ"
+    assert ("time", "time") in spec.fields and ("date", "text") in spec.fields
+    assert spec.codes["holiday"] == ("FALSE", "TRUE")
+
+
+def test_a_row_left_blank_where_a_class_was_asked_for_becomes_a_class_of_its_own():
+    blank = [name for name in RDATASETS_TWO if "" in DATASETS[name].labels]
+    assert blank == ["bakeoff_challenges", "college_scorecard", "geologic_time_scale",
+                     "hiv_test_results", "portal_rodents"]
+    assert DATASETS["bakeoff_challenges"].labels[""] == 7
+    assert DATASETS["bakeoff_challenges"].classes[-1] == "not_recorded"
+    assert DATASETS["geologic_time_scale"].classes[-1] == "unranked"
+    for name in blank:
+        spec = DATASETS[name]
+        assert len(spec.classes) == len(spec.labels)
+
+
+def test_a_column_named_for_a_python_argument_is_renamed_out_of_its_way():
+    spec = DATASETS["german_health_1984"]
+    assert isinstance(spec, Table)
+    assert ("self_", "i") in spec.fields
+    assert not any(name == "self" for name, _ in spec.fields)
+
+
+def test_a_table_from_the_second_shelf_is_written_into_a_tree_for_each_class():
+    counts, raw = written(
+        "bronze_age_cups",
+        b"rownames,RD,ND,SD,H,NH,Phase\n1,10.5,5.0,7.0,9.5,4.0,Protoapennine\n"
+        b"2,11.0,6.0,8.0,10.5,5.0,Subapennine\n",
+        "table",
+    )
+    assert counts == {"protoapennine": 1, "subapennine": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["subapennine"]
+        assert tree.title == "Bronze Age Cups from Italy rows labelled subapennine"
+        assert list(tree["row"].array()) == [2]
+        assert list(tree["rd"].array()) == [11.0]
+        assert list(tree["label"].array()) == [1]
+
+
+def test_a_table_from_the_second_shelf_with_a_number_to_predict_writes_one_tree():
+    counts, raw = written(
+        "galton_parent_child", b"rownames,parent,child\n1,70.5,61.7\n2,68.5,61.7\n", "table",
+    )
+    assert counts == {"rows": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["rows"]
+        assert tree.title == "Galton's Parent and Child Heights rows"
+        assert list(tree["parent"].array()) == [70.5, 68.5]
+        assert list(tree["child"].array()) == [61.7, 61.7]
+
+
+# --- what the second shelf of country-year charts reads ---------------------
+
+#: The rest of the Our World in Data shelf: what the world burns and generates,
+#: what it lets into the air, how warm the air and the sea have grown, and what
+#: the land is put to.
+CHARTS_TWO = (
+    "fossil_electricity_share", "nuclear_electricity_share", "wind_electricity_share",
+    "solar_electricity_share", "hydro_electricity_share", "electricity_per_person",
+    "electricity_demand", "fossil_fuel_energy", "electricity_carbon_intensity", "coal_production",
+    "oil_production", "gas_production", "consumption_co2_emissions", "methane_emissions",
+    "nitrous_oxide_emissions", "greenhouse_gas_emissions", "temperature_anomaly",
+    "sea_surface_temperature", "ice_sheet_mass", "annual_precipitation", "forest_cover",
+    "agricultural_land", "fertilizer_use", "pesticide_use", "wheat_yields", "maize_yields",
+    "rice_yields", "cereal_production", "cattle_numbers", "fish_consumption",
+    "gdp_per_capita_growth", "trade_share_of_gdp", "foreign_direct_investment",
+    "labour_force_participation", "world_population", "birth_rate", "maternal_mortality",
+    "international_migrants", "broadband_subscriptions",
+)
+
+
+def test_the_second_shelf_of_charts_reads_the_csv_owid_serves_as_well():
+    assert len(CHARTS_TWO) == len(set(CHARTS_TWO)) == 39
+    assert not set(CHARTS_TWO) & set(CHARTS)
+    for name in CHARTS_TWO:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.licence == "CC BY 4.0"
+        assert spec.source.startswith("https://ourworldindata.org/grapher/")
+        assert spec.url == f"{spec.source}.csv?v=1&csvType=full&useColumnShortNames=true"
+        assert spec.header and not spec.classes and spec.splits == ("all",)
+        assert spec.fields[:2] == (("entity", "text"), ("code", "text"))
+        assert sum(role == "target" for _, role in spec.fields) == 1
+
+
+def test_every_chart_on_the_second_shelf_but_the_ice_counts_by_the_year():
+    days = [name for name in CHARTS_TWO if ("day", "date") in DATASETS[name].fields]
+    assert days == ["ice_sheet_mass"]
+    assert DATASETS["ice_sheet_mass"].dates == "%Y-%m-%d"
+    assert DATASETS["ice_sheet_mass"].fields[-1] == ("mass_change_gt", "target")
+    assert all(("year", "i") in DATASETS[name].fields for name in CHARTS_TWO if name not in days)
+
+
+def test_a_chart_that_carries_more_than_one_measure_predicts_the_named_one():
+    late = [name for name in CHARTS_TWO if DATASETS[name].fields[-1][1] != "target"]
+    assert late == ["electricity_carbon_intensity", "temperature_anomaly",
+                    "sea_surface_temperature", "forest_cover", "maternal_mortality"]
+    assert DATASETS["temperature_anomaly"].fields[3:] == (
+        ("anomaly_c", "target"), ("anomaly_low", "d"), ("anomaly_high", "d"))
+    assert DATASETS["sea_surface_temperature"].fields[3:] == (
+        ("anomaly_c", "target"), ("anomaly_low", "d"), ("anomaly_high", "d"))
+    assert DATASETS["maternal_mortality"].fields[3:] == (
+        ("deaths_per_100k", "target"), ("region", "text"), ("note", "text"))
+    assert DATASETS["forest_cover"].fields[-1] == ("note", "text")
+    assert DATASETS["electricity_carbon_intensity"].fields[-1] == ("region", "text")
+
+
+def test_a_chart_from_the_second_shelf_writes_every_country_year_into_one_tree():
+    counts, raw = written(
+        "wheat_yields",
+        b"entity,code,year,wheat_yield\nFrance,FRA,1961,2.4\nWorld,,1961,1.1\n",
+        "table",
+    )
+    assert counts == {"rows": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["rows"]
+        assert tree.title == "Wheat Yields rows"
+        assert list(tree["year"].array()) == [1961, 1961]
+        assert list(tree["tonnes_per_hectare"].array()) == [2.4, 1.1]
+        assert list(tree["code_length"].array()) == [3, 0]

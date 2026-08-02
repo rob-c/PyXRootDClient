@@ -5540,6 +5540,1683 @@ _SEA_LEVEL_FIELDS: tuple[tuple[str, str], ...] = (
     ("church_and_white", "d"), ("uhslc", "d"), ("sea_level_mm", "target"),
 )
 
+#: A second shelf of the same Rdatasets kind, read the same way: the tables the
+#: history of statistics was written from, the trials medicine is taught with,
+#: what archaeologists dig up and measure, the sets built to show that a summary
+#: hides the shape of the thing, and the series forecasting is practised on.
+_ABORTION_AND_CRIME_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("fip", "i"), ("age", "i"), ("race", "i"), ("year", "i"), ("sex", "i"),
+    ("totpop", "i"),
+    ("ir", "d"), ("crack", "d"), ("alcohol", "d"),
+    ("income", "i"),
+    ("ur", "d"), ("poverty", "d"),
+    ("repeal", "i"),
+    ("acc", "d"),
+    ("wht", "i"), ("male", "i"),
+    ("lnr", "target"),
+    ("t", "i"), ("younger", "i"), ("fa", "i"), ("pi", "i"), ("bf15", "i"),
+)
+
+_ADULT_SERVICES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("session", "i"), ("age", "i"),
+    ("age_cl", "d"),
+    ("appearance_cl", "i"),
+    ("bmi", "d"),
+    ("schooling", "i"),
+    ("asq_cl", "d"),
+    ("provider_second", "i"), ("asian_cl", "i"), ("black_cl", "i"), ("hispanic_cl", "i"),
+    ("othrace_cl", "i"), ("reg", "i"), ("hot", "i"), ("massage_cl", "i"),
+    ("lnw", "target"),
+    ("llength", "d"),
+    ("unsafe", "i"), ("asian", "i"), ("black", "i"), ("hispanic", "i"), ("other", "i"),
+    ("white", "i"), ("asq", "i"), ("cohab", "i"), ("married", "i"), ("divorced", "i"),
+    ("separated", "i"), ("nevermarried", "i"), ("widowed", "i"),
+)
+
+_AFFAIR_COUNTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("naffairs", "target"),
+    ("kids", "i"), ("vryunhap", "i"), ("unhap", "i"), ("avgmarr", "i"), ("hapavg", "i"),
+    ("vryhap", "i"), ("antirel", "i"), ("notrel", "i"), ("slghtrel", "i"), ("smerel", "i"),
+    ("vryrel", "i"), ("yrsmarr1", "i"), ("yrsmarr2", "i"), ("yrsmarr3", "i"), ("yrsmarr4", "i"),
+    ("yrsmarr5", "i"), ("yrsmarr6", "i"),
+)
+
+_ALONE_EPISODES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("version", "version"),
+    ("season", "i"), ("episode_number_overall", "i"), ("episode", "i"),
+    ("title", "text"),
+    ("air_date", "date"),
+    ("viewers", "d"),
+    ("quote", "text"), ("author", "text"),
+    ("imdb_rating", "target"),
+    ("n_ratings", "i"), ("n_remaining", "i"), ("day_start", "i"),
+    ("description", "text"),
+)
+
+_ALONE_LOADOUTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("version", "version"),
+    ("season", "i"),
+    ("id", "text"), ("name", "text"),
+    ("item_number", "target"),
+    ("item_detailed", "text"), ("item", "text"),
+)
+
+_ALONE_SEASONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("version", "version"),
+    ("season", "i"),
+    ("subtitle", "subtitle"),
+    ("location", "location"),
+    ("region", "region"),
+    ("country", "country"),
+    ("n_survivors", "target"),
+    ("lat", "d"),
+    ("date_drop_off", "date"),
+)
+
+_ALONE_SURVIVALISTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("version", "version"),
+    ("season", "i"),
+    ("id", "text"), ("name", "text"), ("first_name", "text"), ("last_name", "text"),
+    ("age", "i"),
+    ("gender", "gender"),
+    ("city", "text"), ("state", "text"),
+    ("country", "country"),
+    ("result", "i"),
+    ("days_lasted", "target"),
+    ("medically_evacuated", "medically_evacuated"),
+    ("reason_tapped_out", "text"),
+    ("reason_category", "reason_category"),
+    ("episode_tapped", "i"),
+    ("team", "team"),
+    ("day_linked_up", "i"),
+    ("profession", "text"),
+)
+
+_ANCIENT_SHIPWRECKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("name", "text"),
+    ("sea", "sea"),
+    ("country", "country"),
+    ("region", "text"),
+    ("depth_min", "target"),
+    ("depth_max", "i"),
+    ("depth", "text"), ("period", "text"), ("dating", "text"),
+    ("date_early", "i"), ("date_late", "i"),
+    ("origin", "text"), ("destination", "text"),
+)
+
+_ANIMAL_ATTRIBUTES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("war", "target"),
+    ("fly", "i"), ("ver", "i"), ("end", "i"), ("gro", "i"), ("hai", "i"),
+)
+
+_ANSCOMBE_QUARTET_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("dataset", "label"),
+    ("x", "i"),
+    ("y", "d"),
+)
+
+_ANSETT_PASSENGERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("week", "text"),
+    ("airports", "airports"),
+    ("class", "class"),
+    ("passengers", "target"),
+)
+
+_ARBUTHNOT_CHRISTENINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"), ("males", "i"), ("females", "i"), ("plague", "i"),
+    ("mortality", "i"),
+    ("ratio", "target"),
+    ("total", "d"),
+)
+
+_ARCTIC_PIT_HOUSES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("hearths", "hearths"),
+    ("depth", "depth"),
+    ("size", "label"),
+    ("form", "form"),
+    ("orient", "orient"),
+    ("entrance", "entrance"),
+)
+
+_ARIZONA_CARDIAC_STAYS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("los", "target"),
+    ("procedure", "i"), ("sex", "i"), ("age75", "i"), ("admit", "i"),
+    ("hospital", "d"),
+)
+
+_ARTHRITIS_TREATMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("treatment", "treatment"),
+    ("sex", "sex"),
+    ("age", "i"),
+    ("improved", "label"),
+)
+
+_ASHKENAZI_BREAST_CANCER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("famid", "i"), ("brcancer", "i"), ("age", "i"),
+    ("mutant", "label"),
+)
+
+_ATMOSPHERIC_RADIOCARBON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("site", "label"),
+    ("start", "date"), ("end", "date"),
+    ("delta", "d"),
+    ("sigma", "i"),
+)
+
+_AUSTRALIAN_CAR_POLICIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("veh_value", "d"), ("exposure", "d"),
+    ("clm", "i"), ("numclaims", "i"),
+    ("claimcst0", "target"),
+    ("veh_body", "veh_body"),
+    ("veh_age", "i"),
+    ("gender", "gender"),
+    ("area", "area"),
+    ("agecat", "i"),
+    ("x_obstat", "x_obstat"),
+)
+
+_AUSTRALIAN_LIVESTOCK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("month", "text"),
+    ("animal", "animal"),
+    ("state", "state"),
+    ("count", "target"),
+)
+
+_AUSTRALIAN_PRODUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("quarter", "text"),
+    ("beer", "target"),
+    ("tobacco", "i"), ("bricks", "i"), ("cement", "i"), ("electricity", "i"), ("gas", "i"),
+)
+
+_AUSTRALIAN_RETAIL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "state"),
+    ("industry", "text"), ("series_id", "text"), ("month", "text"),
+    ("turnover", "target"),
+)
+
+_AUTOMOBILE_CLAIMS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "state"),
+    ("class", "class"),
+    ("gender", "gender"),
+    ("age", "i"),
+    ("paid", "target"),
+)
+
+_BAD_HEALTH_VISITS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("numvisit", "target"),
+    ("badh", "i"), ("age", "i"),
+)
+
+_BAKEOFF_BAKERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("series", "i"),
+    ("baker", "text"),
+    ("star_baker", "i"), ("technical_winner", "i"), ("technical_top3", "i"),
+    ("technical_bottom", "i"), ("technical_highest", "i"), ("technical_lowest", "i"),
+    ("technical_median", "d"),
+    ("series_winner", "i"), ("series_runner_up", "i"),
+    ("total_episodes_appeared", "target"),
+    ("first_date_appeared", "date"), ("last_date_appeared", "date"),
+    ("first_date_us", "i"), ("last_date_us", "i"),
+    ("percent_episodes_appeared", "d"), ("percent_technical_top3", "d"),
+    ("baker_full", "text"),
+    ("age", "i"),
+    ("occupation", "text"), ("hometown", "text"), ("baker_last", "text"), ("baker_first", "text"),
+)
+
+_BAKEOFF_CHALLENGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("series", "i"), ("episode", "i"),
+    ("baker", "text"),
+    ("result", "label"),
+    ("signature", "text"),
+    ("technical", "i"),
+    ("showstopper", "text"),
+)
+
+_BAKEOFF_EPISODES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("series", "i"), ("episode", "i"), ("bakers_appeared", "i"), ("bakers_out", "i"),
+    ("bakers_remaining", "target"),
+    ("star_bakers", "i"), ("technical_winners", "i"),
+    ("sb_name", "text"),
+    ("winner_name", "winner_name"),
+    ("eliminated", "text"),
+)
+
+_BAKEOFF_RATINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("series", "i"), ("episode", "i"),
+    ("uk_airdate", "date"),
+    ("viewers_7day", "target"),
+    ("viewers_28day", "d"),
+    ("network_rank", "i"), ("channels_rank", "i"), ("bbc_iplayer_requests", "i"),
+    ("episode_count", "i"), ("us_season", "i"),
+    ("us_airdate", "text"),
+)
+
+_BARLEY_YIELDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("yield", "target"),
+    ("variety", "variety"),
+    ("year", "i"),
+    ("site", "site"),
+)
+
+_BENTHIC_OXYGEN_STACK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("age", "d"),
+    ("delta", "target"),
+    ("error", "d"),
+)
+
+_BIG_TECH_SHARES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("symbol", "symbol"),
+    ("date", "date"),
+    ("open", "d"), ("high", "d"), ("low", "d"),
+    ("close", "target"),
+    ("adj_close", "d"),
+    ("volume", "i"),
+)
+
+_BLOOD_STORAGE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("rbc_age_group", "i"), ("median_rbc_age", "i"),
+    ("age", "d"),
+    ("aa", "i"), ("famhx", "i"),
+    ("pvol", "d"),
+    ("tvol", "i"), ("t_stage", "i"), ("bgs", "i"), ("bn", "i"), ("organconfined", "i"),
+    ("preoppsa", "d"),
+    ("preoptherapy", "i"), ("units", "i"), ("sgs", "i"), ("anyadjtherapy", "i"),
+    ("adjradtherapy", "i"),
+    ("recurrence", "label"),
+    ("censor", "i"),
+    ("timetorecurrence", "d"),
+)
+
+_BODILY_INJURY_CLAIMS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("casenum", "i"), ("attorney", "i"), ("clmsex", "i"), ("marital", "i"),
+    ("clminsur", "i"), ("seatbelt", "i"), ("clmage", "i"),
+    ("loss", "target"),
+)
+
+_BONE_MARROW_LEUKAEMIA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("group", "i"),
+    ("t1", "target"),
+    ("t2", "i"), ("d1", "i"), ("d2", "i"), ("d3", "i"), ("ta", "i"), ("da", "i"), ("tc", "i"),
+    ("dc", "i"), ("tp", "i"), ("dp", "i"), ("z1", "i"), ("z2", "i"), ("z3", "i"), ("z4", "i"),
+    ("z5", "i"), ("z6", "i"), ("z7", "i"), ("z8", "i"), ("z9", "i"), ("z10", "i"),
+)
+
+_BORNHOLM_BROOCHES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("number", "i"),
+    ("site", "text"),
+    ("period", "label"),
+    ("n2c", "i"), ("r3d", "i"), ("n2a", "i"), ("q3b", "i"), ("r3c", "i"), ("n1", "i"),
+    ("q3c", "i"), ("o1", "i"), ("o2", "i"), ("n2e", "i"), ("i3", "i"), ("r3b", "i"), ("k1a", "i"),
+    ("q3a", "i"), ("i2", "i"), ("k1c", "i"), ("k1b", "i"), ("h", "i"), ("q3d", "i"), ("j1d", "i"),
+    ("s1", "i"), ("d", "i"), ("q2", "i"), ("s3", "i"), ("p2", "i"), ("p4", "i"), ("g3", "i"),
+    ("e2a", "i"), ("p3", "i"), ("r3a", "i"), ("r1", "i"), ("e2b", "i"), ("g2", "i"), ("i1b", "i"),
+    ("g1", "i"), ("f", "i"), ("p1", "i"), ("i1a", "i"), ("a2e", "i"),
+)
+
+_BOWLEY_WAGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("value", "target"),
+)
+
+_BREAST_FEEDING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("duration", "target"),
+    ("delta", "i"), ("race", "i"), ("poverty", "i"), ("smoke", "i"), ("alcohol", "i"),
+    ("agemth", "i"), ("ybirth", "i"), ("yschool", "i"), ("pc3mth", "i"),
+)
+
+_BRESLAU_LIFE_TABLE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"), ("year1687", "i"), ("year1688", "i"), ("year1689", "i"),
+    ("year1690", "i"), ("year1691", "i"), ("total", "i"),
+    ("average", "target"),
+)
+
+_BRONZE_AGE_CUPS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("rd", "d"), ("nd", "d"), ("sd", "d"), ("h", "d"), ("nh", "d"),
+    ("phase", "label"),
+)
+
+_BUNDESLIGA_MATCHES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("hometeam", "text"), ("awayteam", "text"),
+    ("homegoals", "target"),
+    ("awaygoals", "i"), ("round", "i"), ("year", "i"),
+    ("date", "time"),
+)
+
+_BUNDESTAG_2005_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("bundesland", "bundesland"),
+    ("fraktion", "fraktion"),
+    ("freq", "target"),
+)
+
+_BURN_WOUND_INFECTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("obs", "i"), ("z1", "i"), ("z2", "i"), ("z3", "i"), ("z4", "i"), ("z5", "i"),
+    ("z6", "i"), ("z7", "i"), ("z8", "i"), ("z9", "i"), ("z10", "i"), ("z11", "i"),
+    ("t1", "target"),
+    ("d1", "i"), ("t2", "i"), ("d2", "i"), ("t3", "i"), ("d3", "i"),
+)
+
+_CARE_HOME_INCIDENTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("carehomefail", "label"),
+    ("weightloss", "i"), ("medication", "i"), ("falls", "i"), ("choking", "i"),
+    ("unexpecteddeaths", "i"), ("bruising", "i"), ("absconsion", "i"),
+    ("residentabusebyresident", "i"), ("residentabusebystaff", "i"), ("residentabuseonstaff", "i"),
+    ("wounds", "i"),
+)
+
+_CAVENDISH_DENSITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("density", "target"),
+    ("density2", "d"), ("density3", "d"),
+)
+
+_CHINESE_BRONZES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("reference", "i"), ("chronology", "i"),
+    ("dynasty", "label"),
+    ("cu", "i"), ("sn", "i"), ("pb", "i"),
+    ("zn", "d"), ("au", "d"),
+    ("ag", "i"), ("as", "i"),
+    ("sb", "d"),
+)
+
+_CHOLERA_DEATHS_1849_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("month", "month"),
+    ("cause_of_death", "label"),
+    ("day_of_month", "i"), ("deaths", "i"),
+    ("date", "date"),
+    ("day_of_week", "day_of_week"),
+)
+
+_CHORAL_SINGERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("height", "i"),
+    ("voice_part", "label"),
+)
+
+_COAL_MINERS_BREATHING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("breathlessness", "breathlessness"),
+    ("wheeze", "wheeze"),
+    ("age", "age"),
+    ("freq", "target"),
+)
+
+_COLLEGE_PROXIMITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("nearc4", "i"), ("educ", "i"), ("black", "i"), ("smsa", "i"), ("south", "i"),
+    ("married", "i"), ("exper", "i"),
+    ("lwage", "target"),
+)
+
+_COLLEGE_SCORECARD_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("name", "text"), ("city", "text"), ("state", "text"), ("zip", "text"),
+    ("latitude", "d"), ("longitude", "d"),
+    ("url", "text"),
+    ("deg_predominant", "deg_predominant"), ("deg_highest", "deg_predominant"),
+    ("control", "label"),
+    ("locale_type", "locale_type"),
+    ("locale_size", "locale_size"),
+    ("adm_req_test", "adm_req_test"),
+    ("is_hbcu", "is_hbcu"), ("is_pbi", "is_hbcu"), ("is_annhi", "is_hbcu"),
+    ("is_tribal", "is_hbcu"), ("is_aanapii", "is_hbcu"), ("is_hsi", "is_hbcu"),
+    ("is_nanti", "is_hbcu"), ("is_only_men", "is_hbcu"), ("is_only_women", "is_hbcu"),
+    ("is_only_distance", "is_hbcu"),
+    ("religious_affiliation", "text"),
+)
+
+_CORPORAL_PUNISHMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("freq", "target"),
+    ("attitude", "attitude"),
+    ("memory", "memory"),
+    ("education", "education"),
+    ("age", "age"),
+)
+
+_COVID_TESTING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("subject_id", "i"),
+    ("fake_first_name", "text"), ("fake_last_name", "text"),
+    ("gender", "gender"),
+    ("pan_day", "i"),
+    ("test_id", "test_id"),
+    ("clinic_name", "text"),
+    ("result", "label"),
+    ("demo_group", "demo_group"),
+    ("age", "d"),
+    ("drive_thru_ind", "i"),
+    ("ct_result", "d"),
+    ("orderset", "i"),
+    ("payor_group", "payor_group"),
+    ("patient_class", "patient_class"),
+    ("col_rec_tat", "d"), ("rec_ver_tat", "d"),
+)
+
+_CSGO_MATCHES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("map", "map"),
+    ("day", "i"), ("month", "i"), ("year", "i"),
+    ("date", "text"),
+    ("wait_time_s", "i"), ("match_time_s", "i"), ("team_a_rounds", "i"), ("team_b_rounds", "i"),
+    ("ping", "i"), ("kills", "i"), ("assists", "i"), ("deaths", "i"), ("mvps", "i"),
+    ("hs_percent", "i"), ("points", "i"),
+    ("result", "label"),
+)
+
+_CYTOMEGALOVIRUS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("age", "i"), ("sex", "i"), ("race", "i"),
+    ("diagnosis", "diagnosis"),
+    ("diagnosis_type", "i"),
+    ("time_to_transplant", "d"),
+    ("prior_radiation", "i"), ("prior_chemo", "i"), ("prior_transplant", "i"),
+    ("recipient_cmv", "i"), ("donor_cmv", "i"), ("donor_sex", "i"),
+    ("tnc_dose", "d"), ("cd34_dose", "d"), ("cd3_dose", "d"), ("cd8_dose", "d"),
+    ("tbi_dose", "i"), ("c1_c2", "i"), ("akirs", "i"),
+    ("cmv", "label"),
+    ("time_to_cmv", "d"),
+    ("agvhd", "i"),
+    ("time_to_agvhd", "d"),
+    ("cgvhd", "i"),
+    ("time_to_cgvhd", "d"),
+)
+
+_DANISH_WELFARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("freq", "target"),
+    ("alcohol", "alcohol"),
+    ("income", "income"),
+    ("status", "status"),
+    ("urban", "urban"),
+)
+
+_DART_POINTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("name", "label"),
+    ("catalog", "text"), ("tarl", "text"), ("quad", "text"),
+    ("length", "d"), ("width", "d"), ("thickness", "d"), ("b_width", "d"), ("j_width", "d"),
+    ("h_length", "d"), ("weight", "d"),
+    ("blade_sh", "blade_sh"), ("base_sh", "blade_sh"),
+    ("should_sh", "should_sh"),
+    ("should_or", "should_or"),
+    ("haft_sh", "haft_sh"),
+    ("haft_or", "haft_or"),
+)
+
+_DATASAURUS_DOZEN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("dataset", "label"),
+    ("x", "d"), ("y", "d"),
+)
+
+_DEEP_SEA_FISH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("site", "i"),
+    ("totabund", "target"),
+    ("density", "d"),
+    ("meandepth", "i"), ("year", "i"),
+    ("period", "period"),
+    ("sweptarea", "d"),
+)
+
+_DRAG_RACE_APPEARANCES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("season", "season"),
+    ("rank", "target"),
+    ("missc", "i"),
+    ("contestant", "text"),
+    ("episode", "i"),
+    ("outcome", "text"),
+    ("eliminated", "i"), ("participant", "i"), ("minichalw", "i"), ("finale", "i"),
+    ("penultimate", "i"),
+)
+
+_DRAG_RACE_CONTESTANTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("season", "season"),
+    ("contestant", "text"),
+    ("age", "target"),
+    ("dob", "date"),
+    ("hometown", "text"),
+)
+
+_DRAG_RACE_EPISODES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("season", "season"),
+    ("episode", "i"),
+    ("airdate", "date"),
+    ("special", "i"), ("finale", "i"),
+    ("nickname", "text"), ("runwaytheme", "text"),
+    ("numqueens", "target"),
+    ("minic", "text"), ("minicw1", "text"), ("minicw2", "text"),
+    ("minicw3", "minicw3"),
+    ("minicw4", "minicw4"),
+    ("bottom1", "text"), ("bottom2", "text"),
+    ("bottom3", "bottom3"),
+    ("bottom4", "bottom4"),
+    ("bottom5", "bottom5"),
+    ("bottom6", "bottom6"),
+    ("bottom7", "minicw4"),
+    ("lipsyncartist", "text"), ("lipsyncsong", "text"), ("eliminated1", "text"),
+    ("eliminated2", "eliminated2"),
+)
+
+_DRINKS_AND_WAGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("class", "class"),
+    ("trade", "text"),
+    ("sober", "i"), ("drinks", "i"),
+    ("wage", "target"),
+    ("n", "i"),
+)
+
+_END_SCRAPERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("width", "width"),
+    ("sides", "sides"),
+    ("curvature", "curvature"),
+    ("retouched", "retouched"),
+    ("site", "site"),
+    ("freq", "target"),
+)
+
+_EPICA_CARBON_DIOXIDE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"),
+    ("co2", "target"),
+)
+
+_ERNEST_WITTE_BURIALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("group", "i"),
+    ("north", "d"), ("west", "d"),
+    ("age", "age"),
+    ("sex", "sex"),
+    ("direction", "i"), ("looking", "i"),
+    ("goods", "label"),
+)
+
+_ESOPHAGEAL_CANCER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("agegp", "agegp"),
+    ("alcgp", "alcgp"),
+    ("tobgp", "tobgp"),
+    ("ncases", "target"),
+    ("ncontrols", "i"),
+)
+
+_ETHANOL_ENGINE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("nox", "target"),
+    ("c", "d"), ("e", "d"),
+)
+
+_FAMILIAL_POLYPOSIS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("participant_id", "i"),
+    ("sex", "sex"),
+    ("age", "i"), ("baseline", "i"),
+    ("treatment", "treatment"),
+    ("number3m", "i"),
+    ("number12m", "target"),
+)
+
+_FINGERPRINT_PATTERNS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("whorls", "i"), ("loops", "i"),
+    ("count", "target"),
+)
+
+_FISH_ADULT_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("fish_code", "text"),
+    ("period", "i"),
+    ("position", "d"),
+    ("distance", "target"),
+)
+
+_FISH_JUVENILE_CATCHES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("fish_code", "text"),
+    ("fish", "i"), ("otolith_code", "i"),
+    ("site", "label"),
+    ("day", "i"),
+    ("month", "month"),
+    ("catch_date", "date"),
+)
+
+_FISH_JUVENILE_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("fish_code", "text"),
+    ("standard_length", "d"), ("body_depth", "d"),
+    ("age", "i"),
+    ("birthdate", "date"),
+    ("growth_rate", "target"),
+    ("early_growth", "d"), ("late_growth", "d"),
+)
+
+_FUNNEL_BEAKER_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("form", "label"),
+    ("ax", "d"), ("ay", "d"), ("bx", "d"), ("by", "d"), ("cx", "d"), ("cy", "d"), ("dx", "d"),
+    ("dy", "d"), ("ex", "d"), ("ey", "d"), ("fx", "d"), ("fy", "d"), ("gx", "d"), ("gy", "d"),
+    ("hx", "d"), ("hy", "d"),
+)
+
+_FURZE_PLATT_HANDAXES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("catalog", "text"),
+    ("l", "target"),
+    ("l1", "i"), ("b", "i"), ("b1", "i"), ("b2", "i"), ("t", "i"), ("t1", "i"),
+)
+
+_GALTON_FAMILIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("family", "text"),
+    ("father", "d"), ("mother", "d"), ("midparentheight", "d"),
+    ("children", "i"), ("childnum", "i"),
+    ("gender", "gender"),
+    ("childheight", "target"),
+)
+
+_GALTON_PARENT_CHILD_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("parent", "d"),
+    ("child", "target"),
+)
+
+_GEOLOGIC_TIME_SCALE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("type", "label"),
+    ("name", "text"),
+    ("age", "d"), ("error", "d"),
+    ("parent", "text"),
+)
+
+_GERMAN_HEALTH_1984_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("docvis", "target"),
+    ("hospvis", "i"), ("edlevel", "i"), ("age", "i"), ("outwork", "i"), ("female", "i"),
+    ("married", "i"), ("kids", "i"),
+    ("hhninc", "d"), ("educ", "d"),
+    ("self_", "i"), ("edlevel1", "i"), ("edlevel2", "i"), ("edlevel3", "i"), ("edlevel4", "i"),
+)
+
+_GERMAN_HEALTH_REFORM_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("numvisit", "target"),
+    ("reform", "i"), ("badh", "i"), ("age", "i"), ("educ", "i"), ("educ1", "i"), ("educ2", "i"),
+    ("educ3", "i"), ("agegrp", "i"), ("age1", "i"), ("age2", "i"), ("age3", "i"),
+    ("loginc", "d"),
+)
+
+_GERMAN_SUICIDES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("freq", "target"),
+    ("sex", "sex"),
+    ("method", "method"),
+    ("age", "i"),
+    ("age_group", "age_group"),
+    ("method2", "method2"),
+)
+
+_GLOBAL_ECONOMY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("country", "text"), ("code", "text"),
+    ("year", "i"),
+    ("gdp", "target"),
+    ("growth", "d"), ("cpi", "d"), ("imports", "d"), ("exports", "d"), ("population", "d"),
+)
+
+_GOSSET_YEAST_CELLS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sample", "sample"),
+    ("count", "i"),
+    ("freq", "target"),
+)
+
+_GOVERNMENT_TRANSFERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("income_centered", "d"), ("education", "d"), ("age", "d"),
+    ("participation", "i"),
+    ("support", "target"),
+)
+
+_GUERRY_MORAL_STATISTICS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("dept", "i"),
+    ("region", "region"),
+    ("department", "text"),
+    ("crime_pers", "target"),
+    ("crime_prop", "i"), ("literacy", "i"), ("donations", "i"), ("infants", "i"),
+    ("suicides", "i"),
+    ("maincity", "maincity"),
+    ("wealth", "i"), ("commerce", "i"), ("clergy", "i"), ("crime_parents", "i"),
+    ("infanticide", "i"), ("donation_clergy", "i"), ("lottery", "i"), ("desertion", "i"),
+    ("instruction", "i"), ("prostitutes", "i"),
+    ("distance", "d"),
+    ("area", "i"),
+    ("pop1831", "d"),
+)
+
+_HARE_AND_LYNX_PELTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("hare", "d"),
+    ("lynx", "target"),
+)
+
+_HEPATOCELLULAR_CARCINOMA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("number", "i"), ("age", "i"), ("gender", "i"), ("hbsag", "i"),
+    ("cirrhosis", "i"), ("alt", "i"), ("ast", "i"), ("afp", "i"), ("tumorsize", "i"),
+    ("tumordifferentiation", "i"), ("vascularinvasion", "i"), ("tumormultiplicity", "i"),
+    ("capsulation", "i"), ("tnm", "i"), ("bclc", "i"),
+    ("os", "target"),
+    ("death", "i"), ("rfs", "i"), ("recurrence", "i"),
+    ("cxcl17t", "d"), ("cxcl17p", "d"), ("cxcl17n", "d"), ("cd4t", "d"), ("cd4n", "d"),
+    ("cd8t", "d"), ("cd8n", "d"), ("cd20t", "d"), ("cd20n", "d"), ("cd57t", "d"), ("cd57n", "d"),
+    ("cd15t", "d"), ("cd15n", "d"), ("cd68t", "d"), ("cd68n", "d"), ("cd4nr", "d"), ("cd8nr", "d"),
+    ("cd20nr", "d"), ("cd57nr", "d"), ("cd15nr", "d"), ("cd68nr", "d"), ("cd4tr", "d"),
+    ("cd8tr", "d"), ("cd20tr", "d"), ("cd57tr", "d"), ("cd15tr", "d"), ("cd68tr", "d"),
+    ("ki67", "d"), ("cd34", "d"),
+)
+
+_HIV_TEST_RESULTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("villnum", "i"),
+    ("got", "label"),
+    ("distvct", "d"), ("tinc", "d"),
+    ("any", "i"), ("age", "i"), ("hiv2004", "i"),
+)
+
+_HOUSEHOLD_BUDGETS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("country", "country"),
+    ("year", "i"),
+    ("debt", "d"), ("di", "d"), ("expenditure", "d"),
+    ("savings", "target"),
+    ("wealth", "d"), ("unemployment", "d"),
+)
+
+_INDOMETHACIN_TRIAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("site", "site"),
+    ("age", "i"),
+    ("risk", "d"),
+    ("gender", "gender"),
+    ("outcome", "label"),
+    ("sod", "sod"), ("pep", "sod"), ("recpanc", "sod"), ("psphinc", "sod"), ("precut", "sod"),
+    ("difcan", "sod"), ("pneudil", "sod"), ("amp", "sod"), ("paninj", "sod"), ("acinar", "sod"),
+    ("brush", "sod"),
+    ("asa81", "asa81"), ("asa325", "asa81"), ("asa", "asa81"),
+    ("prophystent", "sod"), ("therastent", "sod"), ("pdstent", "sod"), ("sodsom", "sod"),
+    ("bsphinc", "sod"), ("bstent", "sod"), ("chole", "sod"), ("pbmal", "sod"), ("train", "sod"),
+    ("status", "status"),
+    ("type", "type"),
+    ("rx", "rx"),
+    ("bleed", "i"),
+)
+
+_INFANT_PNEUMONIA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("chldage", "target"),
+    ("hospital", "i"), ("mthage", "i"), ("urban", "i"), ("alcohol", "i"), ("smoke", "i"),
+    ("region", "i"), ("poverty", "i"), ("bweight", "i"), ("race", "i"), ("education", "i"),
+    ("nsibs", "i"), ("wmonth", "i"), ("sfmonth", "i"), ("agepn", "i"),
+)
+
+_INTCAL20_CURVE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("calbp", "i"),
+    ("age", "target"),
+    ("error", "i"),
+    ("delta", "d"), ("sigma", "d"),
+)
+
+_INTERACTION_TRIPTYCH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("dataset", "dataset"),
+    ("moderator", "moderator"),
+    ("x", "d"),
+    ("y", "target"),
+)
+
+_IRON_AGE_FIBULAE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("grave", "text"), ("mno", "text"),
+    ("fl", "i"), ("bh", "i"), ("bfa", "i"), ("fa", "i"), ("cd", "i"), ("bra", "i"), ("ed", "i"),
+    ("fel", "i"), ("c", "i"),
+    ("bw", "d"), ("bt", "d"), ("few", "d"),
+    ("coils", "i"),
+    ("length", "target"),
+)
+
+_IRON_AGE_GRAVES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("type", "target"),
+    ("g100", "i"), ("g200b", "i"), ("g200c", "i"), ("g201", "i"), ("g229", "i"), ("g500n", "i"),
+    ("g532", "i"), ("g542", "i"), ("g552", "i"), ("g562", "i"), ("g600", "i"), ("g800", "i"),
+    ("g900b", "i"), ("g900l", "i"), ("g900s", "i"), ("g900u", "i"),
+)
+
+_JEVONS_GUESSES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("actual", "i"), ("estimated", "i"), ("frequency", "i"),
+    ("error", "target"),
+)
+
+_KIDNEY_TRANSPLANT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("obs", "i"),
+    ("time", "target"),
+    ("delta", "i"), ("gender", "i"), ("race", "i"), ("age", "i"),
+)
+
+_KOMMOS_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("type", "label"),
+    ("date", "date_code"),
+    ("sm", "d"), ("lu", "d"), ("u", "d"), ("yb", "d"), ("as", "d"), ("sb", "d"), ("ca", "d"),
+    ("na", "d"), ("la", "d"), ("ce", "d"), ("th", "d"), ("cr", "d"), ("hf", "d"), ("cs", "d"),
+    ("sc", "d"),
+    ("rb", "i"),
+    ("fe", "d"), ("ta", "d"), ("co", "d"), ("eu", "d"),
+)
+
+_LARYNGOSCOPE_TRIAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"), ("gender", "i"), ("asa", "i"),
+    ("bmi", "d"),
+    ("mallampati", "i"), ("randomization", "i"),
+    ("attempt1_time", "d"),
+    ("attempt1_s_f", "i"), ("attempt2_time", "i"), ("attempt2_assigned_method", "i"),
+    ("attempt2_s_f", "i"), ("attempt3_time", "i"), ("attempt3_assigned_method", "i"),
+    ("attempt3_s_f", "i"), ("attempts", "i"), ("failures", "i"),
+    ("total_intubation_time", "target"),
+    ("intubation_overall_s_f", "i"), ("bleeding", "i"), ("ease", "i"), ("sore_throat", "i"),
+    ("view", "i"),
+)
+
+_LARYNX_CANCER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("stage", "i"),
+    ("time", "target"),
+    ("age", "i"), ("diagyr", "i"), ("delta", "i"),
+)
+
+_LAW_DOME_GASES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("noaa04", "d"), ("ch4_spl", "d"), ("ch4_grw", "d"),
+    ("co2_spl", "target"),
+    ("co2_grw", "d"), ("n2o_spl", "d"), ("n2o_grw", "d"),
+)
+
+_LETTERS_TO_POLITICIANS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("leg_black", "i"), ("treat_out", "i"),
+    ("responded", "label"),
+    ("totalpop", "d"), ("medianhhincom", "d"), ("black_medianhh", "d"), ("white_medianhh", "d"),
+    ("blackpercent", "d"), ("statessquireindex", "d"),
+    ("nonblacknonwhite", "i"),
+    ("urbanpercent", "d"),
+    ("leg_senator", "i"), ("leg_democrat", "i"), ("south", "i"),
+)
+
+_LICORICE_GARGLE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("preop_gender", "i"), ("preop_asa", "i"),
+    ("preop_calcbmi", "d"),
+    ("preop_age", "i"), ("preop_mallampati", "i"), ("preop_smoking", "i"), ("preop_pain", "i"),
+    ("treat", "i"), ("intraop_surgerysize", "i"), ("extubation_cough", "i"),
+    ("pacu30min_cough", "i"),
+    ("pacu30min_throatpain", "target"),
+    ("pacu30min_swallowpain", "i"), ("pacu90min_cough", "i"), ("pacu90min_throatpain", "i"),
+    ("postop4hour_cough", "i"), ("postop4hour_throatpain", "i"), ("pod1am_cough", "i"),
+    ("pod1am_throatpain", "i"),
+)
+
+_LONDON_CHOLERA_DISTRICTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("district", "text"),
+    ("cholera_drate", "target"),
+    ("cholera_deaths", "i"), ("popn", "i"), ("elevation", "i"),
+    ("region", "region"),
+    ("water", "water"),
+    ("annual_deaths", "i"), ("pop_dens", "i"),
+    ("persons_house", "d"), ("house_valpp", "d"), ("poor_rate", "d"),
+    ("area", "i"), ("houses", "i"), ("house_val", "i"),
+)
+
+_LONG_STAY_PATIENTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("stranded_label", "label"),
+    ("age", "i"), ("care_home_referral", "i"), ("medicallysafe", "i"), ("hcop", "i"),
+    ("mental_health_care", "i"), ("periods_of_previous_care", "i"),
+    ("admit_date", "text"),
+    ("frailty_index", "frailty_index"),
+)
+
+_MACDONELL_CRIMINALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("height", "d"), ("finger", "d"),
+    ("frequency", "target"),
+)
+
+_MEDICARE_STAYS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("los", "target"),
+    ("hmo", "i"), ("white", "i"), ("died", "i"), ("age80", "i"), ("type", "i"), ("type1", "i"),
+    ("type2", "i"), ("type3", "i"), ("provnum", "i"),
+)
+
+_MEDIEVAL_GLASS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("site", "site"),
+    ("sample", "text"),
+    ("type", "type"),
+    ("age", "age"),
+    ("periode", "periode"),
+    ("tint", "tint"),
+    ("na2o", "d"), ("cao", "d"), ("k2o", "d"), ("mgo", "d"), ("p2o5", "d"),
+    ("sio2", "target"),
+    ("al2o3", "d"), ("feo", "d"), ("mno", "d"), ("cl", "d"),
+    ("reference", "text"),
+)
+
+_MESOLITHIC_TOOLS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("microliths", "target"),
+    ("scrapers", "i"), ("burins", "i"), ("axes", "i"), ("saws", "i"),
+)
+
+_MICHELSBERG_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("id", "i"),
+    ("site_name", "text"),
+    ("catalogue_nr", "i"),
+    ("feature_nr", "d"),
+    ("to3", "i"), ("f4", "i"), ("b2", "i"), ("to2", "i"), ("b3", "i"), ("b7", "i"), ("kw5", "i"),
+    ("vg1", "i"), ("vg2", "i"), ("t4a", "i"), ("kw2", "i"), ("kw4", "i"), ("b5", "i"),
+    ("t3b", "i"), ("f3", "i"), ("kw3", "i"), ("kw1", "i"), ("b6", "i"), ("to1", "i"), ("b1", "i"),
+    ("t3a", "i"), ("vg4", "i"),
+    ("ks2", "d"), ("ks1", "d"),
+    ("t2b", "i"), ("f2", "i"), ("bs3", "i"), ("t2a", "i"), ("bs2", "i"), ("b4", "i"), ("bs1", "i"),
+    ("f1", "i"), ("t1b", "i"), ("vg3", "i"), ("t1a", "i"),
+    ("mbk_phase", "label"),
+    ("x_utm32n", "i"), ("y_utm32n", "i"),
+)
+
+_MINARD_TROOPS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("long", "d"), ("lat", "d"),
+    ("survivors", "target"),
+    ("direction", "direction"),
+    ("group", "i"),
+)
+
+_MISSISSIPPI_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("parkinpunctate", "i"), ("bartonkentmpi", "i"),
+    ("painted", "target"),
+    ("fortunenoded", "i"), ("ranchincised", "i"), ("wallsengraved", "i"), ("wallaceincised", "i"),
+    ("rhodesincised", "i"), ("vernonpaulapplique", "i"), ("hullengraved", "i"),
+)
+
+_NGRIP_ICE_CORE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"),
+    ("depth", "d"),
+    ("delta", "target"),
+    ("mce", "i"),
+)
+
+_NIGHTINGALE_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("date", "date"),
+    ("month", "month"),
+    ("year", "i"), ("army", "i"), ("disease", "i"), ("wounds", "i"), ("other", "i"),
+    ("disease_rate", "target"),
+    ("wounds_rate", "d"), ("other_rate", "d"),
+)
+
+_OLYMPIC_RUNNING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"), ("length", "i"),
+    ("sex", "sex"),
+    ("time", "target"),
+)
+
+_ORGAN_DONATIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("quarter", "quarter"),
+    ("rate", "target"),
+    ("quarter_num", "i"),
+)
+
+_OXFORD_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("place", "text"),
+    ("oxfordpct", "target"),
+    ("oxforddst", "i"),
+    ("newforestpct", "d"),
+    ("newforestdst", "i"),
+    ("walledarea", "d"),
+    ("watertrans", "i"),
+)
+
+_OZONE_AND_WEATHER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("ozone", "target"),
+    ("radiation", "i"), ("temperature", "i"),
+    ("wind", "d"),
+)
+
+_PARIS_REGISTRATIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("month", "month"),
+    ("count", "target"),
+    ("mon", "i"),
+    ("date", "date"),
+)
+
+_PEARSON_LEE_HEIGHTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("child", "target"),
+    ("parent", "d"), ("frequency", "d"),
+    ("gp", "gp"),
+    ("par", "par"),
+    ("chl", "chl"),
+)
+
+_PLANT_CARBON_ISOTOPES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("family", "text"), ("species", "text"),
+    ("type", "label"),
+    ("delta", "d"),
+    ("country", "country"),
+)
+
+_PLANT_TRAITS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("pdias", "d"), ("longindex", "d"),
+    ("durflow", "i"),
+    ("height", "target"),
+    ("begflow", "i"), ("mycor", "i"), ("vegaer", "i"), ("vegsout", "i"), ("autopoll", "i"),
+    ("insects", "i"), ("wind", "i"), ("lign", "i"), ("piq", "i"), ("ros", "i"), ("semiros", "i"),
+    ("leafy", "i"), ("suman", "i"), ("winan", "i"), ("monocarp", "i"), ("polycarp", "i"),
+    ("seasaes", "i"), ("seashiv", "i"), ("seasver", "i"), ("everalw", "i"), ("everparti", "i"),
+    ("elaio", "i"), ("endozoo", "i"), ("epizoo", "i"), ("aquat", "i"), ("windgl", "i"),
+    ("unsp", "i"),
+)
+
+_PLAYFAIR_WHEAT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("wheat", "target"),
+    ("wages", "d"),
+)
+
+_PORTAL_RODENTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("record_id", "i"), ("month", "i"), ("day", "i"), ("year", "i"),
+    ("plot_id", "i"),
+    ("species_id", "text"),
+    ("sex", "sex"),
+    ("hindfoot_length", "i"), ("weight", "i"),
+    ("genus", "text"), ("species", "text"),
+    ("taxa", "label"),
+    ("plot_type", "plot_type"),
+)
+
+_PORTAL_SPECIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("species_id", "text"), ("genus", "text"), ("species", "text"),
+    ("taxa", "label"),
+)
+
+_PREDIABETES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"), ("sex", "i"), ("imd_decile", "i"),
+    ("bmi", "d"),
+    ("age_prediabetes", "i"), ("hba1c", "i"),
+    ("time_pre_to_diabetes", "target"),
+    ("age_diabetes", "i"), ("prediabetes_checks_before_diabetes", "i"),
+)
+
+_PROSTATE_SURVIVAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("grade", "grade"),
+    ("stage", "stage"),
+    ("agegroup", "agegroup"),
+    ("survtime", "target"),
+    ("status", "i"),
+)
+
+_PRUSSIAN_HORSE_KICKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("deaths", "target"),
+    ("year", "i"),
+    ("corps", "corps"),
+    ("fisher", "fisher"),
+)
+
+_RASHOMON_QUARTET_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("split", "split"),
+    ("x1", "d"), ("x2", "d"), ("x3", "d"),
+    ("y", "target"),
+)
+
+_REPEAT_VICTIMISATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("first_victimization", "first_victimization"),
+    ("second_victimization", "first_victimization"),
+    ("freq", "target"),
+)
+
+_REPUBLICAN_VOTE_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("x1856", "d"), ("x1860", "d"), ("x1864", "d"), ("x1868", "d"), ("x1872", "d"), ("x1876", "d"),
+    ("x1880", "d"), ("x1884", "d"), ("x1888", "d"), ("x1892", "d"), ("x1896", "d"), ("x1900", "d"),
+    ("x1904", "d"), ("x1908", "d"), ("x1912", "d"), ("x1916", "d"), ("x1920", "d"), ("x1924", "d"),
+    ("x1928", "d"), ("x1932", "d"), ("x1936", "d"), ("x1940", "d"), ("x1944", "d"), ("x1948", "d"),
+    ("x1952", "d"), ("x1956", "d"), ("x1960", "d"), ("x1964", "d"), ("x1968", "d"), ("x1972", "d"),
+    ("x1976", "target"),
+)
+
+_RESTAURANT_INSPECTIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("business_name", "text"),
+    ("inspection_score", "target"),
+    ("year", "i"), ("numberoflocations", "i"),
+    ("weekend", "weekend"),
+)
+
+_RICE_FARMER_INSURANCE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("address", "text"), ("village", "text"),
+    ("takeup_survey", "label"),
+    ("age", "i"), ("agpop", "i"),
+    ("ricearea_2010", "d"), ("disaster_prob", "d"),
+    ("male", "i"), ("default", "i"), ("intensive", "i"),
+    ("risk_averse", "d"),
+    ("literacy", "i"),
+    ("pre_takeup_rate", "d"),
+)
+
+_ROCHDALE_WOMEN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("econactive", "econactive"),
+    ("age", "age"),
+    ("husbandemployed", "econactive"), ("child", "econactive"), ("education", "econactive"),
+    ("husbandeducation", "econactive"), ("asian", "econactive"),
+    ("householdworking", "econactive"),
+    ("freq", "target"),
+)
+
+_ROMAN_STREET_NETWORKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("name", "text"),
+    ("area", "i"), ("population", "i"), ("forum_area", "i"),
+    ("street_area", "target"),
+    ("street_length", "i"), ("street_width", "i"), ("block_area", "i"),
+)
+
+_ROMANO_BRITISH_GLASS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("site", "label"),
+    ("al", "d"), ("fe", "d"), ("mg", "d"), ("ca", "d"), ("na", "d"), ("k", "d"), ("ti", "d"),
+    ("p", "d"), ("mn", "d"), ("sb", "d"), ("pb", "d"),
+)
+
+_ROMANO_BRITISH_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("id", "text"),
+    ("kiln", "label"),
+    ("region", "region"),
+    ("al2o3", "d"), ("fe2o3", "d"), ("mgo", "d"), ("cao", "d"), ("na2o", "d"), ("k2o", "d"),
+    ("tio2", "d"), ("mno", "d"), ("bao", "d"),
+)
+
+_RUSPINI_POINTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("x", "target"), ("y", "target"),
+)
+
+_SEA_LEVEL_RECONSTRUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age_calkabp", "i"),
+    ("sealev_shortpc1", "d"), ("sealev_shortpc1_err_sig", "d"), ("sealev_shortpc1_err_lo", "d"),
+    ("sealev_shortpc1_err_up", "d"),
+    ("sealev_longpc1", "target"),
+    ("sealev_longpc1_err_sig", "d"), ("sealev_longpc1_err_lo", "d"),
+    ("sealev_longpc1_err_up", "d"),
+)
+
+_SHIP_DAMAGE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("accident", "target"),
+    ("op", "i"), ("co_65_69", "i"), ("co_70_74", "i"), ("co_75_79", "i"), ("service", "i"),
+    ("ship", "i"),
+)
+
+_SINGAPORE_CAR_CLAIMS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sexinsured", "sexinsured"),
+    ("female", "i"),
+    ("vehicletype", "vehicletype"),
+    ("pc", "i"),
+    ("clm_count", "target"),
+    ("exp_weights", "d"), ("lnweight", "d"),
+    ("ncd", "i"), ("agecat", "i"), ("autoage0", "i"), ("autoage1", "i"), ("autoage2", "i"),
+    ("autoage", "i"), ("vagecat", "i"), ("vagecat1", "i"),
+)
+
+_SMARTPILL_MOTILITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("group", "i"), ("gender", "i"), ("race", "i"),
+    ("height", "d"), ("weight", "d"),
+    ("age", "i"),
+    ("ge_time", "target"),
+    ("sb_time", "d"), ("c_time", "d"), ("wg_time", "d"),
+    ("s_contractions", "i"),
+    ("s_sum_of_amplitudes", "d"), ("s_mean_peak_amplitude", "d"), ("s_mean_ph", "d"),
+    ("sb_contractions", "i"),
+    ("sb_sum_of_amplitudes", "d"), ("sb_mean_peak_amplitude", "d"), ("sb_mean_ph", "d"),
+    ("colon_contractions", "i"),
+    ("colon_sum_of_amplitudes", "d"), ("c_mean_peak_amplitude", "d"), ("c_mean_ph", "d"),
+)
+
+_SMOKING_CESSATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("ttr", "target"),
+    ("relapse", "i"),
+    ("grp", "grp"),
+    ("age", "i"),
+    ("gender", "gender"),
+    ("race", "race"),
+    ("employment", "employment"),
+    ("yearssmoking", "i"),
+    ("levelsmoking", "levelsmoking"),
+    ("agegroup2", "agegroup2"),
+    ("agegroup4", "agegroup4"),
+    ("priorattempts", "i"), ("longestnosmoke", "i"),
+)
+
+_SNODGRASS_HOUSES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("east", "d"), ("south", "d"), ("length", "d"), ("width", "d"),
+    ("segment", "i"),
+    ("inside", "label"),
+    ("area", "d"),
+    ("points", "i"), ("abraders", "i"), ("discs", "i"), ("earplugs", "i"), ("effigies", "i"),
+    ("ceramics", "i"), ("total", "i"), ("types", "i"),
+)
+
+_SNOW_CHOLERA_DEATHS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("case", "i"),
+    ("x", "target"), ("y", "target"),
+)
+
+_STD_REINFECTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("obs", "i"),
+    ("race", "race"),
+    ("marital", "marital"),
+    ("age", "i"), ("yschool", "i"), ("iinfct", "i"), ("npartner", "i"), ("os12m", "i"),
+    ("os30d", "i"), ("rs12m", "i"), ("rs30d", "i"), ("abdpain", "i"), ("discharge", "i"),
+    ("dysuria", "i"), ("condom", "i"), ("itch", "i"), ("lesion", "i"), ("rash", "i"),
+    ("lymph", "i"), ("vagina", "i"), ("dchexam", "i"), ("abnode", "i"), ("rinfct", "i"),
+    ("time", "target"),
+)
+
+_STONE_AGE_SITES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("ta", "target"),
+    ("ba", "i"), ("toa", "i"), ("aa", "i"), ("m", "i"), ("fk", "i"), ("bk", "i"), ("nk", "i"),
+    ("cfs", "i"), ("bs", "i"), ("ds", "i"), ("bu", "i"), ("ax", "i"), ("ch", "i"), ("sax", "i"),
+    ("pf", "i"),
+)
+
+_STREPTOMYCIN_TUBERCULOSIS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("patient_id", "i"),
+    ("arm", "arm"),
+    ("dose_strep_g", "i"), ("dose_pas_g", "i"),
+    ("gender", "gender"),
+    ("baseline_condition", "baseline_condition"),
+    ("baseline_temp", "baseline_temp"),
+    ("baseline_esr", "baseline_esr"),
+    ("baseline_cavitation", "baseline_cavitation"),
+    ("strep_resistance", "strep_resistance"),
+    ("radiologic_6m", "radiologic_6m"),
+    ("rad_num", "i"),
+    ("improved", "label"),
+)
+
+_STROKE_CLASSIFICATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("pat_id", "i"),
+    ("stroke", "label"),
+    ("gender", "gender"),
+    ("age", "d"),
+    ("hypertension", "i"), ("heart_disease", "i"), ("work_related_stress", "i"),
+    ("urban_residence", "i"),
+    ("avg_glucose_level", "d"), ("bmi", "d"),
+    ("smokes", "i"),
+)
+
+_SUPPORTED_WORK_PROGRAMME_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("data_id", "data_id"),
+    ("treat", "i"), ("age", "i"), ("educ", "i"), ("black", "i"), ("hisp", "i"), ("marr", "i"),
+    ("nodegree", "i"),
+    ("re74", "d"), ("re75", "d"),
+    ("re78", "target"),
+)
+
+_SUPRACLAVICULAR_BLOCK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("subject", "i"), ("group", "i"), ("gender", "i"),
+    ("bmi", "d"),
+    ("age", "i"), ("fentanyl", "i"),
+    ("alfentanil", "d"), ("midazolam", "d"),
+    ("onset_sensory", "target"),
+    ("onset_first_sensory", "i"), ("onset_motor", "i"), ("nerve_block_censor", "i"),
+    ("med_duration", "d"),
+    ("med_censor", "i"), ("vps_rest", "i"), ("vps_movement", "i"),
+    ("opioid_total", "d"),
+)
+
+_SWEDISH_MOTORCYCLES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("agarald", "i"),
+    ("kon", "kon"),
+    ("zon", "i"), ("mcklass", "i"), ("fordald", "i"), ("bonuskl", "i"),
+    ("duration", "d"),
+    ("antskad", "i"),
+    ("skadkost", "target"),
+)
+
+_TEXAS_PRISONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("statefip", "i"), ("year", "i"),
+    ("bmprison", "target"),
+    ("wmprison", "d"), ("alcohol", "d"),
+    ("income", "i"),
+    ("ur", "d"), ("poverty", "d"), ("black", "d"), ("perc1519", "d"), ("aidscapita", "d"),
+    ("state", "text"),
+)
+
+_TONGUE_CANCER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("type", "i"),
+    ("time", "target"),
+    ("delta", "i"),
+)
+
+_TRIAL_OF_THE_PYX_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("bags", "bags"),
+    ("group", "group"),
+    ("deviation", "deviation"),
+    ("count", "target"),
+)
+
+_US_REGIONAL_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("region", "region"),
+    ("status", "status"),
+    ("sex", "sex"),
+    ("cause", "cause"),
+    ("rate", "target"),
+    ("se", "d"),
+)
+
+_VICTORIAN_ELECTRICITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("time", "time"),
+    ("demand", "target"),
+    ("temperature", "d"),
+    ("date", "text"),
+    ("holiday", "holiday"),
+)
+
+_VIRGIL_DACTYLS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("foot", "i"),
+    ("lines", "lines"),
+    ("count", "target"),
+)
+
+_WOODLAND_BIRDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("hiddenglen", "target"),
+    ("wildwood", "i"), ("lonelypines", "i"),
+)
+
+_WORKERS_COMPENSATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("cl", "i"), ("yr", "i"),
+    ("pr", "d"),
+    ("loss", "target"),
+)
+
+_XCLARA_CLUSTERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("v1", "target"), ("v2", "target"),
+)
+
+_YULE_PAUPERISM_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("location", "text"),
+    ("paup", "target"),
+    ("outrelief", "i"), ("old", "i"), ("pop", "i"),
+)
+
+_ZUNI_POTTERY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("lino", "target"),
+    ("kiat", "i"), ("red", "i"), ("gall", "i"), ("esc", "i"), ("pubw", "i"), ("res", "i"),
+    ("tula", "i"), ("pine", "i"), ("pubr", "i"), ("wing", "i"), ("wipo", "i"), ("sj", "i"),
+    ("lsj", "i"), ("spr", "i"), ("piner", "i"), ("hesh", "i"), ("kwak", "i"),
+)
+
+#: A second shelf of Our World in Data charts, read the same country-year way:
+#: what the world burns and generates, what it lets into the air, how warm the
+#: air and the sea have grown, what the land is put to and what it yields, and
+#: how many people live off it. Each chart page named as the source says whose
+#: counting stands behind it.
+_FOSSIL_ELECTRICITY_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("fossil_percent", "target"),
+)
+
+_NUCLEAR_ELECTRICITY_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("nuclear_percent", "target"),
+)
+
+_WIND_ELECTRICITY_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("wind_percent", "target"),
+)
+
+_SOLAR_ELECTRICITY_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("solar_percent", "target"),
+)
+
+_HYDRO_ELECTRICITY_SHARE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("hydro_percent", "target"),
+)
+
+_ELECTRICITY_PER_PERSON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kwh_per_person", "target"),
+)
+
+_ELECTRICITY_DEMAND_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("demand_twh", "target"),
+)
+
+_FOSSIL_FUEL_ENERGY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("fossil_twh", "target"),
+)
+
+_ELECTRICITY_CARBON_INTENSITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("grams_per_kwh", "target"), ("region", "text"),
+)
+
+_COAL_PRODUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("coal_twh", "target"),
+)
+
+_OIL_PRODUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("oil_twh", "target"),
+)
+
+_GAS_PRODUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("gas_twh", "target"),
+)
+
+_CONSUMPTION_CO2_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("emissions_tonnes", "target"),
+)
+
+_METHANE_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_co2e", "target"),
+)
+
+_NITROUS_OXIDE_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_co2e", "target"),
+)
+
+_GREENHOUSE_GAS_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_co2e", "target"),
+)
+
+_TEMPERATURE_ANOMALY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("anomaly_c", "target"), ("anomaly_low", "d"), ("anomaly_high", "d"),
+)
+
+_SEA_SURFACE_TEMPERATURE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("anomaly_c", "target"), ("anomaly_low", "d"), ("anomaly_high", "d"),
+)
+
+_ICE_SHEET_MASS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("day", "date"),
+    ("mass_change_gt", "target"),
+)
+
+_ANNUAL_PRECIPITATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("precipitation_mm", "target"),
+)
+
+_FOREST_COVER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("forest_percent", "target"), ("note", "text"),
+)
+
+_AGRICULTURAL_LAND_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("farmed_percent", "target"),
+)
+
+_FERTILIZER_USE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kg_per_hectare", "target"),
+)
+
+_PESTICIDE_USE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes", "target"),
+)
+
+_WHEAT_YIELDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_per_hectare", "target"),
+)
+
+_MAIZE_YIELDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_per_hectare", "target"),
+)
+
+_RICE_YIELDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_per_hectare", "target"),
+)
+
+_CEREAL_PRODUCTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes", "target"),
+)
+
+_CATTLE_NUMBERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("cattle", "target"),
+)
+
+_FISH_CONSUMPTION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kg_per_person", "target"),
+)
+
+_GDP_PER_CAPITA_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("growth_percent", "target"),
+)
+
+_TRADE_SHARE_OF_GDP_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("trade_percent", "target"),
+)
+
+_FOREIGN_DIRECT_INVESTMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("investment_percent", "target"),
+)
+
+_LABOUR_FORCE_PARTICIPATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("participation_percent", "target"),
+)
+
+_WORLD_POPULATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("people", "target"),
+)
+
+_BIRTH_RATE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("births_per_1000", "target"),
+)
+
+_MATERNAL_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("deaths_per_100k", "target"), ("region", "text"), ("note", "text"),
+)
+
+_INTERNATIONAL_MIGRANTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("immigrants", "target"),
+)
+
+_BROADBAND_SUBSCRIPTIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("subscriptions_per_100", "target"),
+)
+
 DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
     "mnist": Images(
         name="mnist",
@@ -11573,6 +13250,2849 @@ DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
         header=True,
         text_size=8,
         fields=_SEA_LEVEL_FIELDS,
+    ),
+    "abortion_and_crime": Table(
+        name="abortion_and_crime",
+        label="Abortion and Crime",
+        title="19,584 state-years used to ask whether legal abortion cut crime",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/abortion.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/abortion.csv",
+        header=True,
+        fields=_ABORTION_AND_CRIME_FIELDS,
+    ),
+    "adult_services": Table(
+        name="adult_services",
+        label="Adult Services and Risk",
+        title="1,787 sessions sold by escorts and what each one was paid for",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/adult_services.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/adult_services.csv",
+        header=True,
+        fields=_ADULT_SERVICES_FIELDS,
+    ),
+    "affair_counts": Table(
+        name="affair_counts",
+        label="Affairs as Counts",
+        title="601 married people and how many affairs each admitted to",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/affairs.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/affairs.csv",
+        header=True,
+        fields=_AFFAIR_COUNTS_FIELDS,
+    ),
+    "alone_episodes": Table(
+        name="alone_episodes",
+        label="Alone Episodes",
+        title="172 episodes of the survival show and how viewers rated each",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/alone/episodes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/alone/episodes.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=432,
+        fields=_ALONE_EPISODES_FIELDS,
+        codes={
+            "version": ("AU", "US", "US Frozen"),
+        },
+    ),
+    "alone_loadouts": Table(
+        name="alone_loadouts",
+        label="Alone Loadouts",
+        title="1,240 items survivalists chose to carry into the wild",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/alone/loadouts.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/alone/loadouts.csv",
+        header=True,
+        text_size=103,
+        fields=_ALONE_LOADOUTS_FIELDS,
+        codes={
+            "version": ("US",),
+        },
+    ),
+    "alone_seasons": Table(
+        name="alone_seasons",
+        label="Alone Seasons",
+        title="21 seasons of the survival show and where each was filmed",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/alone/seasons.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/alone/seasons.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_ALONE_SEASONS_FIELDS,
+        codes={
+            "version": ("AU", "US", "US Frozen"),
+            "subtitle": (
+                "Africa", "Arctic Circle", "Grizzly Mountain", "Lost and Found",
+                "Million Dollar Challenge", "Polar Bear Island", "Predator Lake", "Redemption",
+                "The Arctic",
+            ),
+            "location": (
+                "Big River", "Chilko Lake", "Coast", "Great Karoo Desert", "Great Slave Lake",
+                "Mackenzie River delta in Arctic", "Patagonia", "Reindeer Lake",
+                "Selenge Province", "Vancouver Island", "lutruwita / Tasmania",
+            ),
+            "region": (
+                "British Columbia", "Inuvik, Northwest Territories", "Labrador",
+                "Northwest Territories", "Patagonia", "Saskatchewan", "South Island",
+                "lutruwita / Tasmania",
+            ),
+            "country": (
+                "Argentina", "Australia", "Canada", "Mongolia", "New Zealand", "South Africa",
+            ),
+        },
+    ),
+    "alone_survivalists": Table(
+        name="alone_survivalists",
+        label="Alone Survivalists",
+        title="160 survivalists dropped in the wild and how many days each lasted",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/alone/survivalists.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/alone/survivalists.csv",
+        header=True,
+        text_size=122,
+        fields=_ALONE_SURVIVALISTS_FIELDS,
+        codes={
+            "version": ("AU", "US", "US Frozen"),
+            "gender": ("Female", "Male"),
+            "country": (
+                "Australia", "Canada", "New Zealand", "U.S. Virgin Islands", "United Kingdom",
+                "United States",
+            ),
+            "medically_evacuated": ("FALSE", "TRUE"),
+            "reason_category": ("Health", "Loss of inventory", "Personal"),
+            "team": (
+                "Alex and Logan Ribar (father/son)", "Brad and Josh Richardson (brothers)",
+                "Chris and Brody Wilkes (brothers)", "Dave and Brooke Whipple (husband/wife)",
+                "Jesse and Shannon Bosdell (brothers)", "Pete and Sam Brockdorff (father/son)",
+                "Ted and Jim Baird (brothers)",
+            ),
+        },
+    ),
+    "ancient_shipwrecks": Table(
+        name="ancient_shipwrecks",
+        label="Ancient Mediterranean Shipwrecks",
+        title="1,784 ancient wrecks and how deep in the Mediterranean each lies",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/shipwrecks.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/shipwrecks.csv",
+        header=True,
+        text_size=50,
+        fields=_ANCIENT_SHIPWRECKS_FIELDS,
+        codes={
+            "sea": (
+                "Adriatic", "Aegean", "Black Sea", "Central Mediterranean",
+                "Eastern Mediterranean", "Indian Ocean", "Ionian", "Northern Aegean", "Red Sea",
+                "Southern Aegean", "Tyrrhenian Sea", "West Mediterranean", "Western Mediterranean",
+            ),
+            "country": (
+                "Albania", "Bulgaria", "Croatia", "Cyprus", "Egypt", "France", "Greece", "India",
+                "International waters", "Israel", "Italy", "Italy - Sicily", "Lebanon", "Libya",
+                "Malta", "Minorca", "Montenegro", "Romania", "Spain", "Sudan", "Syria", "Tunisia",
+                "Turkey", "ZZ-Non-Mediterranean",
+            ),
+        },
+    ),
+    "animal_attributes": Table(
+        name="animal_attributes",
+        label="Attributes of Animals",
+        title="20 animals and which of six attributes each of them has",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/cluster/animals.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/cluster/animals.csv",
+        header=True,
+        text_size=3,
+        fields=_ANIMAL_ATTRIBUTES_FIELDS,
+    ),
+    "anscombe_quartet": Table(
+        name="anscombe_quartet",
+        label="Anscombe's Quartet",
+        title="44 points of the four sets that share a mean and a fit and nothing else",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/quartets/anscombe_quartet.html",
+        classes=("linear", "nonlinear", "outlier", "leverage"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/quartets/anscombe_quartet.csv",
+        header=True,
+        fields=_ANSCOMBE_QUARTET_FIELDS,
+        labels={"(1) Linear": 0, "(2) Nonlinear": 1, "(3) Outlier": 2, "(4) Leverage": 3},
+    ),
+    "ansett_passengers": Table(
+        name="ansett_passengers",
+        label="Ansett Airline Passengers",
+        title="7,407 weeks of passengers flown between Australian cities",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/ansett.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/ansett.csv",
+        header=True,
+        text_size=8,
+        fields=_ANSETT_PASSENGERS_FIELDS,
+        codes={
+            "airports": (
+                "ADL-PER", "MEL-ADL", "MEL-BNE", "MEL-OOL", "MEL-PER", "MEL-SYD", "SYD-ADL",
+                "SYD-BNE", "SYD-OOL", "SYD-PER",
+            ),
+            "class": ("Business", "Economy", "First"),
+        },
+    ),
+    "arbuthnot_christenings": Table(
+        name="arbuthnot_christenings",
+        label="Arbuthnot's Christenings",
+        title="82 years of London christenings and how many of each sex were baptised",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Arbuthnot.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Arbuthnot.csv",
+        header=True,
+        fields=_ARBUTHNOT_CHRISTENINGS_FIELDS,
+    ),
+    "arctic_pit_houses": Table(
+        name="arctic_pit_houses",
+        label="Pit Houses of Arctic Norway",
+        title="45 pit houses in arctic Norway and how large each was built",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/PitHouses.html",
+        classes=("large", "medium", "small"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/PitHouses.csv",
+        header=True,
+        fields=_ARCTIC_PIT_HOUSES_FIELDS,
+        labels={"Large": 0, "Medium": 1, "Small": 2},
+        codes={
+            "hearths": ("Charcoal Conc", "None", "One", "Two"),
+            "depth": ("Deep", "Shallow"),
+            "form": ("Oval", "Rectangular"),
+            "orient": ("Gabel Toward Coast", "Parallel Coast"),
+            "entrance": ("Front and One Side", "None", "One Side"),
+        },
+    ),
+    "arizona_cardiac_stays": Table(
+        name="arizona_cardiac_stays",
+        label="Arizona Cardiac Hospital Stays",
+        title="3,589 Arizona cardiac patients and how many days each stayed",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/azpro.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/azpro.csv",
+        header=True,
+        fields=_ARIZONA_CARDIAC_STAYS_FIELDS,
+    ),
+    "arthritis_treatment": Table(
+        name="arthritis_treatment",
+        label="Arthritis Treatment",
+        title="84 patients given a new treatment for arthritis and how each fared",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Arthritis.html",
+        classes=("marked", "none", "some"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Arthritis.csv",
+        header=True,
+        fields=_ARTHRITIS_TREATMENT_FIELDS,
+        labels={"Marked": 0, "None": 1, "Some": 2},
+        codes={
+            "treatment": ("Placebo", "Treated"),
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "ashkenazi_breast_cancer": Table(
+        name="ashkenazi_breast_cancer",
+        label="Ashkenazi Breast Cancer",
+        title="3,920 Ashkenazi women and whether each carried the mutation",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/asaur/ashkenazi.html",
+        classes=("no_mutation", "mutation"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/asaur/ashkenazi.csv",
+        header=True,
+        fields=_ASHKENAZI_BREAST_CANCER_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "atmospheric_radiocarbon": Table(
+        name="atmospheric_radiocarbon",
+        label="Atmospheric Radiocarbon in Norway",
+        title="620 air samples measured for the radiocarbon the bomb tests left",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/nydal1996.html",
+        classes=("fruholmen", "gr_kallen", "kapp_linn", "lindesnes", "vassfjellet"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/nydal1996.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=8,
+        fields=_ATMOSPHERIC_RADIOCARBON_FIELDS,
+        labels={"Fruholmen": 0, "Gråkallen": 1, "Kapp Linné": 2, "Lindesnes": 3, "Vassfjellet": 4},
+    ),
+    "australian_car_policies": Table(
+        name="australian_car_policies",
+        label="Australian Car Insurance Policies",
+        title="67,856 Australian car policies and what each claimed in a year",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/dataCar.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/dataCar.csv",
+        header=True,
+        fields=_AUSTRALIAN_CAR_POLICIES_FIELDS,
+        codes={
+            "veh_body": (
+                "BUS", "CONVT", "COUPE", "HBACK", "HDTOP", "MCARA", "MIBUS", "PANVN", "RDSTR",
+                "SEDAN", "STNWG", "TRUCK", "UTE",
+            ),
+            "gender": ("F", "M"),
+            "area": ("A", "B", "C", "D", "E", "F"),
+            "x_obstat": ("01101    0    0    0",),
+        },
+    ),
+    "australian_livestock": Table(
+        name="australian_livestock",
+        label="Australian Livestock Slaughter",
+        title="29,364 months of animals sent to slaughter across Australia",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/aus_livestock.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/aus_livestock.csv",
+        header=True,
+        text_size=8,
+        fields=_AUSTRALIAN_LIVESTOCK_FIELDS,
+        codes={
+            "animal": (
+                "Bulls, bullocks and steers", "Calves", "Cattle (excl. calves)",
+                "Cows and heifers", "Lambs", "Pigs", "Sheep",
+            ),
+            "state": (
+                "Australian Capital Territory", "New South Wales", "Northern Territory",
+                "Queensland", "South Australia", "Tasmania", "Victoria", "Western Australia",
+            ),
+        },
+    ),
+    "australian_production": Table(
+        name="australian_production",
+        label="Australian Quarterly Production",
+        title="218 quarters of Australian beer, bricks, cement and electricity",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/aus_production.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/aus_production.csv",
+        header=True,
+        text_size=7,
+        fields=_AUSTRALIAN_PRODUCTION_FIELDS,
+    ),
+    "australian_retail": Table(
+        name="australian_retail",
+        label="Australian Retail Turnover",
+        title="64,532 months of retail takings by state and by trade",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/aus_retail.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/aus_retail.csv",
+        header=True,
+        text_size=65,
+        fields=_AUSTRALIAN_RETAIL_FIELDS,
+        codes={
+            "state": (
+                "Australian Capital Territory", "New South Wales", "Northern Territory",
+                "Queensland", "South Australia", "Tasmania", "Victoria", "Western Australia",
+            ),
+        },
+    ),
+    "automobile_claims": Table(
+        name="automobile_claims",
+        label="Automobile Claims",
+        title="6,773 car insurance claims and what each one paid out",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/AutoClaims.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/AutoClaims.csv",
+        header=True,
+        fields=_AUTOMOBILE_CLAIMS_FIELDS,
+        codes={
+            "state": (
+                "STATE 01", "STATE 02", "STATE 03", "STATE 04", "STATE 06", "STATE 07", "STATE 10",
+                "STATE 11", "STATE 12", "STATE 13", "STATE 14", "STATE 15", "STATE 17",
+            ),
+            "class": (
+                "C1", "C11", "C1A", "C1B", "C1C", "C2", "C6", "C7", "C71", "C72", "C7A", "C7B",
+                "C7C", "F1", "F11", "F6", "F7", "F71",
+            ),
+            "gender": ("F", "M"),
+        },
+    ),
+    "bad_health_visits": Table(
+        name="bad_health_visits",
+        label="Doctor Visits and Bad Health",
+        title="1,127 Germans and how often each went to a doctor in a year",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/badhealth.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/badhealth.csv",
+        header=True,
+        fields=_BAD_HEALTH_VISITS_FIELDS,
+    ),
+    "bakeoff_bakers": Table(
+        name="bakeoff_bakers",
+        label="Great British Bake Off Bakers",
+        title="120 bakers who competed and how far into the series each got",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/bakeoff/bakers.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/bakeoff/bakers.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=42,
+        fields=_BAKEOFF_BAKERS_FIELDS,
+    ),
+    "bakeoff_challenges": Table(
+        name="bakeoff_challenges",
+        label="Great British Bake Off Challenges",
+        title="1,136 bakes and how the baker who made each one fared that week",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/bakeoff/challenges.html",
+        classes=(
+            "stayed_in", "went_out", "runner_up", "star_baker", "withdrew", "winner", "footnoted",
+            "not_recorded",
+        ),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/bakeoff/challenges.csv",
+        header=True,
+        text_size=202,
+        fields=_BAKEOFF_CHALLENGES_FIELDS,
+        labels={
+            "IN": 0, "OUT": 1, "Runner-up": 2, "STAR BAKER": 3, "WD": 4, "WINNER": 5, "[a]": 6,
+            "": 7,
+        },
+    ),
+    "bakeoff_episodes": Table(
+        name="bakeoff_episodes",
+        label="Great British Bake Off Episodes",
+        title="94 episodes and how many bakers were left in each of them",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/bakeoff/episodes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/bakeoff/episodes.csv",
+        header=True,
+        text_size=16,
+        fields=_BAKEOFF_EPISODES_FIELDS,
+        codes={
+            "winner_name": (
+                "Candice", "David", "Edd", "Frances", "Joanne", "John", "Nadiya", "Nancy", "Rahul",
+                "Sophie",
+            ),
+        },
+    ),
+    "bakeoff_ratings": Table(
+        name="bakeoff_ratings",
+        label="Great British Bake Off Ratings",
+        title="94 episodes and how many people watched each one",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/bakeoff/ratings.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/bakeoff/ratings.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=18,
+        fields=_BAKEOFF_RATINGS_FIELDS,
+    ),
+    "barley_yields": Table(
+        name="barley_yields",
+        label="Barley Yields in Minnesota",
+        title="120 plots of barley grown in the 1930s and what each yielded",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lattice/barley.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lattice/barley.csv",
+        header=True,
+        fields=_BARLEY_YIELDS_FIELDS,
+        codes={
+            "variety": (
+                "Glabron", "Manchuria", "No. 457", "No. 462", "No. 475", "Peatland", "Svansota",
+                "Trebi", "Velvet", "Wisconsin No. 38",
+            ),
+            "site": ("Crookston", "Duluth", "Grand Rapids", "Morris", "University Farm", "Waseca"),
+        },
+    ),
+    "benthic_oxygen_stack": Table(
+        name="benthic_oxygen_stack",
+        label="The Benthic Oxygen Isotope Stack",
+        title="2,115 points of the deep-sea record of the last five million years",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/lisiecki2005.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/lisiecki2005.csv",
+        header=True,
+        fields=_BENTHIC_OXYGEN_STACK_FIELDS,
+    ),
+    "big_tech_shares": Table(
+        name="big_tech_shares",
+        label="Big Technology Share Prices",
+        title="5,032 trading days of four big technology shares",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/gafa_stock.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/gafa_stock.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_BIG_TECH_SHARES_FIELDS,
+        codes={
+            "symbol": ("AAPL", "AMZN", "FB", "GOOG"),
+        },
+    ),
+    "blood_storage": Table(
+        name="blood_storage",
+        label="Blood Storage and Prostate Cancer",
+        title="316 men transfused during surgery and whether the cancer came back",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/blood_storage.html",
+        classes=("no_recurrence", "recurrence"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/blood_storage.csv",
+        header=True,
+        fields=_BLOOD_STORAGE_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "bodily_injury_claims": Table(
+        name="bodily_injury_claims",
+        label="Automobile Bodily Injury Claims",
+        title="1,340 bodily injury claims and what each cost, in thousands",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/AutoBi.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/AutoBi.csv",
+        header=True,
+        fields=_BODILY_INJURY_CLAIMS_FIELDS,
+    ),
+    "bone_marrow_leukaemia": Table(
+        name="bone_marrow_leukaemia",
+        label="Bone Marrow Transplants for Leukaemia",
+        title="137 leukaemia patients given a bone marrow transplant",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/bmt.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/bmt.csv",
+        header=True,
+        fields=_BONE_MARROW_LEUKAEMIA_FIELDS,
+    ),
+    "bornholm_brooches": Table(
+        name="bornholm_brooches",
+        label="Bornholm Brooch Assemblages",
+        title="77 Danish iron age graves and the brooch types found in each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Bornholm.html",
+        classes=("f_1a", "f_1b", "f_2a", "f_2b", "f_2c", "f_3a", "f_3b"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Bornholm.csv",
+        header=True,
+        text_size=19,
+        fields=_BORNHOLM_BROOCHES_FIELDS,
+        labels={"1a": 0, "1b": 1, "2a": 2, "2b": 3, "2c": 4, "3a": 5, "3b": 6},
+    ),
+    "bowley_wages": Table(
+        name="bowley_wages",
+        label="Bowley's Wages",
+        title="45 years of the average British wage, in pounds a year",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Bowley.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Bowley.csv",
+        header=True,
+        fields=_BOWLEY_WAGES_FIELDS,
+    ),
+    "breast_feeding": Table(
+        name="breast_feeding",
+        label="How Long Mothers Breast Fed",
+        title="927 American mothers and how many weeks each breast fed",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/bfeed.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/bfeed.csv",
+        header=True,
+        fields=_BREAST_FEEDING_FIELDS,
+    ),
+    "breslau_life_table": Table(
+        name="breslau_life_table",
+        label="Halley's Breslau Life Table",
+        title="100 ages and how many people of each died in Breslau in the 1680s",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Breslau.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Breslau.csv",
+        header=True,
+        fields=_BRESLAU_LIFE_TABLE_FIELDS,
+    ),
+    "bronze_age_cups": Table(
+        name="bronze_age_cups",
+        label="Bronze Age Cups from Italy",
+        title="60 Italian bronze age cups measured and dated to a phase",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/BACups.html",
+        classes=("protoapennine", "subapennine"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/BACups.csv",
+        header=True,
+        fields=_BRONZE_AGE_CUPS_FIELDS,
+        labels={"Protoapennine": 0, "Subapennine": 1},
+    ),
+    "bundesliga_matches": Table(
+        name="bundesliga_matches",
+        label="Bundesliga Match Results",
+        title="14,018 German league matches and how many goals each side scored",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Bundesliga.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Bundesliga.csv",
+        header=True,
+        dates="%Y-%m-%dT%H:%M:%SZ",
+        text_size=25,
+        fields=_BUNDESLIGA_MATCHES_FIELDS,
+    ),
+    "bundestag_2005": Table(
+        name="bundestag_2005",
+        label="The 2005 German Election",
+        title="80 seat counts by party and state in the 2005 German election",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Bundestag2005.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Bundestag2005.csv",
+        header=True,
+        fields=_BUNDESTAG_2005_FIELDS,
+        codes={
+            "bundesland": (
+                "Baden-Wuerttemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg",
+                "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen",
+                "Rheinland-Pfalz", "Saarland", "Sachsen", "Sachsen-Anhalt", "Schleswig-Holstein",
+                "Thueringen",
+            ),
+            "fraktion": ("CDU/CSU", "FDP", "Gruene", "Linke", "SPD"),
+        },
+    ),
+    "burn_wound_infection": Table(
+        name="burn_wound_infection",
+        label="Burn Wound Infection",
+        title="154 burn patients and how long each went before the wound was infected",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/burn.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/burn.csv",
+        header=True,
+        fields=_BURN_WOUND_INFECTION_FIELDS,
+    ),
+    "care_home_incidents": Table(
+        name="care_home_incidents",
+        label="Care Home Incidents",
+        title="1,216 care home inspections and whether the home was found to be failing",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MLDataR/care_home_incidents.html",
+        classes=("passing", "failing"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MLDataR/care_home_incidents.csv",
+        header=True,
+        fields=_CARE_HOME_INCIDENTS_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "cavendish_density": Table(
+        name="cavendish_density",
+        label="Cavendish's Density of the Earth",
+        title="29 weighings of the earth against water",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Cavendish.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Cavendish.csv",
+        header=True,
+        fields=_CAVENDISH_DENSITY_FIELDS,
+    ),
+    "chinese_bronzes": Table(
+        name="chinese_bronzes",
+        label="Chinese Bronze Compositions",
+        title="369 Chinese bronzes assayed and dated to a dynasty",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/bronze.html",
+        classes=("eastern_zhou", "shang", "western_zhou"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/bronze.csv",
+        header=True,
+        fields=_CHINESE_BRONZES_FIELDS,
+        labels={"Eastern Zhou": 0, "Shang": 1, "Western Zhou": 2},
+    ),
+    "cholera_deaths_1849": Table(
+        name="cholera_deaths_1849",
+        label="Cholera Deaths in 1849",
+        title="730 days of 1849 and how many Londoners died of cholera or of diarrhoea",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/CholeraDeaths1849.html",
+        classes=("cholera", "diarrhaea"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/CholeraDeaths1849.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_CHOLERA_DEATHS_1849_FIELDS,
+        labels={"Cholera": 0, "Diarrhaea": 1},
+        codes={
+            "month": (
+                "Apr", "Aug", "Dec", "Feb", "Jan", "July", "Jun", "Mar", "May", "Nov", "Oct",
+                "Sept",
+            ),
+            "day_of_week": ("Fri", "Mon", "Sat", "Sun", "Thu", "Tue", "Wed"),
+        },
+    ),
+    "choral_singers": Table(
+        name="choral_singers",
+        label="Heights of New York Choristers",
+        title="235 singers in the New York Choral Society and what each sings",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lattice/singer.html",
+        classes=(
+            "alto_1", "alto_2", "bass_1", "bass_2", "soprano_1", "soprano_2", "tenor_1", "tenor_2",
+        ),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lattice/singer.csv",
+        header=True,
+        fields=_CHORAL_SINGERS_FIELDS,
+        labels={
+            "Alto 1": 0, "Alto 2": 1, "Bass 1": 2, "Bass 2": 3, "Soprano 1": 4, "Soprano 2": 5,
+            "Tenor 1": 6, "Tenor 2": 7,
+        },
+    ),
+    "coal_miners_breathing": Table(
+        name="coal_miners_breathing",
+        label="Breathlessness and Wheeze in Coal Miners",
+        title="36 groupings of British coal miners by age and by what ailed them",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/CoalMiners.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/CoalMiners.csv",
+        header=True,
+        fields=_COAL_MINERS_BREATHING_FIELDS,
+        codes={
+            "breathlessness": ("B", "NoB"),
+            "wheeze": ("NoW", "W"),
+            "age": (
+                "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64",
+            ),
+        },
+    ),
+    "college_proximity": Table(
+        name="college_proximity",
+        label="Living Near a College",
+        title="3,010 American men and what each earned, near a college or far from one",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/close_college.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/close_college.csv",
+        header=True,
+        fields=_COLLEGE_PROXIMITY_FIELDS,
+    ),
+    "college_scorecard": Table(
+        name="college_scorecard",
+        label="College Scorecard Schools",
+        title="11,300 American colleges and who runs each of them",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/collegeScorecard/school.html",
+        classes=("for_profit", "nonprofit", "public", "not_recorded"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/collegeScorecard/school.csv",
+        header=True,
+        text_size=136,
+        fields=_COLLEGE_SCORECARD_FIELDS,
+        labels={"For-profit": 0, "Nonprofit": 1, "Public": 2, "": 3},
+        codes={
+            "deg_predominant": ("Associate", "Bachelor", "Certificate", "Graduate"),
+            "locale_type": ("City", "Rural", "Suburb", "Town"),
+            "locale_size": ("Distant", "Fringe", "Large", "Midsize", "Remote", "Small"),
+            "adm_req_test": ("Considered", "Not recommended", "Recommended", "Required"),
+            "is_hbcu": ("FALSE", "TRUE"),
+        },
+    ),
+    "corporal_punishment": Table(
+        name="corporal_punishment",
+        label="Attitudes to Corporal Punishment",
+        title="36 groupings of Germans asked whether children should be smacked",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Punishment.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Punishment.csv",
+        header=True,
+        fields=_CORPORAL_PUNISHMENT_FIELDS,
+        codes={
+            "attitude": ("moderate", "no"),
+            "memory": ("no", "yes"),
+            "education": ("elementary", "high", "secondary"),
+            "age": ("15-24", "25-39", "40-"),
+        },
+    ),
+    "covid_testing": Table(
+        name="covid_testing",
+        label="COVID Testing at a Children's Hospital",
+        title="15,524 COVID tests run in 2020 and what each came back as",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/covid_testing.html",
+        classes=("invalid", "negative", "positive"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/covid_testing.csv",
+        header=True,
+        text_size=32,
+        fields=_COVID_TESTING_FIELDS,
+        labels={"invalid": 0, "negative": 1, "positive": 2},
+        codes={
+            "gender": ("female", "male"),
+            "test_id": ("covid", "xcvd1"),
+            "demo_group": ("client", "misc adult", "other adult", "patient", "unidentified"),
+            "payor_group": (
+                "charity care", "commercial", "government", "medical assistance", "other",
+                "self pay", "unassigned",
+            ),
+            "patient_class": (
+                "admit after surgery-ip", "admit after surgery-obs", "day surgery", "emergency",
+                "inpatient", "not applicable", "observation", "outpatient", "recurring outpatient",
+            ),
+        },
+    ),
+    "csgo_matches": Table(
+        name="csgo_matches",
+        label="Counter-Strike Matches",
+        title="1,133 Counter-Strike matches and how each one ended",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MLDataR/csgo.html",
+        classes=("lost", "tie", "win"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MLDataR/csgo.csv",
+        header=True,
+        text_size=10,
+        fields=_CSGO_MATCHES_FIELDS,
+        labels={"Lost": 0, "Tie": 1, "Win": 2},
+        codes={
+            "map": (
+                "Austria", "Cache", "Canals", "Cobblestone", "Dust II", "Inferno", "Italy",
+                "Mirage", "Nuke", "Overpass",
+            ),
+        },
+    ),
+    "cytomegalovirus": Table(
+        name="cytomegalovirus",
+        label="Cytomegalovirus after Transplant",
+        title="64 stem cell transplants and whether the virus woke up afterwards",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/cytomegalovirus.html",
+        classes=("quiet", "reactivated"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/cytomegalovirus.csv",
+        header=True,
+        fields=_CYTOMEGALOVIRUS_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={
+            "diagnosis": (
+                "Hodgkin lymphoma", "acute lymphoblastic leukemia", "acute myeloid leukemia",
+                "aplastic anemia", "chronic lymphocytic leukemia", "chronic myeloid leukemia",
+                "congenital anemia", "multiple myelomas", "myelodysplastic syndrome",
+                "myelofibrosis", "myeloproliferative disorder", "non-Hodgkin lymphoma",
+                "renal cell carcinoma",
+            ),
+        },
+    ),
+    "danish_welfare": Table(
+        name="danish_welfare",
+        label="The Danish Welfare Study",
+        title="180 groupings of Danes by drink, income, marriage and where they lived",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/DanishWelfare.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/DanishWelfare.csv",
+        header=True,
+        fields=_DANISH_WELFARE_FIELDS,
+        codes={
+            "alcohol": ("1-2", "<1", ">2"),
+            "income": ("0-50", "100-150", "50-100", ">150"),
+            "status": ("Married", "Unmarried", "Widow"),
+            "urban": ("City", "Copenhagen", "Country", "LargeCity", "SubCopenhagen"),
+        },
+    ),
+    "dart_points": Table(
+        name="dart_points",
+        label="Texas Dart Points",
+        title="91 dart points from Texas and which of five types each is",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/DartPoints.html",
+        classes=("darl", "ensor", "pedernales", "travis", "wells"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/DartPoints.csv",
+        header=True,
+        text_size=8,
+        fields=_DART_POINTS_FIELDS,
+        labels={"Darl": 0, "Ensor": 1, "Pedernales": 2, "Travis": 3, "Wells": 4},
+        codes={
+            "blade_sh": ("E", "I", "R", "S"),
+            "should_sh": ("E", "I", "S", "X"),
+            "should_or": ("B", "H", "T", "X"),
+            "haft_sh": ("A", "E", "I", "R", "S"),
+            "haft_or": ("C", "E", "P", "T", "V"),
+        },
+    ),
+    "datasaurus_dozen": Table(
+        name="datasaurus_dozen",
+        label="The Datasaurus Dozen",
+        title="1,846 points of the thirteen sets that share every summary there is",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/quartets/datasaurus_dozen.html",
+        classes=(
+            "away", "bullseye", "circle", "dino", "dots", "h_lines", "high_lines", "slant_down",
+            "slant_up", "star", "v_lines", "wide_lines", "x_shape",
+        ),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/quartets/datasaurus_dozen.csv",
+        header=True,
+        fields=_DATASAURUS_DOZEN_FIELDS,
+        labels={
+            "away": 0, "bullseye": 1, "circle": 2, "dino": 3, "dots": 4, "h_lines": 5,
+            "high_lines": 6, "slant_down": 7, "slant_up": 8, "star": 9, "v_lines": 10,
+            "wide_lines": 11, "x_shape": 12,
+        },
+    ),
+    "deep_sea_fish": Table(
+        name="deep_sea_fish",
+        label="Deep Sea Fish Abundance",
+        title="147 trawls of the deep Atlantic and how many fish each brought up",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/fishing.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/fishing.csv",
+        header=True,
+        fields=_DEEP_SEA_FISH_FIELDS,
+        codes={
+            "period": ("1977-1989", "2000-2002"),
+        },
+    ),
+    "drag_race_appearances": Table(
+        name="drag_race_appearances",
+        label="Drag Race Contestants by Episode",
+        title="2,320 appearances by a queen in an episode and how each placed",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dragracer/rpdr_contep.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dragracer/rpdr_contep.csv",
+        header=True,
+        text_size=28,
+        fields=_DRAG_RACE_APPEARANCES_FIELDS,
+        codes={
+            "season": (
+                "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S12",
+                "S13", "S14",
+            ),
+        },
+    ),
+    "drag_race_contestants": Table(
+        name="drag_race_contestants",
+        label="Drag Race Contestants",
+        title="184 queens who competed and how old each was on entering",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dragracer/rpdr_contestants.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dragracer/rpdr_contestants.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=33,
+        fields=_DRAG_RACE_CONTESTANTS_FIELDS,
+        codes={
+            "season": (
+                "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S12",
+                "S13", "S14",
+            ),
+        },
+    ),
+    "drag_race_episodes": Table(
+        name="drag_race_episodes",
+        label="Drag Race Episodes",
+        title="191 episodes and how many queens were still in the running",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dragracer/rpdr_ep.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dragracer/rpdr_ep.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=72,
+        fields=_DRAG_RACE_EPISODES_FIELDS,
+        codes={
+            "season": (
+                "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S12",
+                "S13", "S14",
+            ),
+            "minicw3": (
+                "Ivy Winters", "Jiggly Caliente", "Lady Camden", "Monique Heart", "Phi Phi O'Hara",
+                "Roxxxy Andrews",
+            ),
+            "minicw4": ("Willow Pill",),
+            "bottom3": ("Daya Betty", "Jorgeous", "Plastique Tiara"),
+            "bottom4": ("Jasmine Kennedie", "Ra’jah O’Hara"),  # noqa: RUF001
+            "bottom5": ("Jorgeous", "Scarlet Envy"),
+            "bottom6": ("Lady Camden", "Shuga Cain"),
+            "eliminated2": ("Jorgeous", "Laila McQueen", "Vivienne Pinay"),
+        },
+    ),
+    "drinks_and_wages": Table(
+        name="drinks_and_wages",
+        label="Elderton's Drink and Wages",
+        title="70 trades in 1910 Britain and what a man in each earned a week",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/DrinksWages.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/DrinksWages.csv",
+        header=True,
+        text_size=16,
+        fields=_DRINKS_AND_WAGES_FIELDS,
+        codes={
+            "class": ("A", "B", "C"),
+        },
+    ),
+    "end_scrapers": Table(
+        name="end_scrapers",
+        label="End Scrapers from the Dordogne",
+        title="48 groupings of end scraper shape and how many were found in each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/EndScrapers.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/EndScrapers.csv",
+        header=True,
+        fields=_END_SCRAPERS_FIELDS,
+        codes={
+            "width": ("Narrow", "Wide"),
+            "sides": ("Convergent", "Parallel"),
+            "curvature": ("Medium", "Round", "Shallow"),
+            "retouched": ("Retouched", "Unretouched"),
+            "site": ("Castenet A", "Ferrassie H"),
+        },
+    ),
+    "epica_carbon_dioxide": Table(
+        name="epica_carbon_dioxide",
+        label="EPICA Dome C Carbon Dioxide",
+        title="1,096 readings of the carbon dioxide trapped in Antarctic ice",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/epica2008.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/epica2008.csv",
+        header=True,
+        fields=_EPICA_CARBON_DIOXIDE_FIELDS,
+    ),
+    "ernest_witte_burials": Table(
+        name="ernest_witte_burials",
+        label="Ernest Witte Burials",
+        title="49 burials in a Texas cemetery and whether each was given grave goods",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/EWBurials.html",
+        classes=("absent", "present"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/EWBurials.csv",
+        header=True,
+        text_size=4,
+        fields=_ERNEST_WITTE_BURIALS_FIELDS,
+        labels={"Absent": 0, "Present": 1},
+        codes={
+            "age": ("Adolescent", "Adult", "Child", "Middle Adult", "Old Adult", "Young Adult"),
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "esophageal_cancer": Table(
+        name="esophageal_cancer",
+        label="Oesophageal Cancer in Ille-et-Vilaine",
+        title="88 groupings by age, drink and tobacco and how many in each had cancer",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/esoph_ca.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/esoph_ca.csv",
+        header=True,
+        fields=_ESOPHAGEAL_CANCER_FIELDS,
+        codes={
+            "agegp": ("25-34", "35-44", "45-54", "55-64", "65-74", "75+"),
+            "alcgp": ("0-39g/day", "120+", "40-79", "80-119"),
+            "tobgp": ("0-9g/day", "10-19", "20-29", "30+"),
+        },
+    ),
+    "ethanol_engine": Table(
+        name="ethanol_engine",
+        label="Nitric Oxide from an Ethanol Engine",
+        title="88 runs of an ethanol engine and how much nitric oxide came out",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lattice/ethanol.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lattice/ethanol.csv",
+        header=True,
+        fields=_ETHANOL_ENGINE_FIELDS,
+    ),
+    "familial_polyposis": Table(
+        name="familial_polyposis",
+        label="Sulindac for Familial Polyposis",
+        title="22 patients treated for bowel polyps and how many each had a year on",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/polyps.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/polyps.csv",
+        header=True,
+        fields=_FAMILIAL_POLYPOSIS_FIELDS,
+        codes={
+            "sex": ("female", "male"),
+            "treatment": ("placebo", "sulindac"),
+        },
+    ),
+    "fingerprint_patterns": Table(
+        name="fingerprint_patterns",
+        label="Whorls and Loops on Fingerprints",
+        title="36 pairings of whorls and loops and how many hands showed each",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Fingerprints.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Fingerprints.csv",
+        header=True,
+        fields=_FINGERPRINT_PATTERNS_FIELDS,
+    ),
+    "fish_adult_growth": Table(
+        name="fish_adult_growth",
+        label="Adult Fish Growth",
+        title="16,795 readings taken down the ear stones of adult fish",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fishdata/adult_growth.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fishdata/adult_growth.csv",
+        header=True,
+        text_size=4,
+        fields=_FISH_ADULT_GROWTH_FIELDS,
+    ),
+    "fish_juvenile_catches": Table(
+        name="fish_juvenile_catches",
+        label="Juvenile Fish Catches",
+        title="496 juvenile fish caught off New Zealand and where each was taken",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fishdata/juveniles.html",
+        classes=("hutt", "wainuiomata"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fishdata/juveniles.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=6,
+        fields=_FISH_JUVENILE_CATCHES_FIELDS,
+        labels={"Hutt": 0, "Wainuiomata": 1},
+        codes={
+            "month": ("August", "November", "October", "September"),
+        },
+    ),
+    "fish_juvenile_growth": Table(
+        name="fish_juvenile_growth",
+        label="Juvenile Fish Growth",
+        title="496 juvenile fish and how fast each grew in its first year",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fishdata/juvenile_metrics.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fishdata/juvenile_metrics.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=6,
+        fields=_FISH_JUVENILE_GROWTH_FIELDS,
+    ),
+    "funnel_beaker_pottery": Table(
+        name="funnel_beaker_pottery",
+        label="Funnel Beaker Pottery",
+        title="118 Neolithic pots outlined by hand and sorted by shape",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/TRBPottery.html",
+        classes=("bowls", "flasks", "funnel_beakers"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/TRBPottery.csv",
+        header=True,
+        fields=_FUNNEL_BEAKER_POTTERY_FIELDS,
+        labels={"Bowls": 0, "Flasks": 1, "Funnel beakers": 2},
+    ),
+    "furze_platt_handaxes": Table(
+        name="furze_platt_handaxes",
+        label="Furze Platt Handaxes",
+        title="600 Acheulian handaxes measured at Furze Platt",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Handaxes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Handaxes.csv",
+        header=True,
+        text_size=10,
+        fields=_FURZE_PLATT_HANDAXES_FIELDS,
+    ),
+    "galton_families": Table(
+        name="galton_families",
+        label="Galton's Families",
+        title="934 children of 205 Victorian families and how tall each grew",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/GaltonFamilies.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/GaltonFamilies.csv",
+        header=True,
+        text_size=4,
+        fields=_GALTON_FAMILIES_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+        },
+    ),
+    "galton_parent_child": Table(
+        name="galton_parent_child",
+        label="Galton's Parent and Child Heights",
+        title="928 children of Victorian parents and how tall each grew",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Galton.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Galton.csv",
+        header=True,
+        fields=_GALTON_PARENT_CHILD_FIELDS,
+    ),
+    "geologic_time_scale": Table(
+        name="geologic_time_scale",
+        label="The Geologic Time Scale",
+        title="176 named divisions of geologic time and when each began",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/stratigraphy.html",
+        classes=("eon", "era", "period", "series", "stage", "unranked"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/stratigraphy.csv",
+        header=True,
+        text_size=20,
+        fields=_GEOLOGIC_TIME_SCALE_FIELDS,
+        labels={"eon": 0, "era": 1, "period": 2, "series": 3, "stage": 4, "": 5},
+    ),
+    "german_health_1984": Table(
+        name="german_health_1984",
+        label="The German Health Survey of 1984",
+        title="3,874 Germans in 1984 and how often each went to a doctor",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/rwm1984.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/rwm1984.csv",
+        header=True,
+        fields=_GERMAN_HEALTH_1984_FIELDS,
+    ),
+    "german_health_reform": Table(
+        name="german_health_reform",
+        label="German Health Reform Doctor Visits",
+        title="2,227 Germans seen before and after the 1997 health reform",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/mdvis.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/mdvis.csv",
+        header=True,
+        fields=_GERMAN_HEALTH_REFORM_FIELDS,
+    ),
+    "german_suicides": Table(
+        name="german_suicides",
+        label="Suicide by Age, Sex and Method",
+        title="306 groupings of German suicides by age, by sex and by method",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Suicide.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Suicide.csv",
+        header=True,
+        fields=_GERMAN_SUICIDES_FIELDS,
+        codes={
+            "sex": ("female", "male"),
+            "method": (
+                "cookgas", "drown", "gun", "hang", "jump", "knife", "other", "poison", "toxicgas",
+            ),
+            "age_group": ("10-20", "25-35", "40-50", "55-65", "70-90"),
+            "method2": ("drown", "gas", "gun", "hang", "jump", "knife", "other", "poison"),
+        },
+    ),
+    "global_economy": Table(
+        name="global_economy",
+        label="The Global Economy",
+        title="15,150 country-years of output, trade and population",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/global_economy.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/global_economy.csv",
+        header=True,
+        text_size=52,
+        fields=_GLOBAL_ECONOMY_FIELDS,
+    ),
+    "gosset_yeast_cells": Table(
+        name="gosset_yeast_cells",
+        label="Gosset's Yeast Cell Counts",
+        title="36 counts of yeast cells under a haemacytometer",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Yeast.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Yeast.csv",
+        header=True,
+        fields=_GOSSET_YEAST_CELLS_FIELDS,
+        codes={
+            "sample": ("A", "B", "C", "D"),
+        },
+    ),
+    "government_transfers": Table(
+        name="government_transfers",
+        label="Government Cash Transfers",
+        title="1,948 households either side of the cut-off for a cash transfer",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/gov_transfers.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/gov_transfers.csv",
+        header=True,
+        fields=_GOVERNMENT_TRANSFERS_FIELDS,
+    ),
+    "guerry_moral_statistics": Table(
+        name="guerry_moral_statistics",
+        label="Guerry's Moral Statistics of France",
+        title="86 French departments and the moral statistics Guerry gathered in 1833",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Guerry.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Guerry.csv",
+        header=True,
+        text_size=19,
+        fields=_GUERRY_MORAL_STATISTICS_FIELDS,
+        codes={
+            "region": ("C", "E", "N", "S", "W"),
+            "maincity": ("1:Sm", "2:Med", "3:Lg"),
+        },
+    ),
+    "hare_and_lynx_pelts": Table(
+        name="hare_and_lynx_pelts",
+        label="Hare and Lynx Pelts",
+        title="91 years of pelts traded by the Hudson's Bay Company",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/pelt.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/pelt.csv",
+        header=True,
+        fields=_HARE_AND_LYNX_PELTS_FIELDS,
+    ),
+    "hepatocellular_carcinoma": Table(
+        name="hepatocellular_carcinoma",
+        label="Hepatocellular Carcinoma",
+        title="227 liver cancer patients and how long each survived surgery",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/asaur/hepatoCellular.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/asaur/hepatoCellular.csv",
+        header=True,
+        fields=_HEPATOCELLULAR_CARCINOMA_FIELDS,
+    ),
+    "hiv_test_results": Table(
+        name="hiv_test_results",
+        label="Learning an HIV Test Result",
+        title="4,820 Malawians offered a little money to come back for their result",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/thornton_hiv.html",
+        classes=("stayed_away", "came_back", "not_recorded"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/thornton_hiv.csv",
+        header=True,
+        fields=_HIV_TEST_RESULTS_FIELDS,
+        labels={"0": 0, "1": 1, "": 2},
+    ),
+    "household_budgets": Table(
+        name="household_budgets",
+        label="Household Budgets",
+        title="88 country-years of what households owed, saved and spent",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/hh_budget.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/hh_budget.csv",
+        header=True,
+        fields=_HOUSEHOLD_BUDGETS_FIELDS,
+        codes={
+            "country": ("Australia", "Canada", "Japan", "USA"),
+        },
+    ),
+    "indomethacin_trial": Table(
+        name="indomethacin_trial",
+        label="Indomethacin after an Endoscopy",
+        title="602 patients given indomethacin or a placebo after an endoscopy",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/indo_rct.html",
+        classes=("no_pancreatitis", "pancreatitis"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/indo_rct.csv",
+        header=True,
+        fields=_INDOMETHACIN_TRIAL_FIELDS,
+        labels={"0_no": 0, "1_yes": 1},
+        codes={
+            "site": ("1_UM", "2_IU", "3_UK", "4_Case"),
+            "gender": ("1_female", "2_male"),
+            "sod": ("0_no", "1_yes"),
+            "asa81": ("0_no", "1_yes", "NA_NA"),
+            "status": ("0_inpatient", "1_outpatient"),
+            "type": ("0_no SOD", "1_type 1", "2_type 2", "3_type 3"),
+            "rx": ("0_placebo", "1_indomethacin"),
+        },
+    ),
+    "infant_pneumonia": Table(
+        name="infant_pneumonia",
+        label="Infant Pneumonia",
+        title="3,470 infants and how old each was when pneumonia struck",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/pneumon.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/pneumon.csv",
+        header=True,
+        fields=_INFANT_PNEUMONIA_FIELDS,
+    ),
+    "intcal20_curve": Table(
+        name="intcal20_curve",
+        label="The IntCal20 Radiocarbon Curve",
+        title="9,501 points of the curve radiocarbon dates are calibrated against",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/intcal20.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/intcal20.csv",
+        header=True,
+        fields=_INTCAL20_CURVE_FIELDS,
+    ),
+    "interaction_triptych": Table(
+        name="interaction_triptych",
+        label="The Interaction Triptych",
+        title="2,700 points of the three sets that show an interaction three ways",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/quartets/interaction_triptych.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/quartets/interaction_triptych.csv",
+        header=True,
+        fields=_INTERACTION_TRIPTYCH_FIELDS,
+        codes={
+            "dataset": (
+                "(1) Ideal case", "(2) Floor effect, no latent interaction",
+                "(3) Smaller correlation at largest slope",
+            ),
+            "moderator": ("high", "low", "medium"),
+        },
+    ),
+    "iron_age_fibulae": Table(
+        name="iron_age_fibulae",
+        label="Iron Age Fibulae",
+        title="30 brooches from an iron age cemetery, measured every way",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Fibulae.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Fibulae.csv",
+        header=True,
+        text_size=9,
+        fields=_IRON_AGE_FIBULAE_FIELDS,
+    ),
+    "iron_age_graves": Table(
+        name="iron_age_graves",
+        label="Early Iron Age Graves",
+        title="52 graves in a Yorkshire cemetery and the goods found in each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/EIAGraves.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/EIAGraves.csv",
+        header=True,
+        fields=_IRON_AGE_GRAVES_FIELDS,
+    ),
+    "jevons_guesses": Table(
+        name="jevons_guesses",
+        label="Jevons on Guessing Numbers",
+        title="50 guesses at how many beans had been thrown and how far each was out",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Jevons.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Jevons.csv",
+        header=True,
+        fields=_JEVONS_GUESSES_FIELDS,
+    ),
+    "kidney_transplant": Table(
+        name="kidney_transplant",
+        label="Kidney Transplant Survival",
+        title="863 kidney transplant patients and how long each lived after surgery",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/kidtran.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/kidtran.csv",
+        header=True,
+        fields=_KIDNEY_TRANSPLANT_FIELDS,
+    ),
+    "kommos_pottery": Table(
+        name="kommos_pottery",
+        label="Kommos Pottery Chemistry",
+        title="88 pots from Bronze Age Crete assayed and sorted by ware",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/kommos.html",
+        classes=("cj", "ej", "sna", "tsj"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/kommos.csv",
+        header=True,
+        text_size=5,
+        fields=_KOMMOS_POTTERY_FIELDS,
+        labels={"CJ": 0, "EJ": 1, "SNA": 2, "TSJ": 3},
+        codes={
+            "date_code": (
+                "LM IA Final", "LM IB", "LM IB Early", "LM II", "LM IIIA", "LM IIIA1", "LM IIIA2",
+                "LM IIIA2 Early", "LM IIIB", "historic levels",
+            ),
+        },
+    ),
+    "laryngoscope_trial": Table(
+        name="laryngoscope_trial",
+        label="Two Laryngoscopes Compared",
+        title="99 intubations and how long each took from start to finish",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/laryngoscope.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/laryngoscope.csv",
+        header=True,
+        fields=_LARYNGOSCOPE_TRIAL_FIELDS,
+    ),
+    "larynx_cancer": Table(
+        name="larynx_cancer",
+        label="Larynx Cancer Survival",
+        title="90 men with cancer of the larynx and how long each lived",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/larynx.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/larynx.csv",
+        header=True,
+        fields=_LARYNX_CANCER_FIELDS,
+    ),
+    "law_dome_gases": Table(
+        name="law_dome_gases",
+        label="Law Dome Greenhouse Gases",
+        title="2,004 years of greenhouse gas read out of Antarctic ice",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/law2006.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/law2006.csv",
+        header=True,
+        fields=_LAW_DOME_GASES_FIELDS,
+    ),
+    "letters_to_politicians": Table(
+        name="letters_to_politicians",
+        label="Letters to Black Politicians",
+        title="5,593 American legislators written to and which of them wrote back",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/black_politicians.html",
+        classes=("no_reply", "replied"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/black_politicians.csv",
+        header=True,
+        fields=_LETTERS_TO_POLITICIANS_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "licorice_gargle": Table(
+        name="licorice_gargle",
+        label="Liquorice Gargle before Surgery",
+        title="235 patients gargling before surgery and how sore each throat was after",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/licorice_gargle.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/licorice_gargle.csv",
+        header=True,
+        fields=_LICORICE_GARGLE_FIELDS,
+    ),
+    "london_cholera_districts": Table(
+        name="london_cholera_districts",
+        label="London Cholera by District",
+        title="38 London districts and how many in each died of cholera in 1849",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Cholera.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Cholera.csv",
+        header=True,
+        text_size=44,
+        fields=_LONDON_CHOLERA_DISTRICTS_FIELDS,
+        codes={
+            "region": ("Central", "Kent", "North", "South", "West"),
+            "water": ("Battersea", "Kew", "New River"),
+        },
+    ),
+    "long_stay_patients": Table(
+        name="long_stay_patients",
+        label="Long Stay Hospital Patients",
+        title="768 hospital admissions and whether the patient ended up stranded",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MLDataR/long_stayers.html",
+        classes=("not_stranded", "stranded"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MLDataR/long_stayers.csv",
+        header=True,
+        text_size=10,
+        fields=_LONG_STAY_PATIENTS_FIELDS,
+        labels={"Not Stranded": 0, "Stranded": 1},
+        codes={
+            "frailty_index": (
+                "Activity Limitation", "Fall patient history", "Mobility problems",
+                "No index item",
+            ),
+        },
+    ),
+    "macdonell_criminals": Table(
+        name="macdonell_criminals",
+        label="Macdonell's Criminals",
+        title="924 pairings of height and finger length among three thousand criminals",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Macdonell.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Macdonell.csv",
+        header=True,
+        fields=_MACDONELL_CRIMINALS_FIELDS,
+    ),
+    "medicare_stays": Table(
+        name="medicare_stays",
+        label="Medicare Hospital Stays",
+        title="1,495 Medicare patients in Arizona and how many days each stayed",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/medpar.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/medpar.csv",
+        header=True,
+        fields=_MEDICARE_STAYS_FIELDS,
+    ),
+    "medieval_glass": Table(
+        name="medieval_glass",
+        label="Medieval Glass from France",
+        title="398 pieces of medieval glass assayed for what it was made of",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/verre.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/verre.csv",
+        header=True,
+        text_size=10,
+        fields=_MEDIEVAL_GLASS_FIELDS,
+        codes={
+            "site": (
+                "ANG", "BER", "BIN", "CHE", "CHL", "CHM", "CNL", "MEA", "MET", "MIT", "OMO", "ORL",
+                "PAI", "POI", "ROU",
+            ),
+            "type": (
+                "Aiguière", "Aiguière?", "Apothecary jar", "Apothecary jar?", "Bottle", "Bottle?",
+                "Case bottle", "Dist. aparatus", "Flask", "Flask?", "Flattened flask",
+                "Footed cup", "Goblet", "Goblet?", "Gourde", "Lid", "Pitcher?", "Plate", "Tumbler",
+                "Vase", "Window glass", "Work dropping",
+            ),
+            "age": (
+                "10-12", "11-12", "13", "13-14", "13?", "14", "14-15", "15", "15-16", "15?", "16",
+                "16-17", "17", "9-10?",
+            ),
+            "periode": ("I", "I?", "II", "II-III?", "III", "IV"),
+            "tint": (
+                "B", "B-CL", "CL", "CL*b", "CL*w", "CL?*w", "CLgy", "I*w", "Marbled", "Millefiori",
+                "PB*b", "PGE", "PGE*b", "PGE*b*r", "PGE*bl", "PGE*w", "PGE-B", "PGY-B", "R", "W",
+                "W*b*av", "W*b*r",
+            ),
+        },
+    ),
+    "mesolithic_tools": Table(
+        name="mesolithic_tools",
+        label="Mesolithic Tool Counts",
+        title="33 Mesolithic assemblages and the tools counted in each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Mesolithic.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Mesolithic.csv",
+        header=True,
+        fields=_MESOLITHIC_TOOLS_FIELDS,
+    ),
+    "michelsberg_pottery": Table(
+        name="michelsberg_pottery",
+        label="Michelsberg Pottery",
+        title="109 Neolithic assemblages and which Michelsberg phase each belongs to",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Michelsberg.html",
+        classes=("i", "i_ii", "ii", "ii_iii", "iii", "iii_v", "iii_iv", "iv", "iv_v", "munz", "v"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Michelsberg.csv",
+        header=True,
+        text_size=22,
+        fields=_MICHELSBERG_POTTERY_FIELDS,
+        labels={
+            "I": 0, "I/II": 1, "II": 2, "II/III": 3, "III": 4, "III-V": 5, "III/IV": 6, "IV": 7,
+            "IV/V": 8, "Munz": 9, "V": 10,
+        },
+    ),
+    "minard_troops": Table(
+        name="minard_troops",
+        label="Minard's March on Moscow",
+        title="51 points along Napoleon's march and how many men were still alive",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Minard.troops.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Minard.troops.csv",
+        header=True,
+        fields=_MINARD_TROOPS_FIELDS,
+        codes={
+            "direction": ("A", "R"),
+        },
+    ),
+    "mississippi_pottery": Table(
+        name="mississippi_pottery",
+        label="Mississippi Pottery Types",
+        title="20 sites on the Mississippi and the pottery types found at each",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/mississippi.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/mississippi.csv",
+        header=True,
+        text_size=11,
+        fields=_MISSISSIPPI_POTTERY_FIELDS,
+    ),
+    "ngrip_ice_core": Table(
+        name="ngrip_ice_core",
+        label="The NGRIP Greenland Ice Core",
+        title="6,114 readings of oxygen isotopes down a Greenland ice core",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/ngrip2010.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/ngrip2010.csv",
+        header=True,
+        fields=_NGRIP_ICE_CORE_FIELDS,
+    ),
+    "nightingale_mortality": Table(
+        name="nightingale_mortality",
+        label="Nightingale's Crimean Mortality",
+        title="24 months of the Crimean war and what the British army died of",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Nightingale.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Nightingale.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_NIGHTINGALE_MORTALITY_FIELDS,
+        codes={
+            "month": (
+                "Apr", "Aug", "Dec", "Feb", "Jan", "Jul", "Jun", "Mar", "May", "Nov", "Oct", "Sep",
+            ),
+        },
+    ),
+    "olympic_running": Table(
+        name="olympic_running",
+        label="Olympic Running Finals",
+        title="312 Olympic running finals and how fast each was won",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/olympic_running.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/olympic_running.csv",
+        header=True,
+        fields=_OLYMPIC_RUNNING_FIELDS,
+        codes={
+            "sex": ("men", "women"),
+        },
+    ),
+    "organ_donations": Table(
+        name="organ_donations",
+        label="Organ Donor Registration",
+        title="162 state-quarters of organ donor registration in America",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/organ_donations.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/organ_donations.csv",
+        header=True,
+        text_size=20,
+        fields=_ORGAN_DONATIONS_FIELDS,
+        codes={
+            "quarter": ("Q12011", "Q12012", "Q22011", "Q32011", "Q42010", "Q42011"),
+        },
+    ),
+    "oxford_pottery": Table(
+        name="oxford_pottery",
+        label="Oxford and New Forest Pottery",
+        title="30 Romano-British sites and the share of pottery from the Oxford kilns",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/OxfordPots.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/OxfordPots.csv",
+        header=True,
+        text_size=20,
+        fields=_OXFORD_POTTERY_FIELDS,
+    ),
+    "ozone_and_weather": Table(
+        name="ozone_and_weather",
+        label="Ozone and the Weather",
+        title="111 summer days in New York and how much ozone hung in the air",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lattice/environmental.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lattice/environmental.csv",
+        header=True,
+        fields=_OZONE_AND_WEATHER_FIELDS,
+    ),
+    "paris_registrations": Table(
+        name="paris_registrations",
+        label="Parisian Registrations",
+        title="516 months of nineteenth-century Paris and how many women registered",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Prostitutes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Prostitutes.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_PARIS_REGISTRATIONS_FIELDS,
+        codes={
+            "month": (
+                "Apr", "Aug", "Dec", "Feb", "Jan", "Jul", "Jun", "Mar", "May", "Nov", "Oct", "Sep",
+            ),
+        },
+    ),
+    "pearson_lee_heights": Table(
+        name="pearson_lee_heights",
+        label="Pearson and Lee's Family Heights",
+        title="746 pairings of parent and child height in Edwardian families",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/PearsonLee.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/PearsonLee.csv",
+        header=True,
+        fields=_PEARSON_LEE_HEIGHTS_FIELDS,
+        codes={
+            "gp": ("fd", "fs", "md", "ms"),
+            "par": ("Father", "Mother"),
+            "chl": ("Daughter", "Son"),
+        },
+    ),
+    "plant_carbon_isotopes": Table(
+        name="plant_carbon_isotopes",
+        label="Carbon Isotopes in Plants",
+        title="155 plants and whether each fixes carbon the C3 way or the C4 way",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/vegetation.html",
+        classes=("c3", "c4"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/vegetation.csv",
+        header=True,
+        text_size=26,
+        fields=_PLANT_CARBON_ISOTOPES_FIELDS,
+        labels={"C3": 0, "C4": 1},
+        codes={
+            "country": ("Argentina", "Kenya", "Mongolia", "Zaire"),
+        },
+    ),
+    "plant_traits": Table(
+        name="plant_traits",
+        label="Life History Traits of Plants",
+        title="136 plants of north-west France and the traits each one carries",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/cluster/plantTraits.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/cluster/plantTraits.csv",
+        header=True,
+        text_size=5,
+        fields=_PLANT_TRAITS_FIELDS,
+    ),
+    "playfair_wheat": Table(
+        name="playfair_wheat",
+        label="Playfair's Wheat and Wages",
+        title="53 years of the price of wheat set against a labourer's wage",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Wheat.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Wheat.csv",
+        header=True,
+        fields=_PLAYFAIR_WHEAT_FIELDS,
+    ),
+    "portal_rodents": Table(
+        name="portal_rodents",
+        label="Portal Project Rodent Survey",
+        title="35,549 animals trapped in the Arizona desert and what each turned out to be",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ratdat/complete.html",
+        classes=("bird", "rabbit", "reptile", "rodent", "not_recorded"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ratdat/complete.csv",
+        header=True,
+        text_size=16,
+        fields=_PORTAL_RODENTS_FIELDS,
+        labels={"Bird": 0, "Rabbit": 1, "Reptile": 2, "Rodent": 3, "": 4},
+        codes={
+            "sex": ("F", "M"),
+            "plot_type": (
+                "Control", "Long-term Krat Exclosure", "Rodent Exclosure",
+                "Short-term Krat Exclosure", "Spectab exclosure",
+            ),
+        },
+    ),
+    "portal_species": Table(
+        name="portal_species",
+        label="Portal Project Species List",
+        title="54 species trapped in the Arizona desert and what kind of animal each is",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ratdat/species.html",
+        classes=("bird", "rabbit", "reptile", "rodent"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ratdat/species.csv",
+        header=True,
+        text_size=16,
+        fields=_PORTAL_SPECIES_FIELDS,
+        labels={"Bird": 0, "Rabbit": 1, "Reptile": 2, "Rodent": 3},
+    ),
+    "prediabetes": Table(
+        name="prediabetes",
+        label="From Prediabetes to Diabetes",
+        title="3,059 patients with prediabetes and how long each took to develop diabetes",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MLDataR/PreDiabetes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MLDataR/PreDiabetes.csv",
+        header=True,
+        fields=_PREDIABETES_FIELDS,
+    ),
+    "prostate_survival": Table(
+        name="prostate_survival",
+        label="Prostate Cancer Survival",
+        title="14,294 men with prostate cancer and how long each lived after diagnosis",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/asaur/prostateSurvival.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/asaur/prostateSurvival.csv",
+        header=True,
+        fields=_PROSTATE_SURVIVAL_FIELDS,
+        codes={
+            "grade": ("mode", "poor"),
+            "stage": ("T1ab", "T1c", "T2"),
+            "agegroup": ("66-69", "70-74", "75-79", "80+"),
+        },
+    ),
+    "prussian_horse_kicks": Table(
+        name="prussian_horse_kicks",
+        label="Deaths by Horse Kick",
+        title="280 corps-years of the Prussian army and how many horses kicked dead",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/VonBort.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/VonBort.csv",
+        header=True,
+        fields=_PRUSSIAN_HORSE_KICKS_FIELDS,
+        codes={
+            "corps": (
+                "G", "I", "II", "III", "IV", "IX", "V", "VI", "VII", "VIII", "X", "XI", "XIV",
+                "XV",
+            ),
+            "fisher": ("no", "yes"),
+        },
+    ),
+    "rashomon_quartet": Table(
+        name="rashomon_quartet",
+        label="The Rashomon Quartet",
+        title="2,000 points of the set four different models fit equally well",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/quartets/rashomon_quartet.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/quartets/rashomon_quartet.csv",
+        header=True,
+        fields=_RASHOMON_QUARTET_FIELDS,
+        codes={
+            "split": ("test", "train"),
+        },
+    ),
+    "repeat_victimisation": Table(
+        name="repeat_victimisation",
+        label="Repeat Victimisation",
+        title="64 pairings of a first crime and a second against the same person",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/RepVict.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/RepVict.csv",
+        header=True,
+        fields=_REPEAT_VICTIMISATION_FIELDS,
+        codes={
+            "first_victimization": (
+                "Assault", "Auto Theft", "Burglary", "Household Larceny", "Personal Larcency",
+                "Pickpocket", "Rape", "Robbery",
+            ),
+        },
+    ),
+    "republican_vote_share": Table(
+        name="republican_vote_share",
+        label="Republican Vote by State",
+        title="50 American states and the Republican share at every election since 1856",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/cluster/votes.repub.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/cluster/votes.repub.csv",
+        header=True,
+        text_size=14,
+        fields=_REPUBLICAN_VOTE_SHARE_FIELDS,
+    ),
+    "restaurant_inspections": Table(
+        name="restaurant_inspections",
+        label="Restaurant Inspections",
+        title="27,178 restaurant inspections and what each one scored",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/restaurant_inspections.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/restaurant_inspections.csv",
+        header=True,
+        text_size=72,
+        fields=_RESTAURANT_INSPECTIONS_FIELDS,
+        codes={
+            "weekend": ("FALSE", "TRUE"),
+        },
+    ),
+    "rice_farmer_insurance": Table(
+        name="rice_farmer_insurance",
+        label="Weather Insurance for Rice Farmers",
+        title="1,410 Chinese rice farmers and whether each took the insurance offered",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/social_insure.html",
+        classes=("declined", "took_it_up"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/social_insure.csv",
+        header=True,
+        text_size=22,
+        fields=_RICE_FARMER_INSURANCE_FIELDS,
+        labels={"0": 0, "1": 1},
+    ),
+    "rochdale_women": Table(
+        name="rochdale_women",
+        label="Women's Employment in Rochdale",
+        title="256 groupings of Rochdale women by whether each held a job",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/vcd/Rochdale.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/vcd/Rochdale.csv",
+        header=True,
+        fields=_ROCHDALE_WOMEN_FIELDS,
+        codes={
+            "econactive": ("no", "yes"),
+            "age": ("<38", ">38"),
+        },
+    ),
+    "roman_street_networks": Table(
+        name="roman_street_networks",
+        label="Roman City Street Networks",
+        title="125 Roman cities and how much of each was given over to streets",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/cities.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/cities.csv",
+        header=True,
+        text_size=26,
+        fields=_ROMAN_STREET_NETWORKS_FIELDS,
+    ),
+    "romano_british_glass": Table(
+        name="romano_british_glass",
+        label="Romano-British Glass",
+        title="105 pieces of Roman glass assayed and traced to the town that made it",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/RBGlass1.html",
+        classes=("leicester", "mancetter"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/RBGlass1.csv",
+        header=True,
+        fields=_ROMANO_BRITISH_GLASS_FIELDS,
+        labels={"Leicester": 0, "Mancetter": 1},
+    ),
+    "romano_british_pottery": Table(
+        name="romano_british_pottery",
+        label="Romano-British Pottery",
+        title="48 Roman pots assayed and traced to the kiln that fired them",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/RBPottery.html",
+        classes=("ashley_rails", "caldicot", "gloucester", "islands_thorns", "llanedeyrn"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/RBPottery.csv",
+        header=True,
+        text_size=3,
+        fields=_ROMANO_BRITISH_POTTERY_FIELDS,
+        labels={
+            "Ashley Rails": 0, "Caldicot": 1, "Gloucester": 2, "Islands Thorns": 3,
+            "Llanedeyrn": 4,
+        },
+        codes={
+            "region": ("Gloucester", "New Forest", "Wales"),
+        },
+    ),
+    "ruspini_points": Table(
+        name="ruspini_points",
+        label="Ruspini's Clustering Points",
+        title="75 points in the plane that fall into four clusters",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/cluster/ruspini.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/cluster/ruspini.csv",
+        header=True,
+        fields=_RUSPINI_POINTS_FIELDS,
+    ),
+    "sea_level_reconstruction": Table(
+        name="sea_level_reconstruction",
+        label="Sea Level over Eight Hundred Thousand Years",
+        title="799 points of sea level reconstructed across the last ice ages",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/spratt2016.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/spratt2016.csv",
+        header=True,
+        fields=_SEA_LEVEL_RECONSTRUCTION_FIELDS,
+    ),
+    "ship_damage": Table(
+        name="ship_damage",
+        label="Damage to Cargo Ships",
+        title="40 groupings of cargo ships and how many came to harm",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/COUNT/ships.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/COUNT/ships.csv",
+        header=True,
+        fields=_SHIP_DAMAGE_FIELDS,
+    ),
+    "singapore_car_claims": Table(
+        name="singapore_car_claims",
+        label="Singapore Automobile Claims",
+        title="7,483 Singaporean car policies and how many claims each one made",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/SingaporeAuto.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/SingaporeAuto.csv",
+        header=True,
+        fields=_SINGAPORE_CAR_CLAIMS_FIELDS,
+        codes={
+            "sexinsured": ("F", "M", "U"),
+            "vehicletype": ("A", "G", "M", "P", "Q", "S", "T", "W", "Z"),
+        },
+    ),
+    "smartpill_motility": Table(
+        name="smartpill_motility",
+        label="SmartPill Gut Motility",
+        title="95 readings from a pill swallowed to time the gut",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/smartpill.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/smartpill.csv",
+        header=True,
+        fields=_SMARTPILL_MOTILITY_FIELDS,
+    ),
+    "smoking_cessation": Table(
+        name="smoking_cessation",
+        label="Smoking Cessation Trial",
+        title="125 smokers given a patch or a combination and how long each held out",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/asaur/pharmacoSmoking.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/asaur/pharmacoSmoking.csv",
+        header=True,
+        fields=_SMOKING_CESSATION_FIELDS,
+        codes={
+            "grp": ("combination", "patchOnly"),
+            "gender": ("Female", "Male"),
+            "race": ("black", "hispanic", "other", "white"),
+            "employment": ("ft", "other", "pt"),
+            "levelsmoking": ("heavy", "light"),
+            "agegroup2": ("21-49", "50+"),
+            "agegroup4": ("21-34", "35-49", "50-64", "65+"),
+        },
+    ),
+    "snodgrass_houses": Table(
+        name="snodgrass_houses",
+        label="Snodgrass House Pits",
+        title="91 house pits at Snodgrass and whether each stood inside the wall",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/Snodgrass.html",
+        classes=("inside", "outside"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/Snodgrass.csv",
+        header=True,
+        text_size=3,
+        fields=_SNODGRASS_HOUSES_FIELDS,
+        labels={"Inside": 0, "Outside": 1},
+    ),
+    "snow_cholera_deaths": Table(
+        name="snow_cholera_deaths",
+        label="Snow's Cholera Deaths",
+        title="578 deaths in the Broad Street outbreak, each placed on Snow's map",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Snow.deaths.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Snow.deaths.csv",
+        header=True,
+        fields=_SNOW_CHOLERA_DEATHS_FIELDS,
+    ),
+    "std_reinfection": Table(
+        name="std_reinfection",
+        label="Sexually Transmitted Disease Reinfection",
+        title="877 patients and how long each went before a second infection",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/std.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/std.csv",
+        header=True,
+        fields=_STD_REINFECTION_FIELDS,
+        codes={
+            "race": ("B", "W"),
+            "marital": ("D", "M", "S"),
+        },
+    ),
+    "stone_age_sites": Table(
+        name="stone_age_sites",
+        label="Early Stone Age Sites",
+        title="43 Danish stone age sites and the tools found at each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/archdata/ESASites.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/archdata/ESASites.csv",
+        header=True,
+        fields=_STONE_AGE_SITES_FIELDS,
+    ),
+    "streptomycin_tuberculosis": Table(
+        name="streptomycin_tuberculosis",
+        label="Streptomycin for Tuberculosis",
+        title="107 patients in the first randomised trial and whether each improved",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/strep_tb.html",
+        classes=("no_better", "improved"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/strep_tb.csv",
+        header=True,
+        fields=_STREPTOMYCIN_TUBERCULOSIS_FIELDS,
+        labels={"FALSE": 0, "TRUE": 1},
+        codes={
+            "arm": ("Control", "Streptomycin"),
+            "gender": ("F", "M"),
+            "baseline_condition": ("1_Good", "2_Fair", "3_Poor"),
+            "baseline_temp": ("1_98-98.9F", "2_99-99.9F", "3_100-100.9F", "4_100F+"),
+            "baseline_esr": ("2_11-20", "3_21-50", "4_51+"),
+            "baseline_cavitation": ("no", "yes"),
+            "strep_resistance": ("1_sens_0-8", "2_mod_8-99", "3_resist_100+"),
+            "radiologic_6m": (
+                "1_Death", "2_Considerable_deterioration", "3_Moderate_deterioration",
+                "4_No_change", "5_Moderate_improvement", "6_Considerable_improvement",
+            ),
+        },
+    ),
+    "stroke_classification": Table(
+        name="stroke_classification",
+        label="Stroke Classification",
+        title="5,110 patients and whether each went on to have a stroke",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MLDataR/stroke_classification.html",
+        classes=("no_stroke", "stroke"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MLDataR/stroke_classification.csv",
+        header=True,
+        fields=_STROKE_CLASSIFICATION_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={
+            "gender": ("Female", "Male", "Other"),
+        },
+    ),
+    "supported_work_programme": Table(
+        name="supported_work_programme",
+        label="The National Supported Work Programme",
+        title="445 people in a job training trial and what each earned afterwards",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/nsw_mixtape.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/nsw_mixtape.csv",
+        header=True,
+        fields=_SUPPORTED_WORK_PROGRAMME_FIELDS,
+        codes={
+            "data_id": ("Dehejia-Wahba Sample",),
+        },
+    ),
+    "supraclavicular_block": Table(
+        name="supraclavicular_block",
+        label="Supraclavicular Nerve Block",
+        title="103 nerve blocks and how long each took to numb the arm",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/medicaldata/supraclavicular.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/medicaldata/supraclavicular.csv",
+        header=True,
+        fields=_SUPRACLAVICULAR_BLOCK_FIELDS,
+    ),
+    "swedish_motorcycles": Table(
+        name="swedish_motorcycles",
+        label="Swedish Motorcycle Insurance",
+        title="64,548 Swedish motorcycle policies and what each claimed",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/dataOhlsson.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/dataOhlsson.csv",
+        header=True,
+        fields=_SWEDISH_MOTORCYCLES_FIELDS,
+        codes={
+            "kon": ("K", "M"),
+        },
+    ),
+    "texas_prisons": Table(
+        name="texas_prisons",
+        label="Texas Prison Construction",
+        title="816 state-years of prison building and who was locked up in them",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/texas.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/texas.csv",
+        header=True,
+        text_size=20,
+        fields=_TEXAS_PRISONS_FIELDS,
+    ),
+    "tongue_cancer": Table(
+        name="tongue_cancer",
+        label="Tongue Cancer Survival",
+        title="80 tongue cancer patients and how long each lived after diagnosis",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/KMsurv/tongue.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/KMsurv/tongue.csv",
+        header=True,
+        fields=_TONGUE_CANCER_FIELDS,
+    ),
+    "trial_of_the_pyx": Table(
+        name="trial_of_the_pyx",
+        label="The Trial of the Pyx",
+        title="72 weighings of coin from the royal mint and how far each strayed",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Pyx.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Pyx.csv",
+        header=True,
+        fields=_TRIAL_OF_THE_PYX_FIELDS,
+        codes={
+            "bags": ("1 and 2", "10", "3", "4", "5", "6", "7", "8", "9"),
+            "group": ("above std", "below std", "near std"),
+            "deviation": (
+                "(-.1 to 0)", "(-.2 to -.l)", "(-R to -.2)", "(.1 to .2)", "(.2 to R)",
+                "(0 to .l)", "Above R", "Below -R",
+            ),
+        },
+    ),
+    "us_regional_mortality": Table(
+        name="us_regional_mortality",
+        label="Mortality by American Region",
+        title="400 death rates by region, cause, sex and town or country",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lattice/USRegionalMortality.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lattice/USRegionalMortality.csv",
+        header=True,
+        fields=_US_REGIONAL_MORTALITY_FIELDS,
+        codes={
+            "region": (
+                "HHS Region 01", "HHS Region 02", "HHS Region 03", "HHS Region 04",
+                "HHS Region 05", "HHS Region 06", "HHS Region 07", "HHS Region 08",
+                "HHS Region 09", "HHS Region 10",
+            ),
+            "status": ("Rural", "Urban"),
+            "sex": ("Female", "Male"),
+            "cause": (
+                "Alzheimers", "Cancer", "Cerebrovascular diseases", "Diabetes",
+                "Flu and pneumonia", "Heart disease", "Lower respiratory", "Nephritis", "Suicide",
+                "Unintentional injuries",
+            ),
+        },
+    ),
+    "victorian_electricity": Table(
+        name="victorian_electricity",
+        label="Victorian Electricity Demand",
+        title="52,608 half-hours of electricity demand in Victoria, and how warm it was",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/tsibbledata/vic_elec.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/tsibbledata/vic_elec.csv",
+        header=True,
+        dates="%Y-%m-%dT%H:%M:%SZ",
+        text_size=10,
+        fields=_VICTORIAN_ELECTRICITY_FIELDS,
+        codes={
+            "holiday": ("FALSE", "TRUE"),
+        },
+    ),
+    "virgil_dactyls": Table(
+        name="virgil_dactyls",
+        label="Dactyls in Virgil's Aeneid",
+        title="60 counts of how often each foot of a hexameter line was a dactyl",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/HistData/Dactyl.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/HistData/Dactyl.csv",
+        header=True,
+        fields=_VIRGIL_DACTYLS_FIELDS,
+        codes={
+            "lines": (
+                "11:15", "16:20", "1:5", "21:25", "26:30", "31:35", "36:40", "41:45", "46:50",
+                "51:55", "56:60", "61:65", "66:70", "6:10", "71:75",
+            ),
+        },
+    ),
+    "woodland_birds": Table(
+        name="woodland_birds",
+        label="Birds of Three Woods",
+        title="35 bird species and how many of each were counted in three woods",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/birds.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/birds.csv",
+        header=True,
+        text_size=18,
+        fields=_WOODLAND_BIRDS_FIELDS,
+    ),
+    "workers_compensation": Table(
+        name="workers_compensation",
+        label="Workers Compensation Losses",
+        title="847 workers compensation losses, by class of work and by year",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/insuranceData/WorkersComp.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/insuranceData/WorkersComp.csv",
+        header=True,
+        fields=_WORKERS_COMPENSATION_FIELDS,
+    ),
+    "xclara_clusters": Table(
+        name="xclara_clusters",
+        label="Three Well-Separated Clusters",
+        title="3,000 points in the plane that fall into three clusters",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/cluster/xclara.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/cluster/xclara.csv",
+        header=True,
+        fields=_XCLARA_CLUSTERS_FIELDS,
+    ),
+    "yule_pauperism": Table(
+        name="yule_pauperism",
+        label="Yule on Pauperism",
+        title="32 English districts and how poor relief moved with pauperism",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/causaldata/yule.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/causaldata/yule.csv",
+        header=True,
+        text_size=19,
+        fields=_YULE_PAUPERISM_FIELDS,
+    ),
+    "zuni_pottery": Table(
+        name="zuni_pottery",
+        label="Zuni Pottery Counts",
+        title="420 rooms of a Zuni pueblo and the wares found in each",
+        licence="GPL-3 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/folio/zuni.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/folio/zuni.csv",
+        header=True,
+        text_size=7,
+        fields=_ZUNI_POTTERY_FIELDS,
+    ),
+    "fossil_electricity_share": Table(
+        name="fossil_electricity_share",
+        label="Fossil Share of Electricity",
+        title="7,182 country-years and the share of electricity burnt out of fossil fuels",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-fossil-fuels",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-fossil-fuels.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_FOSSIL_ELECTRICITY_SHARE_FIELDS,
+    ),
+    "nuclear_electricity_share": Table(
+        name="nuclear_electricity_share",
+        label="Nuclear Share of Electricity",
+        title="7,718 country-years and the share of electricity split out of atoms",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-nuclear",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-nuclear.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_NUCLEAR_ELECTRICITY_SHARE_FIELDS,
+    ),
+    "wind_electricity_share": Table(
+        name="wind_electricity_share",
+        label="Wind Share of Electricity",
+        title="7,661 country-years and the share of electricity taken from the wind",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-wind",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-wind.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_WIND_ELECTRICITY_SHARE_FIELDS,
+    ),
+    "solar_electricity_share": Table(
+        name="solar_electricity_share",
+        label="Solar Share of Electricity",
+        title="7,869 country-years and the share of electricity taken from the sun",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-solar",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-solar.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_SOLAR_ELECTRICITY_SHARE_FIELDS,
+    ),
+    "hydro_electricity_share": Table(
+        name="hydro_electricity_share",
+        label="Hydro Share of Electricity",
+        title="7,777 country-years and the share of electricity taken from falling water",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-hydro",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-hydro.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_HYDRO_ELECTRICITY_SHARE_FIELDS,
+    ),
+    "electricity_per_person": Table(
+        name="electricity_per_person",
+        label="Electricity Generated per Person",
+        title="7,071 country-years of electricity generated for every person living there",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/per-capita-electricity-generation",
+        classes=(),
+        url="https://ourworldindata.org/grapher/per-capita-electricity-generation.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_ELECTRICITY_PER_PERSON_FIELDS,
+    ),
+    "electricity_demand": Table(
+        name="electricity_demand",
+        label="Electricity Demand",
+        title="6,378 country-years of electricity asked for, in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/electricity-demand",
+        classes=(),
+        url="https://ourworldindata.org/grapher/electricity-demand.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_ELECTRICITY_DEMAND_FIELDS,
+    ),
+    "fossil_fuel_energy": Table(
+        name="fossil_fuel_energy",
+        label="Fossil Fuel Consumption",
+        title="6,405 country-years of energy taken from fossil fuels, in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/fossil-fuel-primary-energy",
+        classes=(),
+        url="https://ourworldindata.org/grapher/fossil-fuel-primary-energy.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=30,
+        fields=_FOSSIL_FUEL_ENERGY_FIELDS,
+    ),
+    "electricity_carbon_intensity": Table(
+        name="electricity_carbon_intensity",
+        label="Carbon Intensity of Electricity",
+        title="6,332 country-years and the carbon a kilowatt-hour of electricity cost",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/carbon-intensity-electricity",
+        classes=(),
+        url="https://ourworldindata.org/grapher/carbon-intensity-electricity.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_ELECTRICITY_CARBON_INTENSITY_FIELDS,
+    ),
+    "coal_production": Table(
+        name="coal_production",
+        label="Coal Production",
+        title="17,032 country-years of coal dug up, counted in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/coal-production-by-country",
+        classes=(),
+        url="https://ourworldindata.org/grapher/coal-production-by-country.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=37,
+        fields=_COAL_PRODUCTION_FIELDS,
+    ),
+    "oil_production": Table(
+        name="oil_production",
+        label="Oil Production",
+        title="17,992 country-years of oil pumped, counted in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/oil-production-by-country",
+        classes=(),
+        url="https://ourworldindata.org/grapher/oil-production-by-country.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=37,
+        fields=_OIL_PRODUCTION_FIELDS,
+    ),
+    "gas_production": Table(
+        name="gas_production",
+        label="Gas Production",
+        title="17,251 country-years of gas drawn, counted in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/gas-production-by-country",
+        classes=(),
+        url="https://ourworldindata.org/grapher/gas-production-by-country.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=37,
+        fields=_GAS_PRODUCTION_FIELDS,
+    ),
+    "consumption_co2_emissions": Table(
+        name="consumption_co2_emissions",
+        label="Consumption-Based CO2 Emissions",
+        title="5,053 country-years of carbon dioxide emitted for what each country used",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/consumption-co2-emissions",
+        classes=(),
+        url="https://ourworldindata.org/grapher/consumption-co2-emissions.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=29,
+        fields=_CONSUMPTION_CO2_EMISSIONS_FIELDS,
+    ),
+    "methane_emissions": Table(
+        name="methane_emissions",
+        label="Methane Emissions",
+        title="38,150 country-years of methane let go, weighed as carbon dioxide",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/methane-emissions",
+        classes=(),
+        url="https://ourworldindata.org/grapher/methane-emissions.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=40,
+        fields=_METHANE_EMISSIONS_FIELDS,
+    ),
+    "nitrous_oxide_emissions": Table(
+        name="nitrous_oxide_emissions",
+        label="Nitrous Oxide Emissions",
+        title="38,500 country-years of nitrous oxide let go, weighed as carbon dioxide",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/nitrous-oxide-emissions",
+        classes=(),
+        url="https://ourworldindata.org/grapher/nitrous-oxide-emissions.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=40,
+        fields=_NITROUS_OXIDE_EMISSIONS_FIELDS,
+    ),
+    "greenhouse_gas_emissions": Table(
+        name="greenhouse_gas_emissions",
+        label="Greenhouse Gas Emissions",
+        title="38,150 country-years of every greenhouse gas together, weighed as carbon dioxide",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/total-ghg-emissions",
+        classes=(),
+        url="https://ourworldindata.org/grapher/total-ghg-emissions.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=40,
+        fields=_GREENHOUSE_GAS_EMISSIONS_FIELDS,
+    ),
+    "temperature_anomaly": Table(
+        name="temperature_anomaly",
+        label="Global Temperature Anomaly",
+        title="531 yearly readings of how far the air has warmed since the 1860s",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/temperature-anomaly",
+        classes=(),
+        url="https://ourworldindata.org/grapher/temperature-anomaly.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=19,
+        fields=_TEMPERATURE_ANOMALY_FIELDS,
+    ),
+    "sea_surface_temperature": Table(
+        name="sea_surface_temperature",
+        label="Sea Surface Temperature Anomaly",
+        title="531 yearly readings of how far the sea surface has warmed since the 1860s",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/sea-surface-temperature-anomaly",
+        classes=(),
+        url="https://ourworldindata.org/grapher/sea-surface-temperature-anomaly.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=19,
+        fields=_SEA_SURFACE_TEMPERATURE_FIELDS,
+    ),
+    "ice_sheet_mass": Table(
+        name="ice_sheet_mass",
+        label="Ice Sheet Mass Balance",
+        title="384 monthly weighings of the ice lost from Greenland and Antarctica",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/ice-sheet-mass-balance",
+        classes=(),
+        url="https://ourworldindata.org/grapher/ice-sheet-mass-balance.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=10,
+        fields=_ICE_SHEET_MASS_FIELDS,
+    ),
+    "annual_precipitation": Table(
+        name="annual_precipitation",
+        label="Annual Precipitation",
+        title="16,770 country-years and how much rain and snow fell on each",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/average-precipitation-per-year",
+        classes=(),
+        url="https://ourworldindata.org/grapher/average-precipitation-per-year.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=44,
+        fields=_ANNUAL_PRECIPITATION_FIELDS,
+    ),
+    "forest_cover": Table(
+        name="forest_cover",
+        label="Share of Land under Forest",
+        title="8,078 country-years and the share of the land each still keeps under trees",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/forest-area-as-share-of-land-area",
+        classes=(),
+        url="https://ourworldindata.org/grapher/forest-area-as-share-of-land-area.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=46,
+        fields=_FOREST_COVER_FIELDS,
+    ),
+    "agricultural_land": Table(
+        name="agricultural_land",
+        label="Share of Land Farmed",
+        title="12,940 country-years and the share of the land each gives over to farming",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-of-land-area-used-for-agriculture",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-of-land-area-used-for-agriculture.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_AGRICULTURAL_LAND_FIELDS,
+    ),
+    "fertilizer_use": Table(
+        name="fertilizer_use",
+        label="Fertiliser Use",
+        title="12,606 country-years of fertiliser spread on every hectare of cropland",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/fertilizer-use-per-hectare-of-cropland",
+        classes=(),
+        url="https://ourworldindata.org/grapher/fertilizer-use-per-hectare-of-cropland.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_FERTILIZER_USE_FIELDS,
+    ),
+    "pesticide_use": Table(
+        name="pesticide_use",
+        label="Pesticide Use",
+        title="8,225 country-years of pesticide sprayed on the fields, in tonnes",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/pesticide-use-tonnes",
+        classes=(),
+        url="https://ourworldindata.org/grapher/pesticide-use-tonnes.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_PESTICIDE_USE_FIELDS,
+    ),
+    "wheat_yields": Table(
+        name="wheat_yields",
+        label="Wheat Yields",
+        title="9,799 country-years of wheat harvested, in tonnes a hectare",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/wheat-yields",
+        classes=(),
+        url="https://ourworldindata.org/grapher/wheat-yields.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_WHEAT_YIELDS_FIELDS,
+    ),
+    "maize_yields": Table(
+        name="maize_yields",
+        label="Maize Yields",
+        title="12,478 country-years of maize harvested, in tonnes a hectare",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/maize-yields",
+        classes=(),
+        url="https://ourworldindata.org/grapher/maize-yields.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_MAIZE_YIELDS_FIELDS,
+    ),
+    "rice_yields": Table(
+        name="rice_yields",
+        label="Rice Yields",
+        title="9,934 country-years of rice harvested, in tonnes a hectare",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/rice-yields",
+        classes=(),
+        url="https://ourworldindata.org/grapher/rice-yields.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_RICE_YIELDS_FIELDS,
+    ),
+    "cereal_production": Table(
+        name="cereal_production",
+        label="Cereal Production",
+        title="13,538 country-years of cereal brought in, in tonnes",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/cereal-production",
+        classes=(),
+        url="https://ourworldindata.org/grapher/cereal-production.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_CEREAL_PRODUCTION_FIELDS,
+    ),
+    "cattle_numbers": Table(
+        name="cattle_numbers",
+        label="Number of Cattle",
+        title="14,468 country-years and how many head of cattle stood in each",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/cattle-livestock-count-heads",
+        classes=(),
+        url="https://ourworldindata.org/grapher/cattle-livestock-count-heads.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_CATTLE_NUMBERS_FIELDS,
+    ),
+    "fish_consumption": Table(
+        name="fish_consumption",
+        label="Fish and Seafood Eaten",
+        title="13,220 country-years of fish and seafood eaten for every person living there",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/fish-and-seafood-consumption-per-capita",
+        classes=(),
+        url="https://ourworldindata.org/grapher/fish-and-seafood-consumption-per-capita.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_FISH_CONSUMPTION_FIELDS,
+    ),
+    "gdp_per_capita_growth": Table(
+        name="gdp_per_capita_growth",
+        label="Growth of Output per Person",
+        title="12,246 country-years and how fast output per person grew or shrank",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/gdp-per-capita-growth",
+        classes=(),
+        url="https://ourworldindata.org/grapher/gdp-per-capita-growth.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_GDP_PER_CAPITA_GROWTH_FIELDS,
+    ),
+    "trade_share_of_gdp": Table(
+        name="trade_share_of_gdp",
+        label="Trade as a Share of Output",
+        title="9,739 country-years and how much of what each made was traded",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/trade-as-share-of-gdp",
+        classes=(),
+        url="https://ourworldindata.org/grapher/trade-as-share-of-gdp.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_TRADE_SHARE_OF_GDP_FIELDS,
+    ),
+    "foreign_direct_investment": Table(
+        name="foreign_direct_investment",
+        label="Foreign Direct Investment",
+        title="10,031 country-years and how much foreign money came in, against output",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/foreign-direct-investment-net-inflows-of-gdp",
+        classes=(),
+        url="https://ourworldindata.org/grapher/foreign-direct-investment-net-inflows-of-gdp.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_FOREIGN_DIRECT_INVESTMENT_FIELDS,
+    ),
+    "labour_force_participation": Table(
+        name="labour_force_participation",
+        label="Labour Force Participation",
+        title="7,186 country-years and the share of grown-ups working or looking for work",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/labor-force-participation-rate",
+        classes=(),
+        url="https://ourworldindata.org/grapher/labor-force-participation-rate.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_LABOUR_FORCE_PARTICIPATION_FIELDS,
+    ),
+    "world_population": Table(
+        name="world_population",
+        label="Population",
+        title="58,824 country-years and how many people lived in each, back to 10,000 BC",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/population",
+        classes=(),
+        url="https://ourworldindata.org/grapher/population.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=36,
+        fields=_WORLD_POPULATION_FIELDS,
+    ),
+    "birth_rate": Table(
+        name="birth_rate",
+        label="Birth Rate",
+        title="18,722 country-years and how many were born for every thousand living",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/crude-birth-rate",
+        classes=(),
+        url="https://ourworldindata.org/grapher/crude-birth-rate.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=59,
+        fields=_BIRTH_RATE_FIELDS,
+    ),
+    "maternal_mortality": Table(
+        name="maternal_mortality",
+        label="Maternal Mortality",
+        title="9,264 country-years and how many mothers died for every hundred thousand born",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/maternal-mortality",
+        classes=(),
+        url="https://ourworldindata.org/grapher/maternal-mortality.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=54,
+        fields=_MATERNAL_MORTALITY_FIELDS,
+    ),
+    "international_migrants": Table(
+        name="international_migrants",
+        label="International Migrants",
+        title="2,176 country-years and how many people living in each were born elsewhere",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/migrant-stock-total",
+        classes=(),
+        url="https://ourworldindata.org/grapher/migrant-stock-total.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=39,
+        fields=_INTERNATIONAL_MIGRANTS_FIELDS,
+    ),
+    "broadband_subscriptions": Table(
+        name="broadband_subscriptions",
+        label="Landline Broadband Subscriptions",
+        title="4,590 country-years and how many broadband lines each had per hundred people",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/fixed-broadband-subscriptions-per-100-people",
+        classes=(),
+        url="https://ourworldindata.org/grapher/fixed-broadband-subscriptions-per-100-people.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_BROADBAND_SUBSCRIPTIONS_FIELDS,
     ),
 }
 
