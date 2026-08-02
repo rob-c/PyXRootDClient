@@ -500,15 +500,15 @@ straight off a storage element, reading the baskets it needs and nothing else.
 
 ### The datasets everyone teaches with
 
-MNIST is one of a hundred and eighty-eight. `xrd.root.datasets` converts the
-sets machine learning is actually taught and benchmarked with, all of them the
-same way — one tree per class, the label beside the data, and the row's place
-in the original file so any number can be traced back to where it came from.
-The thirty-nine that have a number to predict rather than a class to sort into
-get one tree of every row instead, and the number to predict is a column like
-any other. What ships here is the converter, not the data: no dataset is
-redistributed in this repository, and `datasets/` is where the files it writes
-are meant to go.
+MNIST is one of three hundred and eighty-eight. `xrd.root.datasets` converts
+the sets machine learning is actually taught and benchmarked with, all of them
+the same way — one tree per class, the label beside the data, and the row's
+place in the original file so any number can be traced back to where it came
+from. The hundred and seventy-seven that have a number to predict rather than
+a class to sort into get one tree of every row instead, and the number to
+predict is a column like any other. What ships here is the converter, not the
+data: no dataset is redistributed in this repository, and `datasets/` is where
+the files it writes are meant to go.
 
 ```python
 from xrd.root import datasets
@@ -712,12 +712,224 @@ datasets.convert("iris", "iris.root")
 | `website_phishing` | 1,353 web pages judged phishing, suspicious or legitimate on nine signs | CC BY 4.0 | 17 kB |
 | `wholesale_customers` | 440 wholesale customers and what each spent on six kinds of goods | CC BY 4.0 | 15 kB |
 | `youtube_spam` | 1,956 comments under five pop videos, spam or not | CC BY 4.0 | 242 kB |
+| `acute_myeloid_leukaemia` | 646 patients in a trial of two treatments for acute myeloid leukaemia | LGPL-2 or later | 16 kB |
+| `alcohol_by_country` | 193 countries and how much pure alcohol each drank a head | MIT | 9 kB |
+| `animal_scat` | 110 droppings found on a trail and which animal left each | MIT | 18 kB |
+| `anorexia_treatment` | 72 young women treated for anorexia and what each weighed after | GPL-2 or GPL-3 | 9 kB |
+| `bad_drivers` | 51 American states and what car insurance cost a driver in each | MIT | 8 kB |
+| `baseball_batting` | 128,598 player-seasons of major league batting and the home runs each brought | GPL | 2.5 MB |
+| `baseball_fielding` | 174,332 player-seasons of major league fielding and the errors each brought | GPL | 2.7 MB |
+| `baseball_hall_of_fame` | 6,426 Hall of Fame ballots and how many votes each player drew | GPL | 88 kB |
+| `baseball_hitters` | 322 baseball players in the 1986 season and what each was paid | GPL-2 | 21 kB |
+| `baseball_managers` | 4,410 manager-seasons and how many games each won | GPL | 59 kB |
+| `baseball_pitching` | 57,630 pitcher-seasons and the earned run average each finished with | GPL | 1.8 MB |
+| `baseball_players` | 24,270 major league players and how tall each stood | GPL | 1.5 MB |
+| `baseball_salaries` | 26,428 player-seasons and what the player was paid | GPL | 236 kB |
+| `bechdel_test` | 1,794 films and whether each passes the Bechdel test | MIT | 92 kB |
+| `biliary_cholangitis` | 418 patients with primary biliary cholangitis and how long each lived | LGPL-2 or later | 21 kB |
+| `black_cherry_trees` | 31 felled black cherry trees and how much timber each held | GPL-2 or GPL-3 | 6 kB |
+| `bladder_tumours` | 340 follow-up records from a trial of thiotepa against bladder tumours | LGPL-2 or later | 8 kB |
+| `boating_trips` | 659 households and how many boating trips each took in a season | GPL-2 or GPL-3 | 16 kB |
+| `boston_housing` | 506 census tracts around Boston and what a home in each was worth | GPL-2 or GPL-3 | 23 kB |
+| `breast_cancer_gbsg` | 686 women with node-positive breast cancer and how long each went clear | LGPL-2 or later | 17 kB |
+| `brushtail_possums` | 104 brushtail possums trapped and measured, and where each was caught | GPL-3 | 9 kB |
+| `california_schools` | 420 Californian school districts and how their fifth-graders scored | GPL-2 or GPL-3 | 29 kB |
+| `canadian_interlocks` | 248 Canadian firms and how many boards each was tied to | GPL-2 or later | 7 kB |
+| `canadian_womens_work` | 263 Canadian women and whether each worked full time, part time or not at all | GPL-2 or later | 10 kB |
+| `candy_rankings` | 85 sweets and how often each won a head-to-head vote | MIT | 10 kB |
+| `car_seat_sales` | 400 stores and how many child car seats each sold | GPL-2 | 13 kB |
+| `card_default` | 10,000 cardholders and whether each defaulted | GPL-2 | 197 kB |
+| `cat_hearts` | 144 adult cats weighed body and heart, and the sex of each | GPL-2 or GPL-3 | 7 kB |
+| `chicago_taxi` | 10,000 Chicago taxi rides and whether the driver was tipped | MIT | 97 kB |
+| `chick_weights` | 578 weighings of chicks fed four different diets | GPL-2 or GPL-3 | 9 kB |
+| `chile_plebiscite` | 2,700 Chilean voters and how each said they would vote | GPL-2 or later | 49 kB |
+| `chocolate_cakes` | 270 chocolate cakes baked to three recipes and the angle each broke at | GPL-2 or later | 7 kB |
+| `college_distance` | 4,739 American schoolchildren and how far each lived from a college | GPL-2 or GPL-3 | 53 kB |
+| `college_majors` | 173 college majors and what their graduates earned | MIT | 21 kB |
+| `colon_cancer_trial` | 1,858 records from a trial of levamisole and fluorouracil after surgery | LGPL-2 or later | 31 kB |
+| `commercial_oils` | 96 samples of commercial oil and which plant each was pressed from | MIT | 19 kB |
+| `congress_age` | 18,635 terms served in the US Congress and how old the member was | MIT | 305 kB |
+| `cow_milk_protein` | 1,337 weekly milk samples from cows fed three diets | GPL-2 or later | 13 kB |
+| `cps_wages` | 534 American workers surveyed in 1985 and what each earned an hour | GPL-2 or GPL-3 | 12 kB |
+| `credit_card_applications` | 1,319 credit card applications and whether each was accepted | GPL-2 or GPL-3 | 40 kB |
+| `credit_card_balance` | 400 cardholders and the balance each carried | GPL-2 | 15 kB |
+| `developer_survey` | 5,594 software developers and what each was paid | MIT | 71 kB |
+| `diamonds` | 53,940 round-cut diamonds and what each sold for | MIT | 744 kB |
+| `dnase_assay` | 176 wells of a DNase assay and the optical density each read | GPL-2 or GPL-3 | 7 kB |
+| `doctor_visits` | 5,190 Australians in the 1977 health survey and how often each saw a doctor | GPL-2 or GPL-3 | 43 kB |
+| `doctoral_publications` | 915 biochemistry doctoral students and how many papers each published | GPL-2 or GPL-3 | 12 kB |
+| `earthquake_intensity` | 182 seismometer readings and the ground acceleration each recorded | GPL-2 or later | 7 kB |
+| `economic_growth` | 121 countries in the Mankiw, Romer and Weil growth study and how fast each grew | GPL-2 or GPL-3 | 9 kB |
+| `economics_journals` | 180 economics journals and how many libraries subscribed to each | GPL-2 or GPL-3 | 13 kB |
+| `email_spam` | 3,921 emails to one account and whether each was spam | GPL-3 | 73 kB |
+| `epilepsy_seizures` | 236 clinic visits by epileptic patients and the seizures each brought | GPL-2 or GPL-3 | 8 kB |
+| `exercise_histories` | 945 exercise reports from girls in treatment and their controls | GPL-2 or later | 14 kB |
+| `extramarital_affairs` | 601 people answering a 1969 magazine survey and how often each strayed | GPL-2 or GPL-3 | 11 kB |
+| `fandango_ratings` | 146 films and how four websites rated each | MIT | 16 kB |
+| `fast_food_nutrition` | 515 fast food items and how many calories each holds | GPL-3 | 22 kB |
+| `fatty_liver_disease` | 17,549 residents of Olmsted County and how heavy each was | LGPL-2 or later | 376 kB |
+| `fertility_labour` | 254,654 American mothers in the 1980 census and whether each had a third child | GPL-2 or GPL-3 | 1.8 MB |
+| `fiji_earthquakes` | 1,000 earthquakes near Fiji and how strong each was | GPL-2 or GPL-3 | 18 kB |
+| `florida_2000_vote` | 67 Florida counties and how each voted in the 2000 presidential election | GPL-2 or later | 9 kB |
+| `flying_etiquette` | 1,040 air travellers and what each thought of reclining a seat | MIT | 47 kB |
+| `free_light_chain` | 7,874 residents of Olmsted County assayed for serum free light chains | LGPL-2 or later | 116 kB |
+| `fuel_economy` | 234 car models and what each did to the gallon on the highway | MIT | 9 kB |
+| `galton_heights` | 898 adult children measured with their parents | GPL-2 or later | 12 kB |
+| `gapminder` | 1,704 country-years of life expectancy, population and income | CC0 | 38 kB |
+| `gestation_births` | 1,236 births in the Child Health and Development Studies | GPL-2 or later | 34 kB |
+| `granulomatous_disease` | 203 infection records from a trial of gamma interferon | LGPL-2 or later | 14 kB |
+| `greenhouse_gases` | 300 ice-core readings of three greenhouse gases over two thousand years | Artistic-2.0 | 10 kB |
+| `grouse_ticks` | 403 grouse chicks and how many ticks each carried | GPL-2 or later | 9 kB |
+| `guns_and_crime` | 1,173 American state-years of crime rates and whether a carry law was in force | GPL-2 or GPL-3 | 74 kB |
+| `hate_crimes` | 51 American states and how many hate crimes each reported | MIT | 11 kB |
+| `help_study` | 453 adults leaving detoxification and which substance each used | GPL-2 or later | 36 kB |
+| `high_school_and_beyond` | 200 American schoolchildren and which programme each was in | GPL-3 | 14 kB |
+| `historic_co2` | 694 readings of atmospheric carbon dioxide over eight hundred thousand years | Artistic-2.0 | 13 kB |
+| `hpc_jobs` | 4,331 jobs run on a compute cluster and how long each took | MIT | 62 kB |
+| `infant_mortality` | 105 nations around 1970 and how many infants each lost per thousand born | GPL-2 or later | 7 kB |
+| `infertility` | 248 women in a matched study of infertility, cases and their controls | GPL-2 or GPL-3 | 10 kB |
+| `insect_sprays` | 72 plots treated with six insecticides and how many insects survived | GPL-2 or GPL-3 | 10 kB |
+| `italian_olive_oils` | 572 Italian olive oils and which part of the country each came from | Artistic-2.0 | 23 kB |
+| `lecture_ratings` | 73,421 ratings students at ETH Zurich gave their lecturers | GPL-2 or later | 532 kB |
+| `lending_club` | 9,857 personal loans and whether each went bad | MIT | 259 kB |
+| `leptograpsus_crabs` | 200 rock crabs measured five ways, in two colour forms | GPL-2 or GPL-3 | 11 kB |
+| `life_cycle_savings` | 50 countries in the 1960s and how much of their income each saved | GPL-2 or GPL-3 | 7 kB |
+| `liver_transplant_list` | 815 people put on a liver transplant list and what became of each | LGPL-2 or later | 17 kB |
+| `loblolly_pines` | 84 measurements of loblolly pine seedlings and how tall each stood | GPL-2 or GPL-3 | 6 kB |
+| `low_birth_weight` | 189 births at a Massachusetts hospital and how much each baby weighed | GPL-2 or GPL-3 | 8 kB |
+| `lung_cancer_survival` | 228 patients with advanced lung cancer and how long each lived | LGPL-2 or later | 9 kB |
+| `mammal_sleep` | 83 mammals and how long each sleeps in a day | MIT | 10 kB |
+| `marijuana_arrests` | 5,226 people arrested in Toronto and whether each was released with a summons | GPL-2 or later | 44 kB |
+| `marriage_licences` | 98 people named on marriage licences in Mobile County | GPL-2 or later | 13 kB |
+| `math_achievement` | 7,185 American schoolchildren and how each scored in mathematics | GPL-2 or later | 75 kB |
+| `medical_care_demand` | 4,406 elderly Americans in a 1987 survey and how often each saw a doctor | GPL-2 or GPL-3 | 68 kB |
+| `mid_atlantic_wages` | 3,000 men in the mid-Atlantic states and what each earned | GPL-2 | 47 kB |
+| `midwest_counties` | 437 counties of the American midwest and how many in each were poor | MIT | 69 kB |
+| `monoclonal_gammopathy` | 1,384 patients with monoclonal gammopathy followed to death | LGPL-2 or later | 28 kB |
+| `mortgage_denial` | 2,380 Boston mortgage applications and whether each was turned down | GPL-2 or GPL-3 | 47 kB |
+| `motor_trend_cars` | 32 cars road-tested by Motor Trend in 1974 and what each did to the gallon | GPL-2 or GPL-3 | 8 kB |
+| `movielens` | 100,004 ratings people gave to films | Artistic-2.0 | 2.9 MB |
+| `new_york_air` | 153 days in New York in 1973 and the ozone measured on each | GPL-2 or GPL-3 | 7 kB |
+| `nyc_flights` | 336,776 flights out of New York in 2013 and how late each arrived | CC0 | 8.0 MB |
+| `nyc_weather` | 26,115 hours of weather at the three New York airports | CC0 | 404 kB |
+| `occupational_prestige` | 102 Canadian occupations and how each was rated for prestige | GPL-2 or later | 9 kB |
+| `oesophageal_cancer` | 88 groups of French men and how many in each had oesophageal cancer | GPL-2 or GPL-3 | 6 kB |
+| `old_faithful` | 272 eruptions of Old Faithful and how long the wait before each | GPL-2 or GPL-3 | 7 kB |
+| `orange_juice` | 1,070 shoppers and which of two orange juices each bought | GPL-2 | 32 kB |
+| `orange_trees` | 35 measurements of orange trees and how far around each had grown | GPL-2 or GPL-3 | 5 kB |
+| `orchard_sprays` | 64 cells of a Latin square and how far each spray put the bees off | GPL-2 or GPL-3 | 14 kB |
+| `orthodontic_growth` | 108 skull measurements of children followed through adolescence | GPL-2 or later | 6 kB |
+| `oxford_boys` | 234 height measurements of twenty-six boys in Oxford | GPL-2 or later | 7 kB |
+| `penicillin_testing` | 144 plates of a penicillin assay and how wide the clear zone grew | GPL-2 or later | 6 kB |
+| `petroleum_rock` | 48 slices of reservoir rock and how well each let fluid through | GPL-2 or GPL-3 | 6 kB |
+| `phenobarbital` | 744 doses given and blood samples drawn from newborn infants | GPL-2 or later | 11 kB |
+| `pima_diabetes` | 200 Pima women and whether each tested diabetic | GPL-2 or GPL-3 | 11 kB |
+| `professor_salaries` | 397 American professors and what each was paid over 2008 and 2009 | GPL-2 or later | 10 kB |
+| `psid_labour` | 753 married women in the 1976 panel study and whether each worked for pay | GPL-2 or GPL-3 | 34 kB |
+| `reported_weight` | 200 people who gave both their measured and their reported weight | GPL-2 or later | 9 kB |
+| `resume_callbacks` | 4,870 fictitious resumes sent to employers and which drew a call back | GPL-3 | 77 kB |
+| `retinopathy_laser` | 394 eyes treated with laser coagulation and how long each kept its sight | LGPL-2 or later | 12 kB |
+| `sat_and_gpa` | 1,000 students and the grade average each finished the first year with | GPL-3 | 16 kB |
+| `school_absences` | 146 Australian schoolchildren and how many days each missed | GPL-2 or GPL-3 | 6 kB |
+| `seat_belt_laws` | 765 American state-years of road deaths and how belt wearing was enforced | GPL-2 or GPL-3 | 28 kB |
+| `seattle_pets` | 52,519 licensed pets in Seattle and what kind of animal each is | GPL-3 | 1.3 MB |
+| `sleep_deprivation` | 180 reaction times from eighteen drivers kept short of sleep | GPL-2 or later | 7 kB |
+| `slid_wages` | 7,425 Ontario workers and what each earned an hour | GPL-2 or later | 69 kB |
+| `snail_mortality` | 96 groups of snails held in a laboratory and how many died | GPL-2 or GPL-3 | 6 kB |
+| `soybean_growth` | 412 weighings of soybean plants through a growing season | GPL-2 or later | 10 kB |
+| `sp500_daily` | 1,250 trading days on the S&P 500 and whether the index rose | GPL-2 | 46 kB |
+| `sp500_weekly` | 1,089 weeks on the S&P 500 and whether the index rose | GPL-2 | 45 kB |
+| `spruce_growth` | 1,027 measurements of spruce trees grown in ozone chambers | GPL-2 or later | 11 kB |
+| `stanford_heart` | 172 follow-up records from the Stanford heart transplant programme | LGPL-2 or later | 9 kB |
+| `star_properties` | 96 stars and how hot the surface of each burns | Artistic-2.0 | 7 kB |
+| `state_sat_scores` | 50 American states and what each spent on a pupil | GPL-2 or later | 8 kB |
+| `steak_preferences` | 550 Americans and how each likes a steak cooked | MIT | 29 kB |
+| `student_survey` | 237 Australian statistics students and which hand each wrote with | GPL-2 or GPL-3 | 14 kB |
+| `swiss_fertility` | 47 French-speaking Swiss provinces in 1888 and how fertile each was | GPL-2 or GPL-3 | 7 kB |
+| `swiss_labour` | 872 Swiss women and whether each was in the labour force | GPL-2 or GPL-3 | 20 kB |
+| `tarantino_scripts` | 1,894 curses and deaths counted through seven Tarantino films | MIT | 32 kB |
+| `teaching_evaluations` | 463 university courses and how the students rated the teacher | GPL-3 | 17 kB |
+| `telecom_churn` | 5,000 phone customers and whether each left | MIT | 163 kB |
+| `telecom_contracts` | 7,043 telecom customers and whether each left | MIT | 124 kB |
+| `temperature_and_carbon` | 268 years of global temperature anomalies and the carbon burnt in each | Artistic-2.0 | 9 kB |
+| `ten_mile_race` | 8,636 runners of the Cherry Blossom race and how long each took | GPL-2 or later | 85 kB |
+| `texas_housing` | 8,602 city-months of Texas house sales and the median price in each | MIT | 140 kB |
+| `theophylline` | 132 blood samples from twelve subjects given theophylline | GPL-2 or GPL-3 | 7 kB |
+| `titanic` | 1,309 people aboard the Titanic and which of them lived | GPL-2 or later | 27 kB |
+| `tooth_growth` | 60 guinea pigs given vitamin C two ways and how far their teeth grew | GPL-2 or GPL-3 | 7 kB |
+| `travel_mode` | 840 rows of an Australian trip survey, one a way the traveller could have gone | GPL-2 or GPL-3 | 22 kB |
+| `uk_smoking` | 1,691 British adults and whether each smoked | GPL-3 | 23 kB |
+| `un_national_statistics` | 213 countries and how long a woman born in each could expect to live | GPL-2 or later | 12 kB |
+| `us_aircraft` | 3,322 aircraft that flew out of New York and how many seats each had | CC0 | 42 kB |
+| `us_airports` | 1,458 American airports and how high above the sea each stands | CC0 | 56 kB |
+| `us_arrests` | 50 American states and how many were murdered in each per hundred thousand | GPL-2 or GPL-3 | 7 kB |
+| `us_births_1978` | 365 days of 1978 and how many Americans were born on each | GPL-2 or later | 10 kB |
+| `us_births_2014` | 1,000 American births in 2014 and how much each baby weighed | GPL-3 | 19 kB |
+| `us_cereals` | 65 American breakfast cereals and which company made each | GPL-2 or GPL-3 | 22 kB |
+| `us_colleges` | 777 American colleges and whether each was private | GPL-2 | 44 kB |
+| `us_economics` | 574 months of American spending, saving and unemployment | MIT | 16 kB |
+| `us_gun_murders` | 51 American states and how many gun murders each saw in 2010 | Artistic-2.0 | 7 kB |
+| `us_state_education` | 51 American states and how their students scored on the SAT | GPL-2 or later | 7 kB |
+| `used_car_prices` | 804 used cars from the 2005 model year and what each was worth | MIT | 17 kB |
+| `utility_bills` | 117 monthly gas and electricity bills for one house | GPL-2 or later | 10 kB |
+| `verbal_aggression` | 7,584 answers to a questionnaire about wanting to curse, scold or shout | GPL-2 or later | 59 kB |
+| `vocabulary_test` | 30,351 Americans given a ten-word vocabulary test and how many each knew | GPL-2 or later | 186 kB |
+| `volunteering` | 1,421 people scored on two personality scales and whether each volunteered | GPL-2 or later | 15 kB |
+| `warp_breaks` | 54 looms of wool and how often the yarn broke on each | GPL-2 or GPL-3 | 6 kB |
+| `wheat_yield_trials` | 224 plots of a wheat variety trial and what each yielded | GPL-2 or later | 8 kB |
+| `whickham_smoking` | 1,314 women followed for twenty years and whether each was still alive | GPL-2 or later | 13 kB |
+| `windsor_house_prices` | 546 houses sold in Windsor, Ontario and what each fetched | GPL-2 or GPL-3 | 12 kB |
+| `womens_labour_1975` | 753 married women in 1975 and whether each worked for pay | GPL-2 or later | 21 kB |
+| `workplace_smoking_ban` | 10,000 American workers and whether each smoked | GPL-2 or GPL-3 | 76 kB |
+| `world_values_survey` | 5,381 people in four countries and what each thought the state owed the poor | GPL-2 or later | 43 kB |
+| `youth_risk_behaviour` | 13,583 American schoolchildren and how much each weighed | GPL-3 | 169 kB |
+| `gdp_per_capita_worldbank` | 7,445 country-years of output per person, in 2021 international dollars | CC BY 4.0 | 68 kB |
+| `electricity_access` | 7,140 country-years and the share of people with electricity at home | CC BY 4.0 | 42 kB |
+| `internet_use` | 6,476 country-years and the share of people using the internet | CC BY 4.0 | 57 kB |
+| `consumer_price_inflation` | 9,795 country-years and how fast consumer prices rose in each | CC BY 4.0 | 106 kB |
+| `unemployment_rate` | 6,986 country-years and the share of the workforce out of work | CC BY 4.0 | 50 kB |
+| `freshwater_withdrawals` | 6,401 country-years and how much fresh water each drew, in cubic kilometres | CC BY 4.0 | 51 kB |
+| `air_passengers` | 8,593 country-years and how many air passengers each carried | CC BY 4.0 | 70 kB |
+| `mobile_subscriptions` | 9,521 country-years and how many mobile subscriptions each had per hundred people | CC BY 4.0 | 84 kB |
+| `internet_users` | 6,006 country-years and how many people used the internet in each | CC BY 4.0 | 53 kB |
+| `co2_emissions` | 29,384 country-years of carbon dioxide emitted, in tonnes | CC BY 4.0 | 196 kB |
+| `co2_emissions_per_person` | 26,509 country-years of carbon dioxide emitted for every person living there | CC BY 4.0 | 270 kB |
+| `cumulative_co2_emissions` | 27,563 country-years of carbon dioxide emitted since 1750, in tonnes | CC BY 4.0 | 203 kB |
+| `co2_per_dollar` | 17,528 country-years of carbon dioxide emitted for every dollar of output | CC BY 4.0 | 181 kB |
+| `renewable_electricity` | 7,872 country-years and the share of electricity generated from renewables | CC BY 4.0 | 72 kB |
+| `electricity_generation` | 7,913 country-years of electricity generated, in terawatt-hours | CC BY 4.0 | 56 kB |
+| `renewable_energy` | 6,379 country-years and the share of primary energy that came from renewables | CC BY 4.0 | 66 kB |
+| `energy_use_per_person` | 11,225 country-years of primary energy used per person, in kilowatt-hours | CC BY 4.0 | 93 kB |
+| `primary_energy` | 13,414 country-years of primary energy used, in terawatt-hours | CC BY 4.0 | 126 kB |
+| `cereal_yields` | 13,488 country-years of cereal harvested, in tonnes a hectare | CC BY 4.0 | 105 kB |
+| `calorie_supply` | 13,454 country-years and how many calories a day each had for every person | CC BY 4.0 | 102 kB |
+| `gdp_per_capita_maddison` | 21,586 country-years of output per person back to the year one, in 2011 dollars | CC BY 4.0 | 155 kB |
+| `population_density` | 76,576 country-years and how many people lived on each square kilometre | CC BY 4.0 | 687 kB |
+| `urban_population` | 21,052 country-years and the share of people living in towns and cities | CC BY 4.0 | 191 kB |
+| `life_expectancy_at_birth` | 18,722 country-years and how long a child born then could expect to live | CC BY 4.0 | 119 kB |
+| `child_mortality` | 17,066 country-years and how many children in a hundred died before turning five | CC BY 4.0 | 88 kB |
+| `child_mortality_igme` | 13,980 country-years of child deaths per hundred live births, as the UN counts them | CC BY 4.0 | 145 kB |
+| `adult_literacy` | 1,833 country-years and the share of adults who could read and write | CC BY 4.0 | 20 kB |
+| `human_development_index` | 6,604 country-years scored on health, schooling and income together | CC BY 4.0 | 42 kB |
+| `sea_level` | 563 monthly readings of how far the sea has risen since 1880, in millimetres | CC BY 4.0 | 15 kB |
 
-Thirty-nine of them have a number to predict rather than a class; the rest sort
-rows into classes. The last column is one file holding every split, written
-with the default `zlib`, as measured on a conversion of all hundred and
-eighty-eight — every split of a set that has them, a tree a class, and the
-`about` key beside them.
+A hundred and seventy-seven of them have a number to predict rather than a
+class; the rest sort rows into classes. The last column is one file holding
+every split, written with the default `zlib`, as measured on a conversion of
+all three hundred and eighty-eight — every split of a set that has them, a
+tree a class, and the `about` key beside them.
+
+The last two hundred come from two places that publish whole shelves at once.
+The R teaching tables are read from the CSV Rdatasets serves for each: a
+header row naming the columns the way the R package documents them, a first
+column of row names, then a row per example. A row-name column that counts
+from one is kept as `row`, and one that names the thing measured — a car, a
+canton, a state — is kept as `name`; what each may be passed on under is what
+its package says, which is why the GPL, the LGPL, the Artistic licence, MIT
+and CC0 all appear. The country-year tables are the CSV behind an Our World in
+Data chart: a place, its three-letter code where it has one — a continent or
+an income group has none — the year, and the one thing measured, which is the
+number to predict.
 
 Nothing is redistributed here. Each set is fetched from whoever publishes it,
 on the machine doing the converting, and the licences above are what those

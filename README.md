@@ -124,19 +124,23 @@ characters when it is not — and `xrd.root.create` writes a new ROOT file:
 trees filled entry by entry and flushed a basket at a time, histograms,
 graphs, strings and arrays of numbers, under every compression ROOT itself
 writes, still from nothing but the standard library. `xrd.root.datasets` turns
-a hundred and eighty-eight of the sets machine learning is taught with — the
-MNIST family and EMNIST, CIFAR-10 and CIFAR-100, Semeion, the spoken digits of
-FSDD, the SMS Spam Collection, MiniBooNE, the MAGIC gamma telescope, the HTRU2
-pulsar survey, Human Activity Recognition, Iris, the Palmer penguins,
+three hundred and eighty-eight of the sets machine learning is taught with —
+the MNIST family and EMNIST, CIFAR-10 and CIFAR-100, Semeion, the spoken
+digits of FSDD, the SMS Spam Collection, MiniBooNE, the MAGIC telescope, the
+HTRU2 pulsar survey, Human Activity Recognition, Iris, the Palmer penguins,
 Covertype, Adult, Mushroom, Letter Recognition, Optical Digits, Wine, Wine
 Quality, Spambase, Ionosphere, Glass, Abalone, Banknote Authentication, Breast
 Cancer Wisconsin, Dry Bean, Seeds, Yeast, Heart Disease, Car Evaluation, Auto
 MPG, Bike Sharing, Energy Efficiency, Real Estate Valuation, Student
 Performance, fifty more of the UCI teaching shelf from Sonar and Soybean to
 Bank Marketing, the Landsat satellite images, the pen-written digits and the
-office-occupancy recordings, and a hundred read straight from the archive's
-own CSV, from ISOLET and Poker Hand to Connect-4, the splice junctions, the
-Steel Plates faults and the CDC diabetes survey — into ROOT files a tree per
+office-occupancy recordings, a hundred read straight from the archive's own
+CSV, from ISOLET and Poker Hand to Connect-4, the splice junctions, the Steel
+Plates faults and the CDC diabetes survey, a hundred and seventy-one teaching
+tables of the R world from Boston Housing and Old Faithful to the Lahman
+baseball records, the NYC flights and the survival studies, and twenty-nine
+country-year tables charted by Our World in Data, from CO2 emissions and
+energy use to child mortality and sea level — into ROOT files a tree per
 class, or one tree of every row where what is predicted is a number rather
 than a class, fetched from whoever publishes them and carrying their licence
 in the file, so a training loop can read them straight off a storage element

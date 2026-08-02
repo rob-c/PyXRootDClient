@@ -435,6 +435,54 @@ def test_the_datasets_asked_for_are_all_there():
         "superconductivity", "support2", "taiwanese_bankruptcy", "tennis_majors", "tetouan_power",
         "thoracic_surgery", "thyroid_recurrence", "user_knowledge", "waveform", "website_phishing",
         "wholesale_customers", "youtube_spam",
+        "acute_myeloid_leukaemia", "alcohol_by_country", "animal_scat", "anorexia_treatment",
+        "bad_drivers", "baseball_batting", "baseball_fielding", "baseball_hall_of_fame",
+        "baseball_hitters", "baseball_managers", "baseball_pitching", "baseball_players",
+        "baseball_salaries", "bechdel_test", "biliary_cholangitis", "black_cherry_trees",
+        "bladder_tumours", "boating_trips", "boston_housing", "breast_cancer_gbsg",
+        "brushtail_possums", "california_schools", "canadian_interlocks", "canadian_womens_work",
+        "candy_rankings", "car_seat_sales", "card_default", "cat_hearts", "chicago_taxi",
+        "chick_weights", "chile_plebiscite", "chocolate_cakes", "college_distance",
+        "college_majors", "colon_cancer_trial", "commercial_oils", "congress_age",
+        "cow_milk_protein", "cps_wages", "credit_card_applications", "credit_card_balance",
+        "developer_survey", "diamonds", "dnase_assay", "doctor_visits", "doctoral_publications",
+        "earthquake_intensity", "economic_growth", "economics_journals", "email_spam",
+        "epilepsy_seizures", "exercise_histories", "extramarital_affairs", "fandango_ratings",
+        "fast_food_nutrition", "fatty_liver_disease", "fertility_labour", "fiji_earthquakes",
+        "florida_2000_vote", "flying_etiquette", "free_light_chain", "fuel_economy",
+        "galton_heights", "gapminder", "gestation_births", "granulomatous_disease",
+        "greenhouse_gases", "grouse_ticks", "guns_and_crime", "hate_crimes", "help_study",
+        "high_school_and_beyond", "historic_co2", "hpc_jobs", "infant_mortality", "infertility",
+        "insect_sprays", "italian_olive_oils", "lecture_ratings", "lending_club",
+        "leptograpsus_crabs", "life_cycle_savings", "liver_transplant_list", "loblolly_pines",
+        "low_birth_weight", "lung_cancer_survival", "mammal_sleep", "marijuana_arrests",
+        "marriage_licences", "math_achievement", "medical_care_demand", "mid_atlantic_wages",
+        "midwest_counties", "monoclonal_gammopathy", "mortgage_denial", "motor_trend_cars",
+        "movielens", "new_york_air", "nyc_flights", "nyc_weather", "occupational_prestige",
+        "oesophageal_cancer", "old_faithful", "orange_juice", "orange_trees", "orchard_sprays",
+        "orthodontic_growth", "oxford_boys", "penicillin_testing", "petroleum_rock",
+        "phenobarbital", "pima_diabetes", "professor_salaries", "psid_labour", "reported_weight",
+        "resume_callbacks", "retinopathy_laser", "sat_and_gpa", "school_absences",
+        "seat_belt_laws", "seattle_pets", "sleep_deprivation", "slid_wages", "snail_mortality",
+        "soybean_growth", "sp500_daily", "sp500_weekly", "spruce_growth", "stanford_heart",
+        "star_properties", "state_sat_scores", "steak_preferences", "student_survey",
+        "swiss_fertility", "swiss_labour", "tarantino_scripts", "teaching_evaluations",
+        "telecom_churn", "telecom_contracts", "temperature_and_carbon", "ten_mile_race",
+        "texas_housing", "theophylline", "titanic", "tooth_growth", "travel_mode", "uk_smoking",
+        "un_national_statistics", "us_aircraft", "us_airports", "us_arrests", "us_births_1978",
+        "us_births_2014", "us_cereals", "us_colleges", "us_economics", "us_gun_murders",
+        "us_state_education", "used_car_prices", "utility_bills", "verbal_aggression",
+        "vocabulary_test", "volunteering", "warp_breaks", "wheat_yield_trials", "whickham_smoking",
+        "windsor_house_prices", "womens_labour_1975", "workplace_smoking_ban",
+        "world_values_survey", "youth_risk_behaviour",
+        "adult_literacy", "air_passengers", "calorie_supply", "cereal_yields", "child_mortality",
+        "child_mortality_igme", "co2_emissions", "co2_emissions_per_person", "co2_per_dollar",
+        "consumer_price_inflation", "cumulative_co2_emissions", "electricity_access",
+        "electricity_generation", "energy_use_per_person", "freshwater_withdrawals",
+        "gdp_per_capita_maddison", "gdp_per_capita_worldbank", "human_development_index",
+        "internet_use", "internet_users", "life_expectancy_at_birth", "mobile_subscriptions",
+        "population_density", "primary_energy", "renewable_electricity", "renewable_energy",
+        "sea_level", "unemployment_rate", "urban_population",
     }
 
 
@@ -1983,3 +2031,202 @@ def test_a_shelf_set_writes_the_code_a_shared_column_was_coded_with():
         assert list(tree["nicotine"].array()) == [2]
         assert list(tree["semer"].array()) == [0]
         assert list(tree["label"].array()) == [3]
+
+
+# --- what the teaching tables of the r world read ---------------------------
+
+#: The sets Rdatasets serves as one CSV a piece, row names and all.
+RDATASETS = (
+    "acute_myeloid_leukaemia", "alcohol_by_country", "animal_scat", "anorexia_treatment",
+    "bad_drivers", "baseball_batting", "baseball_fielding", "baseball_hall_of_fame",
+    "baseball_hitters", "baseball_managers", "baseball_pitching", "baseball_players",
+    "baseball_salaries", "bechdel_test", "biliary_cholangitis", "black_cherry_trees",
+    "bladder_tumours", "boating_trips", "boston_housing", "breast_cancer_gbsg",
+    "brushtail_possums", "california_schools", "canadian_interlocks", "canadian_womens_work",
+    "candy_rankings", "car_seat_sales", "card_default", "cat_hearts", "chicago_taxi",
+    "chick_weights", "chile_plebiscite", "chocolate_cakes", "college_distance", "college_majors",
+    "colon_cancer_trial", "commercial_oils", "congress_age", "cow_milk_protein", "cps_wages",
+    "credit_card_applications", "credit_card_balance", "developer_survey", "diamonds",
+    "dnase_assay", "doctor_visits", "doctoral_publications", "earthquake_intensity",
+    "economic_growth", "economics_journals", "email_spam", "epilepsy_seizures",
+    "exercise_histories", "extramarital_affairs", "fandango_ratings", "fast_food_nutrition",
+    "fatty_liver_disease", "fertility_labour", "fiji_earthquakes", "florida_2000_vote",
+    "flying_etiquette", "free_light_chain", "fuel_economy", "galton_heights", "gapminder",
+    "gestation_births", "granulomatous_disease", "greenhouse_gases", "grouse_ticks",
+    "guns_and_crime", "hate_crimes", "help_study", "high_school_and_beyond", "historic_co2",
+    "hpc_jobs", "infant_mortality", "infertility", "insect_sprays", "italian_olive_oils",
+    "lecture_ratings", "lending_club", "leptograpsus_crabs", "life_cycle_savings",
+    "liver_transplant_list", "loblolly_pines", "low_birth_weight", "lung_cancer_survival",
+    "mammal_sleep", "marijuana_arrests", "marriage_licences", "math_achievement",
+    "medical_care_demand", "mid_atlantic_wages", "midwest_counties", "monoclonal_gammopathy",
+    "mortgage_denial", "motor_trend_cars", "movielens", "new_york_air", "nyc_flights",
+    "nyc_weather", "occupational_prestige", "oesophageal_cancer", "old_faithful", "orange_juice",
+    "orange_trees", "orchard_sprays", "orthodontic_growth", "oxford_boys", "penicillin_testing",
+    "petroleum_rock", "phenobarbital", "pima_diabetes", "professor_salaries", "psid_labour",
+    "reported_weight", "resume_callbacks", "retinopathy_laser", "sat_and_gpa", "school_absences",
+    "seat_belt_laws", "seattle_pets", "sleep_deprivation", "slid_wages", "snail_mortality",
+    "soybean_growth", "sp500_daily", "sp500_weekly", "spruce_growth", "stanford_heart",
+    "star_properties", "state_sat_scores", "steak_preferences", "student_survey",
+    "swiss_fertility", "swiss_labour", "tarantino_scripts", "teaching_evaluations",
+    "telecom_churn", "telecom_contracts", "temperature_and_carbon", "ten_mile_race",
+    "texas_housing", "theophylline", "titanic", "tooth_growth", "travel_mode", "uk_smoking",
+    "un_national_statistics", "us_aircraft", "us_airports", "us_arrests", "us_births_1978",
+    "us_births_2014", "us_cereals", "us_colleges", "us_economics", "us_gun_murders",
+    "us_state_education", "used_car_prices", "utility_bills", "verbal_aggression",
+    "vocabulary_test", "volunteering", "warp_breaks", "wheat_yield_trials", "whickham_smoking",
+    "windsor_house_prices", "womens_labour_1975", "workplace_smoking_ban", "world_values_survey",
+    "youth_risk_behaviour",
+)
+
+
+def test_the_r_teaching_tables_all_read_the_csv_rdatasets_serves():
+    assert len(RDATASETS) == len(set(RDATASETS)) == 171
+    stem = "https://vincentarelbundock.github.io/Rdatasets/"
+    for name in RDATASETS:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.url.startswith(f"{stem}csv/") and spec.url.endswith(".csv")
+        assert spec.source == spec.url.replace("/csv/", "/doc/").removesuffix(".csv") + ".html"
+        assert spec.header and spec.splits == ("all",)
+        assert not spec.member and not spec.inner
+
+
+def test_every_r_table_passes_on_what_the_package_it_ships_in_passes_on():
+    held = {}
+    for name in RDATASETS:
+        held.setdefault(DATASETS[name].licence, []).append(name)
+    assert {licence: len(names) for licence, names in sorted(held.items())} == {
+        "Artistic-2.0": 7, "CC0": 5, "GPL": 7, "GPL-2": 9, "GPL-2 or GPL-3": 51,
+        "GPL-2 or later": 42, "GPL-3": 11, "LGPL-2 or later": 13, "MIT": 26,
+    }
+
+
+def test_every_r_table_either_names_a_class_or_measures_a_number():
+    numbers = [name for name in RDATASETS if not DATASETS[name].classes]
+    assert len(numbers) == 108
+    for name in RDATASETS:
+        roles = {role for _, role in DATASETS[name].fields}
+        assert bool(DATASETS[name].classes) == ("label" in roles), name
+        assert "label" in roles or "target" in roles, name
+
+
+def test_a_row_name_that_counts_from_one_is_told_from_one_that_names_a_thing():
+    named = [name for name in RDATASETS if DATASETS[name].fields[0] == ("name", "text")]
+    assert len(named) == 14 and "motor_trend_cars" in named and "swiss_fertility" in named
+    assert all(DATASETS[name].fields[0] == ("row", "i")
+               for name in RDATASETS if name not in named)
+
+
+def test_the_r_tables_that_keep_a_day_or_a_clock_say_how_it_is_written():
+    dated = {name: DATASETS[name].dates for name in RDATASETS
+             if any(role in ("date", "time") for _, role in DATASETS[name].fields)}
+    assert dated == {
+        "baseball_players": "%Y-%m-%d", "congress_age": "%Y-%m-%d",
+        "email_spam": "%Y-%m-%dT%H:%M:%SZ", "gestation_births": "%Y-%m-%d",
+        "granulomatous_disease": "%Y-%m-%d", "marriage_licences": "%Y-%m-%d",
+        "nyc_flights": "%Y-%m-%dT%H:%M:%SZ", "nyc_weather": "%Y-%m-%dT%H:%M:%SZ",
+        "seattle_pets": "%Y-%m-%d", "us_births_1978": "%Y-%m-%d",
+        "us_economics": "%Y-%m-%d",
+    }
+
+
+def test_the_survey_tables_keep_the_answer_nobody_gave_as_a_class_of_its_own():
+    assert DATASETS["steak_preferences"].labels[""] == 5
+    assert DATASETS["steak_preferences"].classes[-1] == "no_answer"
+    assert DATASETS["student_survey"].classes == ("left", "right", "not_recorded")
+    assert DATASETS["chile_plebiscite"].labels == {"A": 0, "N": 1, "U": 2, "Y": 3, "": 4}
+
+
+def test_a_count_too_big_for_an_int_is_read_as_the_double_it_needs_to_be():
+    assert ("intgross", "d") in DATASETS["bechdel_test"].fields
+    assert ("volume", "d") in DATASETS["texas_housing"].fields
+
+
+def test_a_column_two_r_factors_share_is_written_once_and_named_after_the_first():
+    spec = DATASETS["penicillin_testing"]
+    assert isinstance(spec, Table)
+    assert spec.fields[2:] == (("plate", "plate"), ("sample", "sample"))
+    assert spec.codes["sample"] == ("A", "B", "C", "D", "E", "F")
+
+
+def test_an_r_table_is_written_into_a_tree_for_each_class_it_names():
+    counts, raw = written(
+        "cat_hearts", b"rownames,Sex,Bwt,Hwt\n1,F,2.0,7.0\n2,M,3.0,11.2\n", "table",
+    )
+    assert counts == {"female": 1, "male": 1}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["male"]
+        assert tree.title == "Anatomy of Domestic Cats rows labelled male"
+        assert list(tree["row"].array()) == [2]
+        assert list(tree["hwt"].array()) == [11.2]
+        assert list(tree["label"].array()) == [1]
+
+
+def test_an_r_table_with_a_number_to_predict_writes_every_row_into_one_tree():
+    counts, raw = written(
+        "old_faithful", b"rownames,eruptions,waiting\n1,3.6,79\n2,1.8,54\n", "table",
+    )
+    assert counts == {"rows": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["rows"]
+        assert list(tree["eruptions"].array()) == [3.6, 1.8]
+        assert list(tree["waiting"].array()) == [79.0, 54.0]
+
+
+# --- what the country-year charts read --------------------------------------
+
+#: The charts Our World in Data serves as one tidy CSV a piece.
+CHARTS = (
+    "gdp_per_capita_worldbank", "electricity_access", "internet_use", "consumer_price_inflation",
+    "unemployment_rate", "freshwater_withdrawals", "air_passengers", "mobile_subscriptions",
+    "internet_users", "co2_emissions", "co2_emissions_per_person", "cumulative_co2_emissions",
+    "co2_per_dollar", "renewable_electricity", "electricity_generation", "renewable_energy",
+    "energy_use_per_person", "primary_energy", "cereal_yields", "calorie_supply",
+    "gdp_per_capita_maddison", "population_density", "urban_population",
+    "life_expectancy_at_birth", "child_mortality", "child_mortality_igme", "adult_literacy",
+    "human_development_index", "sea_level",
+)
+
+
+def test_the_country_year_charts_all_read_the_csv_owid_serves():
+    assert len(CHARTS) == len(set(CHARTS)) == 29
+    for name in CHARTS:
+        spec = DATASETS[name]
+        assert isinstance(spec, Table)
+        assert spec.licence == "CC BY 4.0"
+        assert spec.source.startswith("https://ourworldindata.org/grapher/")
+        assert spec.url == f"{spec.source}.csv?v=1&csvType=full&useColumnShortNames=true"
+        assert spec.header and not spec.classes and spec.splits == ("all",)
+        assert spec.fields[:2] == (("entity", "text"), ("code", "text"))
+        assert sum(role == "target" for _, role in spec.fields) == 1
+
+
+def test_every_chart_but_the_sea_measures_a_country_a_year_at_a_time():
+    days = [name for name in CHARTS if ("day", "date") in DATASETS[name].fields]
+    assert days == ["sea_level"]
+    assert DATASETS["sea_level"].dates == "%Y-%m-%d"
+    assert DATASETS["sea_level"].fields[-1] == ("sea_level_mm", "target")
+    assert all(("year", "i") in DATASETS[name].fields for name in CHARTS if name not in days)
+
+
+def test_the_charts_that_carry_a_region_or_a_note_keep_it_beside_the_measure():
+    grouped = [name for name in CHARTS if ("region", "text") in DATASETS[name].fields]
+    assert grouped == ["gdp_per_capita_worldbank", "air_passengers", "human_development_index"]
+    assert DATASETS["gdp_per_capita_maddison"].fields[-1] == ("note", "text")
+
+
+def test_a_chart_writes_every_country_year_into_the_one_tree():
+    counts, raw = written(
+        "co2_emissions",
+        b"entity,code,year,emissions_total\nFrance,FRA,1900,10.5\nWorld,,1900,20.5\n",
+        "table",
+    )
+    assert counts == {"rows": 2}
+    with open_root(io.BytesIO(raw)) as back:
+        tree = back["rows"]
+        assert tree.title == "Annual CO2 Emissions rows"
+        assert list(tree["year"].array()) == [1900, 1900]
+        assert list(tree["emissions_tonnes"].array()) == [10.5, 20.5]
+        assert list(tree["code_length"].array()) == [3, 0]
+        held = tree["entity"].array()
+        assert bytes(held[: tree["entity_length"].array()[0]]) == b"France"

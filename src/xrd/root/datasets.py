@@ -3680,6 +3680,1866 @@ _YOUTUBE_SPAM_FIELDS: tuple[tuple[str, str], ...] = (
     ("class", "label"),
 )
 
+#: The sets below are the teaching tables of the R world, read from the CSV
+#: Rdatasets serves each as: one header row naming the columns the way the R
+#: package documents them, a first column of row names, then a row per example.
+#: A row-name column that counts from one is kept as ``row``, and one that names
+#: the thing measured - a car, a canton, a state - is kept as ``name``. What each
+#: may be passed on under is what the package it ships in says.
+_ACUTE_MYELOID_LEUKAEMIA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("trt", "label"),
+    ("sex", "sex"),
+    ("flt3", "flt3"),
+    ("futime", "i"), ("death", "i"), ("txtime", "i"), ("crtime", "i"), ("rltime", "i"),
+)
+
+_ALCOHOL_BY_COUNTRY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("country", "text"),
+    ("beer_servings", "i"), ("spirit_servings", "i"), ("wine_servings", "i"),
+    ("total_litres_of_pure_alcohol", "target"),
+)
+
+_ANIMAL_SCAT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("species", "label"),
+    ("month", "month"),
+    ("year", "i"),
+    ("site", "site"),
+    ("location", "location"),
+    ("age", "i"), ("number", "i"),
+    ("length", "d"), ("diameter", "d"), ("taper", "d"), ("ti", "d"), ("mass", "d"), ("d13c", "d"),
+    ("d15n", "d"), ("cn", "d"),
+    ("ropey", "i"), ("segmented", "i"), ("flat", "i"), ("scrape", "i"),
+)
+
+_ANOREXIA_TREATMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("treat", "label"),
+    ("prewt", "d"), ("postwt", "d"),
+)
+
+_BAD_DRIVERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("num_drivers", "d"),
+    ("perc_speeding", "i"), ("perc_alcohol", "i"), ("perc_not_distracted", "i"),
+    ("perc_no_previous", "i"),
+    ("insurance_premiums", "target"),
+    ("losses", "d"),
+)
+
+_BASEBALL_BATTING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("yearid", "i"), ("stint", "i"),
+    ("teamid", "text"),
+    ("lgid", "lgid"),
+    ("g", "i"), ("ab", "i"), ("r", "i"), ("h", "i"), ("x2b", "i"), ("x3b", "i"),
+    ("hr", "target"),
+    ("rbi", "i"), ("sb", "i"), ("cs", "i"), ("bb", "i"), ("so", "i"), ("ibb", "i"), ("hbp", "i"),
+    ("sh", "i"), ("sf", "i"), ("gidp", "i"),
+)
+
+_BASEBALL_FIELDING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("yearid", "i"), ("stint", "i"),
+    ("teamid", "text"),
+    ("lgid", "lgid"),
+    ("pos", "pos"),
+    ("g", "i"), ("gs", "i"), ("innouts", "i"), ("po", "i"), ("a", "i"),
+    ("e", "target"),
+    ("dp", "i"), ("pb", "i"), ("wp", "i"), ("sb", "i"), ("cs", "i"), ("zr", "i"),
+)
+
+_BASEBALL_HALL_OF_FAME_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("yearid", "i"),
+    ("votedby", "text"),
+    ("ballots", "i"), ("needed", "i"),
+    ("votes", "target"),
+    ("inducted", "inducted"),
+    ("category", "category"),
+    ("needed_note", "text"),
+)
+
+_BASEBALL_HITTERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("atbat", "i"), ("hits", "i"), ("hmrun", "i"), ("runs", "i"), ("rbi", "i"), ("walks", "i"),
+    ("years", "i"), ("catbat", "i"), ("chits", "i"), ("chmrun", "i"), ("cruns", "i"),
+    ("crbi", "i"), ("cwalks", "i"),
+    ("league", "league"),
+    ("division", "division"),
+    ("putouts", "i"), ("assists", "i"), ("errors", "i"),
+    ("salary", "target"),
+    ("newleague", "league"),
+)
+
+_BASEBALL_MANAGERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("yearid", "i"),
+    ("teamid", "text"),
+    ("lgid", "lgid"),
+    ("inseason", "i"), ("g", "i"),
+    ("w", "target"),
+    ("l", "i"), ("rank", "i"),
+    ("plyrmgr", "plyrmgr"),
+)
+
+_BASEBALL_PITCHING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("yearid", "i"), ("stint", "i"),
+    ("teamid", "text"),
+    ("lgid", "lgid"),
+    ("w", "i"), ("l", "i"), ("g", "i"), ("gs", "i"), ("cg", "i"), ("sho", "i"), ("sv", "i"),
+    ("ipouts", "i"), ("h", "i"), ("er", "i"), ("hr", "i"), ("bb", "i"), ("so", "i"),
+    ("baopp", "d"),
+    ("era", "target"),
+    ("ibb", "i"), ("wp", "i"), ("hbp", "i"), ("bk", "i"), ("bfp", "i"), ("gf", "i"), ("r", "i"),
+    ("sh", "i"), ("sf", "i"), ("gidp", "i"),
+)
+
+_BASEBALL_PLAYERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("playerid", "text"),
+    ("birthyear", "i"), ("birthmonth", "i"), ("birthday", "i"),
+    ("birthcity", "text"), ("birthcountry", "text"), ("birthstate", "text"),
+    ("deathyear", "i"), ("deathmonth", "i"), ("deathday", "i"),
+    ("deathcountry", "text"), ("deathstate", "text"), ("deathcity", "text"), ("namefirst", "text"),
+    ("namelast", "text"), ("namegiven", "text"),
+    ("weight", "i"),
+    ("height", "target"),
+    ("bats", "bats"),
+    ("throws", "throws"),
+    ("debut", "date"),
+    ("bbrefid", "text"),
+    ("finalgame", "date"),
+    ("retroid", "text"),
+    ("deathdate", "date"), ("birthdate", "date"),
+)
+
+_BASEBALL_SALARIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("yearid", "i"),
+    ("teamid", "text"),
+    ("lgid", "lgid"),
+    ("playerid", "text"),
+    ("salary", "target"),
+)
+
+_BECHDEL_TEST_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("imdb", "text"), ("title", "text"),
+    ("test", "test"),
+    ("clean_test", "clean_test"),
+    ("binary", "label"),
+    ("budget", "i"), ("domgross", "i"),
+    ("intgross", "d"),
+    ("code", "text"),
+    ("budget_2013", "i"), ("domgross_2013", "i"),
+    ("intgross_2013", "d"),
+    ("period_code", "i"), ("decade_code", "i"),
+)
+
+_BILIARY_CHOLANGITIS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("time", "target"),
+    ("status", "i"), ("trt", "i"),
+    ("age", "d"),
+    ("sex", "sex"),
+    ("ascites", "i"), ("hepato", "i"), ("spiders", "i"),
+    ("edema", "d"), ("bili", "d"),
+    ("chol", "i"),
+    ("albumin", "d"),
+    ("copper", "i"),
+    ("alk_phos", "d"), ("ast", "d"),
+    ("trig", "i"), ("platelet", "i"),
+    ("protime", "d"),
+    ("stage", "i"),
+)
+
+_BLACK_CHERRY_TREES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("girth", "d"),
+    ("height", "i"),
+    ("volume", "target"),
+)
+
+_BLADDER_TUMOURS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("rx", "i"), ("number", "i"), ("size", "i"),
+    ("stop", "target"),
+    ("event", "i"), ("enum", "i"),
+)
+
+_BOATING_TRIPS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("trips", "target"),
+    ("quality", "i"),
+    ("ski", "ski"),
+    ("income", "i"),
+    ("userfee", "ski"),
+    ("costc", "d"), ("costs", "d"), ("costh", "d"),
+)
+
+_BOSTON_HOUSING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("crim", "d"), ("zn", "d"), ("indus", "d"),
+    ("chas", "i"),
+    ("nox", "d"), ("rm", "d"), ("age", "d"), ("dis", "d"),
+    ("rad", "i"), ("tax", "i"),
+    ("ptratio", "d"), ("black", "d"), ("lstat", "d"),
+    ("medv", "target"),
+)
+
+_BREAST_CANCER_GBSG_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("pid", "i"), ("age", "i"), ("meno", "i"), ("size", "i"), ("grade", "i"),
+    ("nodes", "i"), ("pgr", "i"), ("er", "i"), ("hormon", "i"),
+    ("rfstime", "target"),
+    ("status", "i"),
+)
+
+_BRUSHTAIL_POSSUMS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("site", "i"),
+    ("pop", "label"),
+    ("sex", "sex"),
+    ("age", "i"),
+    ("head_l", "d"), ("skull_w", "d"), ("total_l", "d"), ("tail_l", "d"),
+)
+
+_CALIFORNIA_SCHOOLS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("district", "i"),
+    ("school", "text"), ("county", "text"),
+    ("grades", "grades"),
+    ("students", "i"),
+    ("teachers", "d"), ("calworks", "d"), ("lunch", "d"),
+    ("computer", "i"),
+    ("expenditure", "d"), ("income", "d"), ("english", "d"),
+    ("read", "target"), ("math", "target"),
+)
+
+_CANADIAN_INTERLOCKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("assets", "i"),
+    ("sector", "sector"),
+    ("nation", "nation"),
+    ("interlocks", "target"),
+)
+
+_CANADIAN_WOMENS_WORK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("partic", "label"),
+    ("hincome", "i"),
+    ("children", "children"),
+    ("region", "region"),
+)
+
+_CANDY_RANKINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("competitorname", "text"),
+    ("chocolate", "chocolate"), ("fruity", "chocolate"), ("caramel", "chocolate"),
+    ("peanutyalmondy", "chocolate"), ("nougat", "chocolate"), ("crispedricewafer", "chocolate"),
+    ("hard", "chocolate"), ("bar", "chocolate"), ("pluribus", "chocolate"),
+    ("sugarpercent", "d"), ("pricepercent", "d"),
+    ("winpercent", "target"),
+)
+
+_CAR_SEAT_SALES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sales", "target"),
+    ("compprice", "i"), ("income", "i"), ("advertising", "i"), ("population", "i"), ("price", "i"),
+    ("shelveloc", "shelveloc"),
+    ("age", "i"), ("education", "i"),
+    ("urban", "urban"), ("us", "urban"),
+)
+
+_CARD_DEFAULT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("default", "label"),
+    ("student", "student"),
+    ("balance", "d"), ("income", "d"),
+)
+
+_CAT_HEARTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sex", "label"),
+    ("bwt", "d"), ("hwt", "d"),
+)
+
+_CHICAGO_TAXI_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("tip", "label"),
+    ("distance", "d"),
+    ("company", "company"),
+    ("local", "local"),
+    ("dow", "dow"),
+    ("month", "month"),
+    ("hour", "i"),
+)
+
+_CHICK_WEIGHTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("weight", "target"),
+    ("time", "i"), ("chick", "i"), ("diet", "i"),
+)
+
+_CHILE_PLEBISCITE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("region", "region"),
+    ("population", "i"),
+    ("sex", "sex"),
+    ("age", "i"),
+    ("education", "education"),
+    ("income", "i"),
+    ("statusquo", "d"),
+    ("vote", "label"),
+)
+
+_CHOCOLATE_CAKES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("replicate", "i"),
+    ("recipe", "recipe"),
+    ("temperature", "i"),
+    ("angle", "target"),
+    ("temp", "i"),
+)
+
+_COLLEGE_DISTANCE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("gender", "gender"),
+    ("ethnicity", "ethnicity"),
+    ("score", "target"),
+    ("fcollege", "fcollege"), ("mcollege", "fcollege"), ("home", "fcollege"),
+    ("urban", "fcollege"),
+    ("unemp", "d"), ("wage", "d"), ("distance", "d"), ("tuition", "d"),
+    ("education", "i"),
+    ("income", "income"),
+    ("region", "region"),
+)
+
+_COLLEGE_MAJORS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("rank", "i"), ("major_code", "i"),
+    ("major", "text"),
+    ("major_category", "major_category"),
+    ("total", "i"), ("sample_size", "i"), ("men", "i"), ("women", "i"),
+    ("sharewomen", "d"),
+    ("employed", "i"), ("employed_fulltime", "i"), ("employed_parttime", "i"),
+    ("employed_fulltime_yearround", "i"), ("unemployed", "i"),
+    ("unemployment_rate", "d"),
+    ("p25th", "i"),
+    ("median", "target"),
+    ("p75th", "i"), ("college_jobs", "i"), ("non_college_jobs", "i"), ("low_wage_jobs", "i"),
+)
+
+_COLON_CANCER_TRIAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("study", "i"),
+    ("rx", "label"),
+    ("sex", "i"), ("age", "i"), ("obstruct", "i"), ("perfor", "i"), ("adhere", "i"),
+    ("nodes", "i"), ("status", "i"), ("differ", "i"), ("extent", "i"), ("surg", "i"),
+    ("node4", "i"), ("time", "i"), ("etype", "i"),
+)
+
+_COMMERCIAL_OILS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("palmitic", "d"), ("stearic", "d"), ("oleic", "d"), ("linoleic", "d"), ("linolenic", "d"),
+    ("eicosanoic", "d"), ("eicosenoic", "d"),
+    ("class", "label"),
+)
+
+_CONGRESS_AGE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("congress", "i"),
+    ("chamber", "chamber"),
+    ("bioguide", "text"), ("firstname", "text"), ("middlename", "text"), ("lastname", "text"),
+    ("suffix", "suffix"),
+    ("birthday", "date"),
+    ("state", "text"),
+    ("party", "party"),
+    ("incumbent", "incumbent"),
+    ("termstart", "date"),
+    ("age", "target"),
+)
+
+_COW_MILK_PROTEIN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("protein", "target"),
+    ("time", "i"),
+    ("cow", "text"),
+    ("diet", "diet"),
+)
+
+_CPS_WAGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("wage", "target"),
+    ("education", "i"), ("experience", "i"), ("age", "i"),
+    ("ethnicity", "ethnicity"),
+    ("region", "region"),
+    ("gender", "gender"),
+    ("occupation", "occupation"),
+    ("sector", "sector"),
+    ("union", "union"), ("married", "union"),
+)
+
+_CREDIT_CARD_APPLICATIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("card", "label"),
+    ("reports", "i"),
+    ("age", "d"), ("income", "d"), ("share", "d"), ("expenditure", "d"),
+    ("owner", "owner"), ("selfemp", "owner"),
+    ("dependents", "i"), ("months", "i"), ("majorcards", "i"), ("active", "i"),
+)
+
+_CREDIT_CARD_BALANCE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("income", "d"),
+    ("limit", "i"), ("rating", "i"), ("cards", "i"), ("age", "i"), ("education", "i"),
+    ("gender", "gender"),
+    ("student", "student"), ("married", "student"),
+    ("ethnicity", "ethnicity"),
+    ("balance", "target"),
+)
+
+_DEVELOPER_SURVEY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("country", "country"),
+    ("salary", "target"),
+    ("yearscodedjob", "i"), ("opensource", "i"), ("hobby", "i"), ("companysizenumber", "i"),
+    ("remote", "remote"),
+    ("careersatisfaction", "i"), ("data_scientist", "i"), ("database_administrator", "i"),
+    ("desktop_applications_developer", "i"), ("developer_with_stats_math_background", "i"),
+    ("devops", "i"), ("embedded_developer", "i"), ("graphic_designer", "i"),
+    ("graphics_programming", "i"), ("machine_learning_specialist", "i"), ("mobile_developer", "i"),
+    ("quality_assurance_engineer", "i"), ("systems_administrator", "i"), ("web_developer", "i"),
+)
+
+_DIAMONDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("carat", "d"),
+    ("cut", "cut"),
+    ("color", "color"),
+    ("clarity", "clarity"),
+    ("depth", "d"), ("table", "d"),
+    ("price", "target"),
+    ("x", "d"), ("y", "d"), ("z", "d"),
+)
+
+_DNASE_ASSAY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("run", "i"),
+    ("conc", "d"),
+    ("density", "target"),
+)
+
+_DOCTOR_VISITS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("visits", "target"),
+    ("gender", "gender"),
+    ("age", "d"), ("income", "d"),
+    ("illness", "i"), ("reduced", "i"), ("health", "i"),
+    ("private", "private"), ("freepoor", "private"), ("freerepat", "private"),
+    ("nchronic", "private"), ("lchronic", "private"),
+)
+
+_DOCTORAL_PUBLICATIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("articles", "target"),
+    ("gender", "gender"),
+    ("married", "married"),
+    ("kids", "i"),
+    ("prestige", "d"),
+    ("mentor", "i"),
+)
+
+_EARTHQUAKE_INTENSITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("quake", "i"),
+    ("richter", "d"), ("distance", "d"),
+    ("soil", "i"),
+    ("accel", "target"),
+)
+
+_ECONOMIC_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("oil", "oil"), ("inter", "oil"), ("oecd", "oil"),
+    ("gdp60", "i"), ("gdp85", "i"),
+    ("gdpgrowth", "target"),
+    ("popgrowth", "d"), ("invest", "d"), ("school", "d"),
+    ("literacy60", "i"),
+)
+
+_ECONOMICS_JOURNALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"), ("title", "text"), ("publisher", "text"),
+    ("society", "society"),
+    ("price", "i"), ("pages", "i"), ("charpp", "i"), ("citations", "i"), ("foundingyear", "i"),
+    ("subs", "target"),
+    ("field", "field"),
+)
+
+_EMAIL_SPAM_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("spam", "label"),
+    ("to_multiple", "i"), ("from", "i"), ("cc", "i"), ("sent_email", "i"),
+    ("time", "time"),
+    ("image", "i"), ("attach", "i"), ("dollar", "i"),
+    ("winner", "winner"),
+    ("inherit", "i"), ("viagra", "i"), ("password", "i"),
+    ("num_char", "d"),
+    ("line_breaks", "i"), ("format", "i"), ("re_subj", "i"), ("exclaim_subj", "i"),
+    ("urgent_subj", "i"), ("exclaim_mess", "i"),
+    ("number", "number"),
+)
+
+_EPILEPSY_SEIZURES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("y", "target"),
+    ("trt", "trt"),
+    ("base", "i"), ("age", "i"), ("v4", "i"), ("subject", "i"), ("period", "i"),
+    ("lbase", "d"), ("lage", "d"),
+)
+
+_EXERCISE_HISTORIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("subject", "text"),
+    ("age", "d"), ("exercise", "d"),
+    ("group", "label"),
+)
+
+_EXTRAMARITAL_AFFAIRS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("affairs", "target"),
+    ("gender", "gender"),
+    ("age", "d"), ("yearsmarried", "d"),
+    ("children", "children"),
+    ("religiousness", "i"), ("education", "i"), ("occupation", "i"), ("rating", "i"),
+)
+
+_FANDANGO_RATINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("film", "text"),
+    ("year", "i"), ("rottentomatoes", "i"), ("rottentomatoes_user", "i"), ("metacritic", "i"),
+    ("metacritic_user", "d"), ("imdb", "d"),
+    ("fandango_stars", "target"),
+    ("fandango_ratingvalue", "d"), ("rt_norm", "d"), ("rt_user_norm", "d"),
+    ("metacritic_norm", "d"), ("metacritic_user_nom", "d"), ("imdb_norm", "d"),
+    ("rt_norm_round", "d"), ("rt_user_norm_round", "d"), ("metacritic_norm_round", "d"),
+    ("metacritic_user_norm_round", "d"), ("imdb_norm_round", "d"),
+    ("metacritic_user_vote_count", "i"), ("imdb_user_vote_count", "i"), ("fandango_votes", "i"),
+    ("fandango_difference", "d"),
+)
+
+_FAST_FOOD_NUTRITION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("restaurant", "restaurant"),
+    ("item", "text"),
+    ("calories", "target"),
+    ("cal_fat", "i"), ("total_fat", "i"),
+    ("sat_fat", "d"), ("trans_fat", "d"),
+    ("cholesterol", "i"), ("sodium", "i"), ("total_carb", "i"), ("fiber", "i"), ("sugar", "i"),
+    ("protein", "i"), ("vit_a", "i"), ("vit_c", "i"), ("calcium", "i"),
+    ("salad", "salad"),
+)
+
+_FATTY_LIVER_DISEASE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("age", "i"), ("male", "i"),
+    ("weight", "d"),
+    ("height", "i"),
+    ("bmi", "target"),
+    ("case_id", "i"), ("futime", "i"), ("status", "i"),
+)
+
+_FERTILITY_LABOUR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("morekids", "label"),
+    ("gender1", "gender1"), ("gender2", "gender1"),
+    ("age", "i"),
+    ("afam", "afam"), ("hispanic", "afam"), ("other", "afam"),
+    ("work", "i"),
+)
+
+_FIJI_EARTHQUAKES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("lat", "d"), ("long", "d"),
+    ("depth", "i"),
+    ("mag", "target"),
+    ("stations", "i"),
+)
+
+_FLORIDA_2000_VOTE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("gore", "i"), ("bush", "i"),
+    ("buchanan", "target"),
+    ("nader", "i"), ("browne", "i"), ("hagelin", "i"), ("harris", "i"), ("mcreynolds", "i"),
+    ("moorehead", "i"), ("phillips", "i"), ("total", "i"),
+)
+
+_FLYING_ETIQUETTE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("respondent_id", "d"),
+    ("gender", "gender"),
+    ("age", "age"),
+    ("height", "height"),
+    ("children_under_18", "children_under_18"),
+    ("household_income", "household_income"),
+    ("education", "education"),
+    ("location", "location"),
+    ("frequency", "frequency"),
+    ("recline_frequency", "recline_frequency"),
+    ("recline_obligation", "children_under_18"),
+    ("recline_rude", "label"),
+    ("recline_eliminate", "children_under_18"),
+    ("switch_seats_friends", "switch_seats_friends"),
+    ("switch_seats_family", "switch_seats_friends"), ("wake_up_bathroom", "switch_seats_friends"),
+    ("wake_up_walk", "switch_seats_friends"), ("baby", "switch_seats_friends"),
+    ("unruly_child", "switch_seats_friends"),
+    ("two_arm_rests", "text"), ("middle_arm_rest", "text"), ("shade", "text"),
+    ("unsold_seat", "switch_seats_friends"), ("talk_stranger", "switch_seats_friends"),
+    ("get_up", "get_up"),
+    ("electronics", "children_under_18"), ("smoked", "children_under_18"),
+)
+
+_FREE_LIGHT_CHAIN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"),
+    ("sex", "label"),
+    ("sample_yr", "i"),
+    ("kappa", "d"), ("lambda", "d"),
+    ("flc_grp", "i"),
+    ("creatinine", "d"),
+    ("mgus", "i"), ("futime", "i"), ("death", "i"),
+    ("chapter", "chapter"),
+)
+
+_FUEL_ECONOMY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("manufacturer", "manufacturer"),
+    ("model", "text"),
+    ("displ", "d"),
+    ("year", "i"), ("cyl", "i"),
+    ("trans", "trans"),
+    ("drv", "drv"),
+    ("cty", "i"),
+    ("hwy", "target"),
+    ("fl", "fl"),
+    ("class", "class"),
+)
+
+_GALTON_HEIGHTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("family", "text"),
+    ("father", "d"), ("mother", "d"),
+    ("sex", "sex"),
+    ("height", "target"),
+    ("nkids", "i"),
+)
+
+_GAPMINDER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("country", "text"),
+    ("continent", "continent"),
+    ("year", "i"),
+    ("lifeexp", "target"),
+    ("pop", "i"),
+    ("gdppercap", "d"),
+)
+
+_GESTATION_BIRTHS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("plurality", "plurality"),
+    ("outcome", "outcome"),
+    ("date", "date"),
+    ("gestation", "i"),
+    ("sex", "sex"),
+    ("wt", "target"),
+    ("parity", "i"),
+    ("race", "race"),
+    ("age", "i"),
+    ("ed", "ed"),
+    ("ht", "i"), ("wt_1", "i"),
+    ("drace", "drace"),
+    ("dage", "i"),
+    ("ded", "ed"),
+    ("dht", "i"), ("dwt", "i"),
+    ("marital", "marital"),
+    ("inc", "inc"),
+    ("smoke", "smoke"),
+    ("time", "time_code"),
+    ("number", "number"),
+)
+
+_GRANULOMATOUS_DISEASE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("center", "center"),
+    ("random", "date"),
+    ("treat", "label"),
+    ("sex", "sex"),
+    ("age", "i"),
+    ("height", "d"), ("weight", "d"),
+    ("inherit", "inherit"),
+    ("steroids", "i"), ("propylac", "i"),
+    ("hos_cat", "hos_cat"),
+    ("tstart", "i"), ("enum", "i"), ("tstop", "i"), ("status", "i"),
+)
+
+_GREENHOUSE_GASES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("gas", "label"),
+    ("concentration", "d"),
+)
+
+_GROUSE_TICKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("index_", "i"),
+    ("ticks", "target"),
+    ("brood", "i"), ("height", "i"), ("year", "i"), ("location", "i"),
+    ("cheight", "d"),
+)
+
+_GUNS_AND_CRIME_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("violent", "d"), ("murder", "d"), ("robbery", "d"),
+    ("prisoners", "i"),
+    ("afam", "d"), ("cauc", "d"), ("male", "d"), ("population", "d"), ("income", "d"),
+    ("density", "d"),
+    ("state", "text"),
+    ("law", "label"),
+)
+
+_HATE_CRIMES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"), ("state_abbrev", "text"),
+    ("median_house_inc", "i"),
+    ("share_unemp_seas", "d"), ("share_pop_metro", "d"), ("share_pop_hs", "d"),
+    ("share_non_citizen", "d"), ("share_white_poverty", "d"), ("gini_index", "d"),
+    ("share_non_white", "d"), ("share_vote_trump", "d"), ("hate_crimes_per_100k_splc", "d"),
+    ("avg_hatecrimes_per_100k_fbi", "target"),
+)
+
+_HELP_STUDY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"), ("anysubstatus", "i"),
+    ("anysub", "anysub"),
+    ("cesd", "i"), ("d1", "i"), ("daysanysub", "i"), ("dayslink", "i"), ("drugrisk", "i"),
+    ("e2b", "i"), ("female", "i"),
+    ("sex", "sex"),
+    ("g1b", "anysub"),
+    ("homeless", "homeless"),
+    ("i1", "i"), ("i2", "i"), ("id", "i"), ("indtot", "i"), ("linkstatus", "i"),
+    ("link", "anysub"),
+    ("mcs", "d"), ("pcs", "d"),
+    ("pss_fr", "i"),
+    ("racegrp", "racegrp"),
+    ("satreat", "anysub"),
+    ("sexrisk", "i"),
+    ("substance", "label"),
+    ("treat", "anysub"),
+    ("avg_drinks", "i"), ("max_drinks", "i"), ("hospitalizations", "i"),
+)
+
+_HIGH_SCHOOL_AND_BEYOND_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("gender", "gender"),
+    ("race", "race"),
+    ("ses", "ses"),
+    ("schtyp", "schtyp"),
+    ("prog", "label"),
+    ("read", "i"), ("write", "i"), ("math", "i"), ("science", "i"), ("socst", "i"),
+)
+
+_HISTORIC_CO2_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("co2", "d"),
+    ("source", "label"),
+)
+
+_HPC_JOBS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("protocol", "protocol"),
+    ("compounds", "i"), ("input_fields", "i"), ("iterations", "i"), ("num_pending", "i"),
+    ("hour", "d"),
+    ("day", "day"),
+    ("class", "label"),
+)
+
+_INFANT_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("income", "i"),
+    ("infant", "target"),
+    ("region", "region"),
+    ("oil", "oil"),
+)
+
+_INFERTILITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("education", "education"),
+    ("age", "i"), ("parity", "i"), ("induced", "i"),
+    ("case", "label"),
+    ("spontaneous", "i"), ("stratum", "i"), ("pooled_stratum", "i"),
+)
+
+_INSECT_SPRAYS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("count", "i"),
+    ("spray", "label"),
+)
+
+_ITALIAN_OLIVE_OILS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("region", "label"),
+    ("area", "area"),
+    ("palmitic", "d"), ("palmitoleic", "d"), ("stearic", "d"), ("oleic", "d"), ("linoleic", "d"),
+    ("linolenic", "d"), ("arachidic", "d"), ("eicosenoic", "d"),
+)
+
+_LECTURE_RATINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("s", "i"), ("d", "i"), ("studage", "i"), ("lectage", "i"), ("service", "i"),
+    ("dept", "i"),
+    ("y", "target"),
+)
+
+_LENDING_CLUB_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("funded_amnt", "i"),
+    ("term", "term"),
+    ("int_rate", "d"),
+    ("sub_grade", "text"), ("addr_state", "text"),
+    ("verification_status", "verification_status"),
+    ("annual_inc", "d"),
+    ("emp_length", "emp_length"),
+    ("delinq_2yrs", "i"), ("inq_last_6mths", "i"),
+    ("revol_util", "d"),
+    ("acc_now_delinq", "i"), ("open_il_6m", "i"), ("open_il_12m", "i"), ("open_il_24m", "i"),
+    ("total_bal_il", "i"), ("all_util", "i"), ("inq_fi", "i"), ("inq_last_12m", "i"),
+    ("delinq_amnt", "i"), ("num_il_tl", "i"), ("total_il_high_credit_limit", "i"),
+    ("class", "label"),
+)
+
+_LEPTOGRAPSUS_CRABS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sp", "label"),
+    ("sex", "sex"),
+    ("index_", "i"),
+    ("fl", "d"), ("rw", "d"), ("cl", "d"), ("cw", "d"), ("bd", "d"),
+)
+
+_LIFE_CYCLE_SAVINGS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("sr", "target"),
+    ("pop15", "d"), ("pop75", "d"), ("dpi", "d"), ("ddpi", "d"),
+)
+
+_LIVER_TRANSPLANT_LIST_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"),
+    ("sex", "sex"),
+    ("abo", "abo"),
+    ("year", "i"), ("futime", "i"),
+    ("event", "label"),
+)
+
+_LOBLOLLY_PINES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("height", "target"),
+    ("age", "i"), ("seed", "i"),
+)
+
+_LOW_BIRTH_WEIGHT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("low", "i"), ("age", "i"), ("lwt", "i"), ("race", "i"), ("smoke", "i"),
+    ("ptl", "i"), ("ht", "i"), ("ui", "i"), ("ftv", "i"),
+    ("bwt", "target"),
+)
+
+_LUNG_CANCER_SURVIVAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("inst", "i"),
+    ("time", "target"),
+    ("status", "i"), ("age", "i"), ("sex", "i"), ("ph_ecog", "i"), ("ph_karno", "i"),
+    ("pat_karno", "i"), ("meal_cal", "i"), ("wt_loss", "i"),
+)
+
+_MAMMAL_SLEEP_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("name", "text"), ("genus", "text"),
+    ("vore", "vore"),
+    ("order", "order"),
+    ("conservation", "conservation"),
+    ("sleep_total", "target"),
+    ("sleep_rem", "d"), ("sleep_cycle", "d"), ("awake", "d"), ("brainwt", "d"), ("bodywt", "d"),
+)
+
+_MARIJUANA_ARRESTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("released", "label"),
+    ("colour", "colour"),
+    ("year", "i"), ("age", "i"),
+    ("sex", "sex"),
+    ("employed", "employed"), ("citizen", "employed"),
+    ("checks", "i"),
+)
+
+_MARRIAGE_LICENCES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("bookpageid", "text"),
+    ("appdate", "date"), ("ceremonydate", "date"),
+    ("delay", "i"),
+    ("officialtitle", "officialtitle"),
+    ("person", "label"),
+    ("dob", "date"),
+    ("age", "d"),
+    ("race", "race"),
+    ("prevcount", "i"),
+    ("prevconc", "prevconc"),
+    ("hs", "i"), ("college", "i"), ("dayofbirth", "i"),
+    ("sign", "sign"),
+)
+
+_MATH_ACHIEVEMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("school", "i"),
+    ("minority", "minority"),
+    ("sex", "sex"),
+    ("ses", "d"),
+    ("mathach", "target"),
+    ("meanses", "d"),
+)
+
+_MEDICAL_CARE_DEMAND_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("visits", "target"),
+    ("nvisits", "i"), ("ovisits", "i"), ("novisits", "i"), ("emergency", "i"), ("hospital", "i"),
+    ("health", "health"),
+    ("chronic", "i"),
+    ("adl", "adl"),
+    ("region", "region"),
+    ("age", "d"),
+    ("afam", "afam"),
+    ("gender", "gender"),
+    ("married", "afam"),
+    ("school", "i"),
+    ("income", "d"),
+    ("employed", "afam"), ("insurance", "afam"), ("medicaid", "afam"),
+)
+
+_MID_ATLANTIC_WAGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"), ("age", "i"),
+    ("maritl", "maritl"),
+    ("race", "race"),
+    ("education", "education"),
+    ("region", "region"),
+    ("jobclass", "jobclass"),
+    ("health", "health"),
+    ("health_ins", "health_ins"),
+    ("logwage", "d"),
+    ("wage", "target"),
+)
+
+_MIDWEST_COUNTIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("pid", "i"),
+    ("county", "text"),
+    ("state", "state"),
+    ("area", "d"),
+    ("poptotal", "i"),
+    ("popdensity", "d"),
+    ("popwhite", "i"), ("popblack", "i"), ("popamerindian", "i"), ("popasian", "i"),
+    ("popother", "i"),
+    ("percwhite", "d"), ("percblack", "d"), ("percamerindan", "d"), ("percasian", "d"),
+    ("percother", "d"),
+    ("popadults", "i"),
+    ("perchsd", "d"), ("percollege", "d"), ("percprof", "d"),
+    ("poppovertyknown", "i"),
+    ("percpovertyknown", "d"),
+    ("percbelowpoverty", "target"),
+    ("percchildbelowpovert", "d"), ("percadultpoverty", "d"), ("percelderlypoverty", "d"),
+    ("inmetro", "i"),
+    ("category", "category"),
+)
+
+_MONOCLONAL_GAMMOPATHY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"), ("age", "i"),
+    ("sex", "sex"),
+    ("dxyr", "i"),
+    ("hgb", "d"), ("creat", "d"), ("mspike", "d"),
+    ("ptime", "i"), ("pstat", "i"),
+    ("futime", "target"),
+    ("death", "i"),
+)
+
+_MORTGAGE_DENIAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("deny", "label"),
+    ("pirat", "d"), ("hirat", "d"), ("lvrat", "d"),
+    ("chist", "i"), ("mhist", "i"),
+    ("phist", "phist"),
+    ("unemp", "d"),
+    ("selfemp", "phist"), ("insurance", "phist"), ("condomin", "phist"), ("afam", "phist"),
+    ("single", "phist"), ("hschool", "phist"),
+)
+
+_MOTOR_TREND_CARS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("mpg", "target"),
+    ("cyl", "i"),
+    ("disp", "d"),
+    ("hp", "i"),
+    ("drat", "d"), ("wt", "d"), ("qsec", "d"),
+    ("vs", "i"), ("am", "i"), ("gear", "i"), ("carb", "i"),
+)
+
+_MOVIELENS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("movieid", "i"),
+    ("title", "text"),
+    ("year", "i"),
+    ("genres", "text"),
+    ("userid", "i"),
+    ("rating", "target"),
+    ("timestamp", "i"),
+)
+
+_NEW_YORK_AIR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("ozone", "target"),
+    ("solar_r", "i"),
+    ("wind", "d"),
+    ("temp", "i"), ("month", "i"), ("day", "i"),
+)
+
+_NYC_FLIGHTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"), ("month", "i"), ("day", "i"), ("dep_time", "i"),
+    ("sched_dep_time", "i"), ("dep_delay", "i"), ("arr_time", "i"), ("sched_arr_time", "i"),
+    ("arr_delay", "target"),
+    ("carrier", "carrier"),
+    ("flight", "i"),
+    ("tailnum", "text"),
+    ("origin", "origin"),
+    ("dest", "text"),
+    ("air_time", "i"), ("distance", "i"), ("hour", "i"), ("minute", "i"),
+    ("time_hour", "time"),
+)
+
+_NYC_WEATHER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("origin", "origin"),
+    ("year", "i"), ("month", "i"), ("day", "i"), ("hour", "i"),
+    ("temp", "target"),
+    ("dewp", "d"), ("humid", "d"),
+    ("wind_dir", "i"),
+    ("wind_speed", "d"), ("wind_gust", "d"), ("precip", "d"), ("pressure", "d"), ("visib", "d"),
+    ("time_hour", "time"),
+)
+
+_OCCUPATIONAL_PRESTIGE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("education", "d"),
+    ("income", "i"),
+    ("women", "d"),
+    ("prestige", "target"),
+    ("census", "i"),
+    ("type", "type"),
+)
+
+_OESOPHAGEAL_CANCER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("agegp", "agegp"),
+    ("alcgp", "alcgp"),
+    ("tobgp", "tobgp"),
+    ("ncases", "target"),
+    ("ncontrols", "i"),
+)
+
+_OLD_FAITHFUL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("eruptions", "d"),
+    ("waiting", "target"),
+)
+
+_ORANGE_JUICE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("purchase", "label"),
+    ("weekofpurchase", "i"), ("storeid", "i"),
+    ("pricech", "d"), ("pricemm", "d"), ("discch", "d"), ("discmm", "d"),
+    ("specialch", "i"), ("specialmm", "i"),
+    ("loyalch", "d"), ("salepricemm", "d"), ("salepricech", "d"), ("pricediff", "d"),
+    ("store7", "store7"),
+    ("pctdiscmm", "d"), ("pctdiscch", "d"), ("listpricediff", "d"),
+    ("store", "i"),
+)
+
+_ORANGE_TREES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("tree", "i"), ("age", "i"),
+    ("circumference", "target"),
+)
+
+_ORCHARD_SPRAYS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("decrease", "i"), ("rowpos", "i"), ("colpos", "i"),
+    ("treatment", "label"),
+)
+
+_ORTHODONTIC_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("distance", "target"),
+    ("age", "i"),
+    ("subject", "text"),
+    ("sex", "sex"),
+)
+
+_OXFORD_BOYS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("subject", "i"),
+    ("age", "d"),
+    ("height", "target"),
+    ("occasion", "i"),
+)
+
+_PENICILLIN_TESTING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("diameter", "target"),
+    ("plate", "plate"),
+    ("sample", "sample"),
+)
+
+_PETROLEUM_ROCK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("area", "i"),
+    ("peri", "d"), ("shape", "d"),
+    ("perm", "target"),
+)
+
+_PHENOBARBITAL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("subject", "i"),
+    ("wt", "d"),
+    ("apgar", "i"),
+    ("apgarind", "apgarind"),
+    ("time", "d"), ("dose", "d"),
+    ("conc", "target"),
+)
+
+_PIMA_DIABETES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("npreg", "i"), ("glu", "i"), ("bp", "i"), ("skin", "i"),
+    ("bmi", "d"), ("ped", "d"),
+    ("age", "i"),
+    ("type", "label"),
+)
+
+_PROFESSOR_SALARIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("rank", "rank"),
+    ("discipline", "discipline"),
+    ("yrs_since_phd", "i"), ("yrs_service", "i"),
+    ("sex", "sex"),
+    ("salary", "target"),
+)
+
+_PSID_LABOUR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("participation", "label"),
+    ("hours", "i"), ("youngkids", "i"), ("oldkids", "i"), ("age", "i"), ("education", "i"),
+    ("wage", "d"), ("repwage", "d"),
+    ("hhours", "i"), ("hage", "i"), ("heducation", "i"),
+    ("hwage", "d"),
+    ("fincome", "i"),
+    ("tax", "d"),
+    ("meducation", "i"), ("feducation", "i"),
+    ("unemp", "d"),
+    ("city", "city"),
+    ("experience", "i"),
+    ("college", "city"), ("hcollege", "city"),
+)
+
+_REPORTED_WEIGHT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sex", "label"),
+    ("weight", "i"), ("height", "i"), ("repwt", "i"), ("repht", "i"),
+)
+
+_RESUME_CALLBACKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("job_ad_id", "i"),
+    ("job_city", "job_city"),
+    ("job_industry", "job_industry"),
+    ("job_type", "job_type"),
+    ("job_fed_contractor", "i"), ("job_equal_opp_employer", "i"),
+    ("job_ownership", "job_ownership"),
+    ("job_req_any", "i"), ("job_req_communication", "i"), ("job_req_education", "i"),
+    ("job_req_min_experience", "job_req_min_experience"),
+    ("job_req_computer", "i"), ("job_req_organization", "i"),
+    ("job_req_school", "job_req_school"),
+    ("received_callback", "label"),
+    ("firstname", "text"),
+    ("race", "race"),
+    ("gender", "gender"),
+    ("years_college", "i"), ("college_degree", "i"), ("honors", "i"),
+    ("worked_during_school", "i"), ("years_experience", "i"), ("computer_skills", "i"),
+    ("special_skills", "i"), ("volunteer", "i"), ("military", "i"), ("employment_holes", "i"),
+    ("has_email_address", "i"),
+    ("resume_quality", "resume_quality"),
+)
+
+_RETINOPATHY_LASER_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("id", "i"),
+    ("laser", "label"),
+    ("eye", "eye"),
+    ("age", "i"),
+    ("type", "type"),
+    ("trt", "i"),
+    ("futime", "d"),
+    ("status", "i"), ("risk", "i"),
+)
+
+_SAT_AND_GPA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("sex", "i"), ("sat_v", "i"), ("sat_m", "i"), ("sat_sum", "i"),
+    ("hs_gpa", "d"),
+    ("fy_gpa", "target"),
+)
+
+_SCHOOL_ABSENCES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("eth", "eth"),
+    ("sex", "sex"),
+    ("age", "age"),
+    ("lrn", "lrn"),
+    ("days", "target"),
+)
+
+_SEAT_BELT_LAWS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("year", "i"), ("miles", "i"),
+    ("fatalities", "d"), ("seatbelt", "d"),
+    ("speed65", "speed65"), ("speed70", "speed65"), ("drinkage", "speed65"),
+    ("alcohol", "speed65"),
+    ("income", "i"),
+    ("age", "d"),
+    ("enforce", "label"),
+)
+
+_SEATTLE_PETS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("license_issue_date", "date"),
+    ("license_number", "text"), ("animal_name", "text"),
+    ("species", "label"),
+    ("primary_breed", "text"), ("secondary_breed", "text"), ("zip_code", "text"),
+)
+
+_SLEEP_DEPRIVATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("reaction", "target"),
+    ("days", "i"), ("subject", "i"),
+)
+
+_SLID_WAGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("wages", "target"),
+    ("education", "d"),
+    ("age", "i"),
+    ("sex", "sex"),
+    ("language", "language"),
+)
+
+_SNAIL_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("species", "species"),
+    ("exposure", "i"),
+    ("rel_hum", "d"),
+    ("temp", "i"),
+    ("deaths", "target"),
+    ("n", "i"),
+)
+
+_SOYBEAN_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("plot", "text"),
+    ("variety", "variety"),
+    ("year", "i"), ("time", "i"),
+    ("weight", "target"),
+)
+
+_SP500_DAILY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("lag1", "d"), ("lag2", "d"), ("lag3", "d"), ("lag4", "d"), ("lag5", "d"), ("volume", "d"),
+    ("today", "d"),
+    ("direction", "label"),
+)
+
+_SP500_WEEKLY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("lag1", "d"), ("lag2", "d"), ("lag3", "d"), ("lag4", "d"), ("lag5", "d"), ("volume", "d"),
+    ("today", "d"),
+    ("direction", "label"),
+)
+
+_SPRUCE_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("tree", "text"),
+    ("days", "i"),
+    ("logsize", "target"),
+    ("plot", "i"),
+)
+
+_STANFORD_HEART_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("start", "d"),
+    ("stop", "target"),
+    ("event", "i"),
+    ("age", "d"), ("year", "d"),
+    ("surgery", "i"), ("transplant", "i"), ("id", "i"),
+)
+
+_STAR_PROPERTIES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("star", "text"),
+    ("magnitude", "d"),
+    ("temp", "target"),
+    ("type", "type"),
+)
+
+_STATE_SAT_SCORES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("expend", "target"),
+    ("ratio", "d"), ("salary", "d"),
+    ("frac", "i"), ("verbal", "i"), ("math", "i"), ("sat", "i"),
+)
+
+_STEAK_PREFERENCES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("respondent_id", "d"),
+    ("lottery_a", "lottery_a"), ("smoke", "lottery_a"), ("alcohol", "lottery_a"),
+    ("gamble", "lottery_a"), ("skydiving", "lottery_a"), ("speed", "lottery_a"),
+    ("cheated", "lottery_a"), ("steak", "lottery_a"),
+    ("steak_prep", "label"),
+    ("female", "lottery_a"),
+    ("age", "age"),
+    ("hhold_income", "hhold_income"),
+    ("educ", "educ"),
+    ("region", "region"),
+)
+
+_STUDENT_SURVEY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("sex", "sex"),
+    ("wr_hnd", "d"), ("nw_hnd", "d"),
+    ("w_hnd", "label"),
+    ("fold", "fold"),
+    ("pulse", "i"),
+    ("clap", "clap"),
+    ("exer", "exer"),
+    ("smoke", "smoke"),
+    ("height", "d"),
+    ("m_i", "m_i"),
+    ("age", "d"),
+)
+
+_SWISS_FERTILITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("fertility", "target"),
+    ("agriculture", "d"),
+    ("examination", "i"), ("education", "i"),
+    ("catholic", "d"), ("infant_mortality", "d"),
+)
+
+_SWISS_LABOUR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("participation", "label"),
+    ("income", "d"), ("age", "d"),
+    ("education", "i"), ("youngkids", "i"), ("oldkids", "i"),
+    ("foreign", "foreign"),
+)
+
+_TARANTINO_SCRIPTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("movie", "label"),
+    ("profane", "profane"),
+    ("word", "text"),
+    ("minutes_in", "d"),
+)
+
+_TEACHING_EVALUATIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("course_id", "i"), ("prof_id", "i"),
+    ("score", "target"),
+    ("rank", "rank"),
+    ("ethnicity", "ethnicity"),
+    ("gender", "gender"),
+    ("language", "language"),
+    ("age", "i"),
+    ("cls_perc_eval", "d"),
+    ("cls_did_eval", "i"), ("cls_students", "i"),
+    ("cls_level", "cls_level"),
+    ("cls_profs", "cls_profs"),
+    ("cls_credits", "cls_credits"),
+    ("bty_f1lower", "i"), ("bty_f1upper", "i"), ("bty_f2upper", "i"), ("bty_m1lower", "i"),
+    ("bty_m1upper", "i"), ("bty_m2upper", "i"),
+    ("bty_avg", "d"),
+    ("pic_outfit", "pic_outfit"),
+    ("pic_color", "pic_color"),
+)
+
+_TELECOM_CHURN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("account_length", "i"),
+    ("area_code", "area_code"),
+    ("international_plan", "international_plan"), ("voice_mail_plan", "international_plan"),
+    ("number_vmail_messages", "i"),
+    ("total_day_minutes", "d"),
+    ("total_day_calls", "i"),
+    ("total_day_charge", "d"), ("total_eve_minutes", "d"),
+    ("total_eve_calls", "i"),
+    ("total_eve_charge", "d"), ("total_night_minutes", "d"),
+    ("total_night_calls", "i"),
+    ("total_night_charge", "d"), ("total_intl_minutes", "d"),
+    ("total_intl_calls", "i"),
+    ("total_intl_charge", "d"),
+    ("number_customer_service_calls", "i"),
+    ("churn", "label"),
+)
+
+_TELECOM_CONTRACTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("churn", "label"),
+    ("female", "i"), ("senior_citizen", "i"), ("partner", "i"), ("dependents", "i"),
+    ("tenure", "i"), ("phone_service", "i"),
+    ("multiple_lines", "multiple_lines"),
+    ("internet_service", "internet_service"),
+    ("online_security", "online_security"), ("online_backup", "online_security"),
+    ("device_protection", "online_security"), ("tech_support", "online_security"),
+    ("streaming_tv", "online_security"), ("streaming_movies", "online_security"),
+    ("contract", "contract"),
+    ("paperless_billing", "i"),
+    ("payment_method", "payment_method"),
+    ("monthly_charges", "d"), ("total_charges", "d"),
+)
+
+_TEMPERATURE_AND_CARBON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("temp_anomaly", "target"),
+    ("land_anomaly", "d"), ("ocean_anomaly", "d"),
+    ("carbon_emissions", "i"),
+)
+
+_TEN_MILE_RACE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"),
+    ("time", "i"),
+    ("net", "target"),
+    ("age", "i"),
+    ("sex", "sex"),
+)
+
+_TEXAS_HOUSING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("city", "text"),
+    ("year", "i"), ("month", "i"), ("sales", "i"),
+    ("volume", "d"),
+    ("median", "target"),
+    ("listings", "i"),
+    ("inventory", "d"), ("date", "d"),
+)
+
+_THEOPHYLLINE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("subject", "i"),
+    ("wt", "d"), ("dose", "d"), ("time", "d"),
+    ("conc", "target"),
+)
+
+_TITANIC_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("survived", "label"),
+    ("sex", "sex"),
+    ("age", "d"),
+    ("passengerclass", "passengerclass"),
+)
+
+_TOOTH_GROWTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("len", "d"),
+    ("supp", "label"),
+    ("dose", "d"),
+)
+
+_TRAVEL_MODE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("individual", "i"),
+    ("mode", "label"),
+    ("choice", "choice"),
+    ("wait", "i"), ("vcost", "i"), ("travel", "i"), ("gcost", "i"), ("income", "i"), ("size", "i"),
+)
+
+_UK_SMOKING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("gender", "gender"),
+    ("age", "i"),
+    ("marital_status", "marital_status"),
+    ("highest_qualification", "highest_qualification"),
+    ("nationality", "nationality"),
+    ("ethnicity", "ethnicity"),
+    ("gross_income", "gross_income"),
+    ("region", "region"),
+    ("smoke", "label"),
+    ("amt_weekends", "i"), ("amt_weekdays", "i"),
+    ("type", "type"),
+)
+
+_UN_NATIONAL_STATISTICS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("region", "region"),
+    ("group", "group"),
+    ("fertility", "d"), ("ppgdp", "d"),
+    ("lifeexpf", "target"),
+    ("pcturban", "i"),
+    ("infantmortality", "d"),
+)
+
+_US_AIRCRAFT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("tailnum", "text"),
+    ("year", "i"),
+    ("type", "type"),
+    ("manufacturer", "text"), ("model", "text"),
+    ("engines", "i"),
+    ("seats", "target"),
+    ("speed", "i"),
+    ("engine", "engine"),
+)
+
+_US_AIRPORTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("faa", "text"), ("name", "text"),
+    ("lat", "d"), ("lon", "d"),
+    ("alt", "target"),
+    ("tz", "i"),
+    ("dst", "dst"),
+    ("tzone", "tzone"),
+)
+
+_US_ARRESTS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("murder", "target"),
+    ("assault", "i"), ("urbanpop", "i"),
+    ("rape", "d"),
+)
+
+_US_BIRTHS_1978_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("date", "date"),
+    ("births", "target"),
+    ("wday", "wday"),
+    ("year", "i"), ("month", "i"), ("day_of_year", "i"), ("day_of_month", "i"),
+    ("day_of_week", "i"),
+)
+
+_US_BIRTHS_2014_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("fage", "i"), ("mage", "i"),
+    ("mature", "mature"),
+    ("weeks", "i"),
+    ("premie", "premie"),
+    ("visits", "i"), ("gained", "i"),
+    ("weight", "target"),
+    ("lowbirthweight", "lowbirthweight"),
+    ("sex", "sex"),
+    ("habit", "habit"),
+    ("marital", "marital"),
+    ("whitemom", "whitemom"),
+)
+
+_US_CEREALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("mfr", "label"),
+    ("calories", "d"), ("protein", "d"), ("fat", "d"), ("sodium", "d"), ("fibre", "d"),
+    ("carbo", "d"), ("sugars", "d"),
+    ("shelf", "i"),
+    ("potassium", "d"),
+    ("vitamins", "vitamins"),
+)
+
+_US_COLLEGES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("private", "label"),
+    ("apps", "i"), ("accept", "i"), ("enroll", "i"), ("top10perc", "i"), ("top25perc", "i"),
+    ("f_undergrad", "i"), ("p_undergrad", "i"), ("outstate", "i"), ("room_board", "i"),
+    ("books", "i"), ("personal", "i"), ("phd", "i"), ("terminal", "i"),
+    ("s_f_ratio", "d"),
+    ("perc_alumni", "i"), ("expend", "i"), ("grad_rate", "i"),
+)
+
+_US_ECONOMICS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("date", "date"),
+    ("pce", "d"), ("pop", "d"), ("psavert", "d"), ("uempmed", "d"),
+    ("unemploy", "target"),
+)
+
+_US_GUN_MURDERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("state", "text"), ("abb", "text"),
+    ("region", "region"),
+    ("population", "i"),
+    ("total", "target"),
+)
+
+_US_STATE_EDUCATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "text"),
+    ("region", "region"),
+    ("pop", "i"),
+    ("satv", "target"), ("satm", "target"),
+    ("percent", "i"),
+    ("dollars", "d"),
+    ("pay", "i"),
+)
+
+_USED_CAR_PRICES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("price", "target"),
+    ("mileage", "i"), ("cylinder", "i"), ("doors", "i"), ("cruise", "i"), ("sound", "i"),
+    ("leather", "i"), ("buick", "i"), ("cadillac", "i"), ("chevy", "i"), ("pontiac", "i"),
+    ("saab", "i"), ("saturn", "i"), ("convertible", "i"), ("coupe", "i"), ("hatchback", "i"),
+    ("sedan", "i"), ("wagon", "i"),
+)
+
+_UTILITY_BILLS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("month", "i"), ("day", "i"), ("year", "i"), ("temp", "i"), ("kwh", "i"),
+    ("ccf", "i"),
+    ("thermsperday", "d"),
+    ("billingdays", "i"),
+    ("totalbill", "target"),
+    ("gasbill", "d"), ("elecbill", "d"),
+    ("notes", "text"),
+)
+
+_VERBAL_AGGRESSION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("anger", "i"),
+    ("gender", "gender"),
+    ("item", "item"),
+    ("resp", "label"),
+    ("id", "i"),
+    ("btype", "btype"),
+    ("situ", "situ"),
+    ("mode", "mode"),
+    ("r2", "r2"),
+)
+
+_VOCABULARY_TEST_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("year", "i"),
+    ("sex", "sex"),
+    ("education", "i"),
+    ("vocabulary", "target"),
+)
+
+_VOLUNTEERING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("neuroticism", "i"), ("extraversion", "i"),
+    ("sex", "sex"),
+    ("volunteer", "label"),
+)
+
+_WARP_BREAKS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("breaks", "target"),
+    ("wool", "wool"),
+    ("tension", "tension"),
+)
+
+_WHEAT_YIELD_TRIALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("block", "i"),
+    ("variety", "text"),
+    ("yield", "target"),
+    ("latitude", "d"), ("longitude", "d"),
+)
+
+_WHICKHAM_SMOKING_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("outcome", "label"),
+    ("smoker", "smoker"),
+    ("age", "i"),
+)
+
+_WINDSOR_HOUSE_PRICES_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("price", "target"),
+    ("lotsize", "i"), ("bedrooms", "i"), ("bathrooms", "i"), ("stories", "i"),
+    ("driveway", "driveway"), ("recreation", "driveway"), ("fullbase", "driveway"),
+    ("gasheat", "driveway"), ("aircon", "driveway"),
+    ("garage", "i"),
+    ("prefer", "driveway"),
+)
+
+_WOMENS_LABOUR_1975_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("lfp", "label"),
+    ("k5", "i"), ("k618", "i"), ("age", "i"),
+    ("wc", "wc"), ("hc", "wc"),
+    ("lwg", "d"), ("inc", "d"),
+)
+
+_WORKPLACE_SMOKING_BAN_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("smoker", "label"),
+    ("ban", "ban"),
+    ("age", "i"),
+    ("education", "education"),
+    ("afam", "ban"), ("hispanic", "ban"),
+    ("gender", "gender"),
+)
+
+_WORLD_VALUES_SURVEY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"),
+    ("poverty", "label"),
+    ("religion", "religion"), ("degree", "religion"),
+    ("country", "country"),
+    ("age", "i"),
+    ("gender", "gender"),
+)
+
+_YOUTH_RISK_BEHAVIOUR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("row", "i"), ("age", "i"),
+    ("gender", "gender"),
+    ("grade", "grade"),
+    ("hispanic", "hispanic"),
+    ("race", "text"),
+    ("height", "d"),
+    ("weight", "target"),
+    ("helmet_12m", "helmet_12m"),
+    ("text_while_driving_30d", "text_while_driving_30d"),
+    ("physically_active_7d", "i"),
+    ("hours_tv_per_school_day", "hours_tv_per_school_day"),
+    ("strength_training_7d", "i"),
+    ("school_night_hours_sleep", "school_night_hours_sleep"),
+)
+
+#: The sets below are the country-year tables Our World in Data charts, read
+#: from the CSV each chart offers: a row for one place in one year, naming the
+#: place, its three-letter code where it has one - a continent or an income
+#: group has none - the year, and what was measured. The measured column is the
+#: one to predict. Our World in Data publishes these under CC BY 4.0, and the
+#: chart page named as the source says whose counting stands behind each.
+_GDP_PER_CAPITA_WORLDBANK_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("gdp_per_capita", "target"), ("region", "text"),
+)
+
+_ELECTRICITY_ACCESS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("share_with_electricity", "target"),
+)
+
+_INTERNET_USE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("share_using_internet", "target"),
+)
+
+_CONSUMER_PRICE_INFLATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("inflation_percent", "target"),
+)
+
+_UNEMPLOYMENT_RATE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("unemployment_percent", "target"),
+)
+
+_FRESHWATER_WITHDRAWALS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("withdrawals_km3", "target"),
+)
+
+_AIR_PASSENGERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("passengers", "target"), ("region", "text"),
+)
+
+_MOBILE_SUBSCRIPTIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("subscriptions_per_100", "target"),
+)
+
+_INTERNET_USERS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("users", "target"),
+)
+
+_CO2_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("emissions_tonnes", "target"),
+)
+
+_CO2_EMISSIONS_PER_PERSON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_per_person", "target"),
+)
+
+_CUMULATIVE_CO2_EMISSIONS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("emissions_tonnes", "target"),
+)
+
+_CO2_PER_DOLLAR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kg_per_dollar", "target"),
+)
+
+_RENEWABLE_ELECTRICITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("renewable_percent", "target"),
+)
+
+_ELECTRICITY_GENERATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("generation_twh", "target"),
+)
+
+_RENEWABLE_ENERGY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("renewable_percent", "target"),
+)
+
+_ENERGY_USE_PER_PERSON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kwh_per_person", "target"),
+)
+
+_PRIMARY_ENERGY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("energy_twh", "target"),
+)
+
+_CEREAL_YIELDS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("tonnes_per_hectare", "target"),
+)
+
+_CALORIE_SUPPLY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("kcal_per_day", "target"),
+)
+
+_GDP_PER_CAPITA_MADDISON_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("gdp_per_capita", "target"), ("note", "text"),
+)
+
+_POPULATION_DENSITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("people_per_km2", "target"),
+)
+
+_URBAN_POPULATION_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("urban_percent", "target"),
+)
+
+_LIFE_EXPECTANCY_AT_BIRTH_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("years", "target"),
+)
+
+_CHILD_MORTALITY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("deaths_per_100_births", "target"),
+)
+
+_CHILD_MORTALITY_IGME_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("deaths_per_100_births", "target"),
+)
+
+_ADULT_LITERACY_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("literate_percent", "target"),
+)
+
+_HUMAN_DEVELOPMENT_INDEX_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("year", "i"),
+    ("hdi", "target"), ("region", "text"),
+)
+
+_SEA_LEVEL_FIELDS: tuple[tuple[str, str], ...] = (
+    ("entity", "text"), ("code", "text"), ("day", "date"),
+    ("church_and_white", "d"), ("uhslc", "d"), ("sea_level_mm", "target"),
+)
+
 DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
     "mnist": Images(
         name="mnist",
@@ -6658,6 +8518,3061 @@ DATASETS: dict[str, Images | CIFAR | Audio | Matrix | Table] = {
         codes={
             "video": ("Eminem", "Katy Perry", "LMFAO", "Psy", "Shakira"),
         },
+    ),
+    "acute_myeloid_leukaemia": Table(
+        name="acute_myeloid_leukaemia",
+        label="Acute Myeloid Leukaemia Trial",
+        title="646 patients in a trial of two treatments for acute myeloid leukaemia",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/myeloid.html",
+        classes=("treatment_a", "treatment_b"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/myeloid.csv",
+        header=True,
+        fields=_ACUTE_MYELOID_LEUKAEMIA_FIELDS,
+        labels={"A": 0, "B": 1},
+        codes={
+            "sex": ("f", "m"),
+            "flt3": ("A", "B", "C"),
+        },
+    ),
+    "alcohol_by_country": Table(
+        name="alcohol_by_country",
+        label="Alcohol Consumption by Country",
+        title="193 countries and how much pure alcohol each drank a head",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/drinks.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/drinks.csv",
+        header=True,
+        text_size=28,
+        fields=_ALCOHOL_BY_COUNTRY_FIELDS,
+    ),
+    "animal_scat": Table(
+        name="animal_scat",
+        label="Morphometrics of Animal Scat",
+        title="110 droppings found on a trail and which animal left each",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/scat.html",
+        classes=("bobcat", "coyote", "gray_fox"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/scat.csv",
+        header=True,
+        fields=_ANIMAL_SCAT_FIELDS,
+        labels={"bobcat": 0, "coyote": 1, "gray_fox": 2},
+        codes={
+            "month": (
+                "April", "August", "February", "January", "June", "May", "November", "October",
+                "September",
+            ),
+            "site": ("ANNU", "YOLA"),
+            "location": ("edge", "middle", "off_edge"),
+        },
+    ),
+    "anorexia_treatment": Table(
+        name="anorexia_treatment",
+        label="Anorexia Treatment",
+        title="72 young women treated for anorexia and what each weighed after",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/anorexia.html",
+        classes=("cognitive_behavioural", "control", "family"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/anorexia.csv",
+        header=True,
+        fields=_ANOREXIA_TREATMENT_FIELDS,
+        labels={"CBT": 0, "Cont": 1, "FT": 2},
+    ),
+    "bad_drivers": Table(
+        name="bad_drivers",
+        label="Bad Drivers",
+        title="51 American states and what car insurance cost a driver in each",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/bad_drivers.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/bad_drivers.csv",
+        header=True,
+        text_size=20,
+        fields=_BAD_DRIVERS_FIELDS,
+    ),
+    "baseball_batting": Table(
+        name="baseball_batting",
+        label="Lahman Batting",
+        title="128,598 player-seasons of major league batting and the home runs each brought",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/Batting.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/Batting.csv",
+        header=True,
+        text_size=9,
+        fields=_BASEBALL_BATTING_FIELDS,
+        codes={
+            "lgid": (
+                "AA", "AL", "ANL", "EAS", "ECL", "EWL", "FL", "IND", "INT", "NAC", "NAL", "NL",
+                "NN2", "NNL", "NSL", "PL", "UA", "WES",
+            ),
+        },
+    ),
+    "baseball_fielding": Table(
+        name="baseball_fielding",
+        label="Lahman Fielding",
+        title="174,332 player-seasons of major league fielding and the errors each brought",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/Fielding.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/Fielding.csv",
+        header=True,
+        text_size=9,
+        fields=_BASEBALL_FIELDING_FIELDS,
+        codes={
+            "lgid": (
+                "AA", "AL", "ANL", "EAS", "ECL", "EWL", "FL", "IND", "INT", "NAC", "NAL", "NL",
+                "NN2", "NNL", "NSL", "PL", "UA", "WES",
+            ),
+            "pos": ("1B", "2B", "3B", "C", "OF", "P", "PH", "PR", "SS"),
+        },
+    ),
+    "baseball_hall_of_fame": Table(
+        name="baseball_hall_of_fame",
+        label="Hall of Fame Voting",
+        title="6,426 Hall of Fame ballots and how many votes each player drew",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/HallOfFame.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/HallOfFame.csv",
+        header=True,
+        text_size=102,
+        fields=_BASEBALL_HALL_OF_FAME_FIELDS,
+        codes={
+            "inducted": ("N", "Y"),
+            "category": (
+                "Executive", "Manager", "Pioneer", "Pioneer/Executive", "Player", "Umpire",
+            ),
+        },
+    ),
+    "baseball_hitters": Table(
+        name="baseball_hitters",
+        label="Major League Hitters",
+        title="322 baseball players in the 1986 season and what each was paid",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Hitters.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Hitters.csv",
+        header=True,
+        text_size=18,
+        fields=_BASEBALL_HITTERS_FIELDS,
+        codes={
+            "league": ("A", "N"),
+            "division": ("E", "W"),
+        },
+    ),
+    "baseball_managers": Table(
+        name="baseball_managers",
+        label="Lahman Managers",
+        title="4,410 manager-seasons and how many games each won",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/Managers.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/Managers.csv",
+        header=True,
+        text_size=9,
+        fields=_BASEBALL_MANAGERS_FIELDS,
+        codes={
+            "lgid": (
+                "AA", "AL", "ANL", "EAS", "ECL", "EWL", "FL", "IND", "INT", "NAC", "NAL", "NL",
+                "NN2", "NNL", "NSL", "PL", "UA", "WES",
+            ),
+            "plyrmgr": ("N", "Y"),
+        },
+    ),
+    "baseball_pitching": Table(
+        name="baseball_pitching",
+        label="Lahman Pitching",
+        title="57,630 pitcher-seasons and the earned run average each finished with",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/Pitching.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/Pitching.csv",
+        header=True,
+        text_size=9,
+        fields=_BASEBALL_PITCHING_FIELDS,
+        codes={
+            "lgid": (
+                "AA", "AL", "ANL", "EAS", "ECL", "EWL", "FL", "IND", "INT", "NAC", "NAL", "NL",
+                "NN2", "NNL", "NSL", "PL", "UA", "WES",
+            ),
+        },
+    ),
+    "baseball_players": Table(
+        name="baseball_players",
+        label="Lahman People",
+        title="24,270 major league players and how tall each stood",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/People.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/People.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=43,
+        fields=_BASEBALL_PLAYERS_FIELDS,
+        codes={
+            "bats": ("B", "L", "R"),
+            "throws": ("B", "L", "R", "S"),
+        },
+    ),
+    "baseball_salaries": Table(
+        name="baseball_salaries",
+        label="Lahman Salaries",
+        title="26,428 player-seasons and what the player was paid",
+        licence="GPL",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/Lahman/Salaries.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/Lahman/Salaries.csv",
+        header=True,
+        text_size=9,
+        fields=_BASEBALL_SALARIES_FIELDS,
+        codes={
+            "lgid": ("AL", "NL"),
+        },
+    ),
+    "bechdel_test": Table(
+        name="bechdel_test",
+        label="The Bechdel Test",
+        title="1,794 films and whether each passes the Bechdel test",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/bechdel.html",
+        classes=("fail", "pass"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/bechdel.csv",
+        header=True,
+        text_size=83,
+        fields=_BECHDEL_TEST_FIELDS,
+        labels={"FAIL": 0, "PASS": 1},
+        codes={
+            "test": (
+                "dubious", "dubious-disagree", "men", "men-disagree", "notalk", "notalk-disagree",
+                "nowomen", "nowomen-disagree", "ok", "ok-disagree",
+            ),
+            "clean_test": ("dubious", "men", "notalk", "nowomen", "ok"),
+        },
+    ),
+    "biliary_cholangitis": Table(
+        name="biliary_cholangitis",
+        label="Mayo Clinic Primary Biliary Cholangitis",
+        title="418 patients with primary biliary cholangitis and how long each lived",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/pbc.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/pbc.csv",
+        header=True,
+        fields=_BILIARY_CHOLANGITIS_FIELDS,
+        codes={
+            "sex": ("f", "m"),
+        },
+    ),
+    "black_cherry_trees": Table(
+        name="black_cherry_trees",
+        label="Black Cherry Trees",
+        title="31 felled black cherry trees and how much timber each held",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/trees.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/trees.csv",
+        header=True,
+        fields=_BLACK_CHERRY_TREES_FIELDS,
+    ),
+    "bladder_tumours": Table(
+        name="bladder_tumours",
+        label="Bladder Tumour Recurrences",
+        title="340 follow-up records from a trial of thiotepa against bladder tumours",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/bladder.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/bladder.csv",
+        header=True,
+        fields=_BLADDER_TUMOURS_FIELDS,
+    ),
+    "boating_trips": Table(
+        name="boating_trips",
+        label="Boating Trips to Lake Somerville",
+        title="659 households and how many boating trips each took in a season",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/RecreationDemand.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/RecreationDemand.csv",
+        header=True,
+        fields=_BOATING_TRIPS_FIELDS,
+        codes={
+            "ski": ("no", "yes"),
+        },
+    ),
+    "boston_housing": Table(
+        name="boston_housing",
+        label="Boston Housing",
+        title="506 census tracts around Boston and what a home in each was worth",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/Boston.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/Boston.csv",
+        header=True,
+        fields=_BOSTON_HOUSING_FIELDS,
+    ),
+    "breast_cancer_gbsg": Table(
+        name="breast_cancer_gbsg",
+        label="German Breast Cancer Study",
+        title="686 women with node-positive breast cancer and how long each went clear",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/gbsg.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/gbsg.csv",
+        header=True,
+        fields=_BREAST_CANCER_GBSG_FIELDS,
+    ),
+    "brushtail_possums": Table(
+        name="brushtail_possums",
+        label="Possums in Australia and New Guinea",
+        title="104 brushtail possums trapped and measured, and where each was caught",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/possum.html",
+        classes=("victoria", "elsewhere"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/possum.csv",
+        header=True,
+        fields=_BRUSHTAIL_POSSUMS_FIELDS,
+        labels={"Vic": 0, "other": 1},
+        codes={
+            "sex": ("f", "m"),
+        },
+    ),
+    "california_schools": Table(
+        name="california_schools",
+        label="California Test Scores",
+        title="420 Californian school districts and how their fifth-graders scored",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/CASchools.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/CASchools.csv",
+        header=True,
+        text_size=39,
+        fields=_CALIFORNIA_SCHOOLS_FIELDS,
+        codes={
+            "grades": ("KK-06", "KK-08"),
+        },
+    ),
+    "canadian_interlocks": Table(
+        name="canadian_interlocks",
+        label="Interlocking Directorates in Canada",
+        title="248 Canadian firms and how many boards each was tied to",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Ornstein.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Ornstein.csv",
+        header=True,
+        fields=_CANADIAN_INTERLOCKS_FIELDS,
+        codes={
+            "sector": ("AGR", "BNK", "CON", "FIN", "HLD", "MAN", "MER", "MIN", "TRN", "WOD"),
+            "nation": ("CAN", "OTH", "UK", "US"),
+        },
+    ),
+    "canadian_womens_work": Table(
+        name="canadian_womens_work",
+        label="Canadian Women's Labour Force",
+        title="263 Canadian women and whether each worked full time, part time or not at all",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Womenlf.html",
+        classes=("not_working", "part_time", "full_time"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Womenlf.csv",
+        header=True,
+        fields=_CANADIAN_WOMENS_WORK_FIELDS,
+        labels={"not.work": 0, "parttime": 1, "fulltime": 2},
+        codes={
+            "children": ("absent", "present"),
+            "region": ("Atlantic", "BC", "Ontario", "Prairie", "Quebec"),
+        },
+    ),
+    "candy_rankings": Table(
+        name="candy_rankings",
+        label="Candy Power Ranking",
+        title="85 sweets and how often each won a head-to-head vote",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/candy_rankings.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/candy_rankings.csv",
+        header=True,
+        text_size=27,
+        fields=_CANDY_RANKINGS_FIELDS,
+        codes={
+            "chocolate": ("FALSE", "TRUE"),
+        },
+    ),
+    "car_seat_sales": Table(
+        name="car_seat_sales",
+        label="Child Car Seat Sales",
+        title="400 stores and how many child car seats each sold",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Carseats.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Carseats.csv",
+        header=True,
+        fields=_CAR_SEAT_SALES_FIELDS,
+        codes={
+            "shelveloc": ("Bad", "Good", "Medium"),
+            "urban": ("No", "Yes"),
+        },
+    ),
+    "card_default": Table(
+        name="card_default",
+        label="Credit Card Default",
+        title="10,000 cardholders and whether each defaulted",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Default.html",
+        classes=("paid", "defaulted"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Default.csv",
+        header=True,
+        fields=_CARD_DEFAULT_FIELDS,
+        labels={"No": 0, "Yes": 1},
+        codes={
+            "student": ("No", "Yes"),
+        },
+    ),
+    "cat_hearts": Table(
+        name="cat_hearts",
+        label="Anatomy of Domestic Cats",
+        title="144 adult cats weighed body and heart, and the sex of each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/cats.html",
+        classes=("female", "male"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/cats.csv",
+        header=True,
+        fields=_CAT_HEARTS_FIELDS,
+        labels={"F": 0, "M": 1},
+    ),
+    "chicago_taxi": Table(
+        name="chicago_taxi",
+        label="Chicago Taxi Tips",
+        title="10,000 Chicago taxi rides and whether the driver was tipped",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/taxi.html",
+        classes=("no_tip", "tipped"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/taxi.csv",
+        header=True,
+        fields=_CHICAGO_TAXI_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "company": (
+                "Chicago Independents", "City Service", "Flash Cab", "Sun Taxi",
+                "Taxi Affiliation Services", "Taxicab Insurance Agency Llc", "other",
+            ),
+            "local": ("no", "yes"),
+            "dow": ("Fri", "Mon", "Sat", "Sun", "Thu", "Tue", "Wed"),
+            "month": ("Apr", "Feb", "Jan", "Mar"),
+        },
+    ),
+    "chick_weights": Table(
+        name="chick_weights",
+        label="Chick Weights",
+        title="578 weighings of chicks fed four different diets",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/ChickWeight.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/ChickWeight.csv",
+        header=True,
+        fields=_CHICK_WEIGHTS_FIELDS,
+    ),
+    "chile_plebiscite": Table(
+        name="chile_plebiscite",
+        label="The 1988 Chilean Plebiscite",
+        title="2,700 Chilean voters and how each said they would vote",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Chile.html",
+        classes=("abstain", "no", "undecided", "yes", "no_answer"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Chile.csv",
+        header=True,
+        fields=_CHILE_PLEBISCITE_FIELDS,
+        labels={"A": 0, "N": 1, "U": 2, "Y": 3, "": 4},
+        codes={
+            "region": ("C", "M", "N", "S", "SA"),
+            "sex": ("F", "M"),
+            "education": ("P", "PS", "S"),
+        },
+    ),
+    "chocolate_cakes": Table(
+        name="chocolate_cakes",
+        label="Breakage Angle of Chocolate Cakes",
+        title="270 chocolate cakes baked to three recipes and the angle each broke at",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/cake.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/cake.csv",
+        header=True,
+        fields=_CHOCOLATE_CAKES_FIELDS,
+        codes={
+            "recipe": ("A", "B", "C"),
+        },
+    ),
+    "college_distance": Table(
+        name="college_distance",
+        label="College Distance",
+        title="4,739 American schoolchildren and how far each lived from a college",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/CollegeDistance.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/CollegeDistance.csv",
+        header=True,
+        fields=_COLLEGE_DISTANCE_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+            "ethnicity": ("afam", "hispanic", "other"),
+            "fcollege": ("no", "yes"),
+            "income": ("high", "low"),
+            "region": ("other", "west"),
+        },
+    ),
+    "college_majors": Table(
+        name="college_majors",
+        label="The Economic Guide to Picking a College Major",
+        title="173 college majors and what their graduates earned",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/college_recent_grads.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/college_recent_grads.csv",
+        header=True,
+        text_size=65,
+        fields=_COLLEGE_MAJORS_FIELDS,
+        codes={
+            "major_category": (
+                "Agriculture & Natural Resources", "Arts", "Biology & Life Science", "Business",
+                "Communications & Journalism", "Computers & Mathematics", "Education",
+                "Engineering", "Health", "Humanities & Liberal Arts",
+                "Industrial Arts & Consumer Services", "Interdisciplinary", "Law & Public Policy",
+                "Physical Sciences", "Psychology & Social Work", "Social Science",
+            ),
+        },
+    ),
+    "colon_cancer_trial": Table(
+        name="colon_cancer_trial",
+        label="Chemotherapy for Colon Cancer",
+        title="1,858 records from a trial of levamisole and fluorouracil after surgery",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/colon.html",
+        classes=("observation", "levamisole", "levamisole_and_fluorouracil"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/colon.csv",
+        header=True,
+        fields=_COLON_CANCER_TRIAL_FIELDS,
+        labels={"Obs": 0, "Lev": 1, "Lev+5FU": 2},
+    ),
+    "commercial_oils": Table(
+        name="commercial_oils",
+        label="Fatty Acids in Commercial Oils",
+        title="96 samples of commercial oil and which plant each was pressed from",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/oils.html",
+        classes=("corn", "olive", "peanut", "pumpkin", "rapeseed", "soybean", "sunflower"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/oils.csv",
+        header=True,
+        fields=_COMMERCIAL_OILS_FIELDS,
+        labels={
+            "corn": 0, "olive": 1, "peanut": 2, "pumpkin": 3, "rapeseed": 4, "soybean": 5,
+            "sunflower": 6,
+        },
+    ),
+    "congress_age": Table(
+        name="congress_age",
+        label="The Age of Congress",
+        title="18,635 terms served in the US Congress and how old the member was",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/congress_age.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/congress_age.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=19,
+        fields=_CONGRESS_AGE_FIELDS,
+        codes={
+            "chamber": ("house", "senate"),
+            "suffix": ("II", "III", "IV", "Jr.", "Sr."),
+            "party": ("AL", "D", "I", "ID", "L", "R"),
+            "incumbent": ("FALSE", "TRUE"),
+        },
+    ),
+    "cow_milk_protein": Table(
+        name="cow_milk_protein",
+        label="Protein in Cows' Milk",
+        title="1,337 weekly milk samples from cows fed three diets",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Milk.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Milk.csv",
+        header=True,
+        text_size=4,
+        fields=_COW_MILK_PROTEIN_FIELDS,
+        codes={
+            "diet": ("barley", "barley+lupins", "lupins"),
+        },
+    ),
+    "cps_wages": Table(
+        name="cps_wages",
+        label="Wages in the 1985 Current Population Survey",
+        title="534 American workers surveyed in 1985 and what each earned an hour",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/CPS1985.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/CPS1985.csv",
+        header=True,
+        fields=_CPS_WAGES_FIELDS,
+        codes={
+            "ethnicity": ("cauc", "hispanic", "other"),
+            "region": ("other", "south"),
+            "gender": ("female", "male"),
+            "occupation": ("management", "office", "sales", "services", "technical", "worker"),
+            "sector": ("construction", "manufacturing", "other"),
+            "union": ("no", "yes"),
+        },
+    ),
+    "credit_card_applications": Table(
+        name="credit_card_applications",
+        label="Credit Card Applications",
+        title="1,319 credit card applications and whether each was accepted",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/CreditCard.html",
+        classes=("refused", "accepted"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/CreditCard.csv",
+        header=True,
+        fields=_CREDIT_CARD_APPLICATIONS_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "owner": ("no", "yes"),
+        },
+    ),
+    "credit_card_balance": Table(
+        name="credit_card_balance",
+        label="Credit Card Balances",
+        title="400 cardholders and the balance each carried",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Credit.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Credit.csv",
+        header=True,
+        fields=_CREDIT_CARD_BALANCE_FIELDS,
+        codes={
+            "gender": ("Female", "Male"),
+            "student": ("No", "Yes"),
+            "ethnicity": ("African American", "Asian", "Caucasian"),
+        },
+    ),
+    "developer_survey": Table(
+        name="developer_survey",
+        label="Stack Overflow Developer Survey",
+        title="5,594 software developers and what each was paid",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/stackoverflow.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/stackoverflow.csv",
+        header=True,
+        fields=_DEVELOPER_SURVEY_FIELDS,
+        codes={
+            "country": ("Canada", "Germany", "India", "United Kingdom", "United States"),
+            "remote": ("Not remote", "Remote"),
+        },
+    ),
+    "diamonds": Table(
+        name="diamonds",
+        label="Diamond Prices",
+        title="53,940 round-cut diamonds and what each sold for",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/diamonds.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/diamonds.csv",
+        header=True,
+        fields=_DIAMONDS_FIELDS,
+        codes={
+            "cut": ("Fair", "Good", "Ideal", "Premium", "Very Good"),
+            "color": ("D", "E", "F", "G", "H", "I", "J"),
+            "clarity": ("I1", "IF", "SI1", "SI2", "VS1", "VS2", "VVS1", "VVS2"),
+        },
+    ),
+    "dnase_assay": Table(
+        name="dnase_assay",
+        label="DNase ELISA Assay",
+        title="176 wells of a DNase assay and the optical density each read",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/DNase.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/DNase.csv",
+        header=True,
+        fields=_DNASE_ASSAY_FIELDS,
+    ),
+    "doctor_visits": Table(
+        name="doctor_visits",
+        label="Australian Doctor Visits",
+        title="5,190 Australians in the 1977 health survey and how often each saw a doctor",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/DoctorVisits.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/DoctorVisits.csv",
+        header=True,
+        fields=_DOCTOR_VISITS_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+            "private": ("no", "yes"),
+        },
+    ),
+    "doctoral_publications": Table(
+        name="doctoral_publications",
+        label="Doctoral Publications",
+        title="915 biochemistry doctoral students and how many papers each published",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/PhDPublications.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/PhDPublications.csv",
+        header=True,
+        fields=_DOCTORAL_PUBLICATIONS_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+            "married": ("no", "yes"),
+        },
+    ),
+    "earthquake_intensity": Table(
+        name="earthquake_intensity",
+        label="Earthquake Intensity",
+        title="182 seismometer readings and the ground acceleration each recorded",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Earthquake.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Earthquake.csv",
+        header=True,
+        fields=_EARTHQUAKE_INTENSITY_FIELDS,
+    ),
+    "economic_growth": Table(
+        name="economic_growth",
+        label="Determinants of Economic Growth",
+        title="121 countries in the Mankiw, Romer and Weil growth study and how fast each grew",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/GrowthDJ.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/GrowthDJ.csv",
+        header=True,
+        fields=_ECONOMIC_GROWTH_FIELDS,
+        codes={
+            "oil": ("no", "yes"),
+        },
+    ),
+    "economics_journals": Table(
+        name="economics_journals",
+        label="Economics Journal Subscriptions",
+        title="180 economics journals and how many libraries subscribed to each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/Journals.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/Journals.csv",
+        header=True,
+        text_size=55,
+        fields=_ECONOMICS_JOURNALS_FIELDS,
+        codes={
+            "society": ("no", "yes"),
+            "field": (
+                "Agricultural Economics", "Area Studies", "Business", "Consumer Economics",
+                "Demography", "Development", "Econometrics", "Economic History", "Finance",
+                "General", "Health", "Industrial Organization", "Insurance", "Interdisciplinary",
+                "International", "Labor", "Law and Economics", "Macroeconomics",
+                "Management Science", "Natural Resources", "Public Finance", "Specialized",
+                "Theory", "Urban and Regional",
+            ),
+        },
+    ),
+    "email_spam": Table(
+        name="email_spam",
+        label="Email Spam",
+        title="3,921 emails to one account and whether each was spam",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/email.html",
+        classes=("ham", "spam"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/email.csv",
+        header=True,
+        dates="%Y-%m-%dT%H:%M:%SZ",
+        fields=_EMAIL_SPAM_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={
+            "winner": ("no", "yes"),
+            "number": ("big", "none", "small"),
+        },
+    ),
+    "epilepsy_seizures": Table(
+        name="epilepsy_seizures",
+        label="Seizure Counts for Epileptics",
+        title="236 clinic visits by epileptic patients and the seizures each brought",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/epil.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/epil.csv",
+        header=True,
+        fields=_EPILEPSY_SEIZURES_FIELDS,
+        codes={
+            "trt": ("placebo", "progabide"),
+        },
+    ),
+    "exercise_histories": Table(
+        name="exercise_histories",
+        label="Exercise Histories of Eating-Disordered Subjects",
+        title="945 exercise reports from girls in treatment and their controls",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Blackmore.html",
+        classes=("control", "patient"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Blackmore.csv",
+        header=True,
+        text_size=4,
+        fields=_EXERCISE_HISTORIES_FIELDS,
+        labels={"control": 0, "patient": 1},
+    ),
+    "extramarital_affairs": Table(
+        name="extramarital_affairs",
+        label="Fair's Extramarital Affairs",
+        title="601 people answering a 1969 magazine survey and how often each strayed",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/Affairs.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/Affairs.csv",
+        header=True,
+        fields=_EXTRAMARITAL_AFFAIRS_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+            "children": ("no", "yes"),
+        },
+    ),
+    "fandango_ratings": Table(
+        name="fandango_ratings",
+        label="Fandango Film Ratings",
+        title="146 films and how four websites rated each",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/fandango.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/fandango.csv",
+        header=True,
+        text_size=63,
+        fields=_FANDANGO_RATINGS_FIELDS,
+    ),
+    "fast_food_nutrition": Table(
+        name="fast_food_nutrition",
+        label="Nutrition in Fast Food",
+        title="515 fast food items and how many calories each holds",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/fastfood.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/fastfood.csv",
+        header=True,
+        text_size=63,
+        fields=_FAST_FOOD_NUTRITION_FIELDS,
+        codes={
+            "restaurant": (
+                "Arbys", "Burger King", "Chick Fil-A", "Dairy Queen", "Mcdonalds", "Sonic",
+                "Subway", "Taco Bell",
+            ),
+            "salad": ("Other",),
+        },
+    ),
+    "fatty_liver_disease": Table(
+        name="fatty_liver_disease",
+        label="Non-Alcoholic Fatty Liver Disease",
+        title="17,549 residents of Olmsted County and how heavy each was",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/nafld1.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/nafld1.csv",
+        header=True,
+        fields=_FATTY_LIVER_DISEASE_FIELDS,
+    ),
+    "fertility_labour": Table(
+        name="fertility_labour",
+        label="Fertility and Women's Labour Supply",
+        title="254,654 American mothers in the 1980 census and whether each had a third child",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/Fertility.html",
+        classes=("two", "three_or_more"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/Fertility.csv",
+        header=True,
+        fields=_FERTILITY_LABOUR_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "gender1": ("female", "male"),
+            "afam": ("no", "yes"),
+        },
+    ),
+    "fiji_earthquakes": Table(
+        name="fiji_earthquakes",
+        label="Earthquakes off Fiji",
+        title="1,000 earthquakes near Fiji and how strong each was",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/quakes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/quakes.csv",
+        header=True,
+        fields=_FIJI_EARTHQUAKES_FIELDS,
+    ),
+    "florida_2000_vote": Table(
+        name="florida_2000_vote",
+        label="Florida County Voting",
+        title="67 Florida counties and how each voted in the 2000 presidential election",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Florida.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Florida.csv",
+        header=True,
+        text_size=12,
+        fields=_FLORIDA_2000_VOTE_FIELDS,
+    ),
+    "flying_etiquette": Table(
+        name="flying_etiquette",
+        label="Flying Etiquette",
+        title="1,040 air travellers and what each thought of reclining a seat",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/flying.html",
+        classes=("not_rude", "somewhat_rude", "very_rude", "no_answer"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/flying.csv",
+        header=True,
+        text_size=59,
+        fields=_FLYING_ETIQUETTE_FIELDS,
+        labels={"No": 0, "Somewhat": 1, "Very": 2, "": 3},
+        codes={
+            "gender": ("Female", "Male"),
+            "age": ("18-29", "30-44", "45-60", "> 60"),
+            "height": (
+                '5\'0"', '5\'1"', '5\'10"', '5\'11"', '5\'2"', '5\'3"', '5\'4"', '5\'5"', '5\'6"',
+                '5\'7"', '5\'8"', '5\'9"', '6\'0"', '6\'1"', '6\'2"', '6\'3"', '6\'4"', '6\'5"',
+                '6\'6" and above', "Under 5 ft.",
+            ),
+            "children_under_18": ("FALSE", "TRUE"),
+            "household_income": (
+                "$0 - $24,999", "$100,000 - $149,999", "$25,000 - $49,999", "$50,000 - $99,999",
+            ),
+            "education": (
+                "Bachelor degree", "Graduate degree", "High school degree",
+                "Less than high school degree", "Some college or Associate degree",
+            ),
+            "location": (
+                "East North Central", "East South Central", "Middle Atlantic", "Mountain",
+                "New England", "Pacific", "South Atlantic", "West North Central",
+                "West South Central",
+            ),
+            "frequency": (
+                "A few times per month", "A few times per week", "Every day", "Never",
+                "Once a month or less", "Once a year or less",
+            ),
+            "recline_frequency": (
+                "About half the time", "Always", "Never", "Once in a while", "Usually",
+            ),
+            "switch_seats_friends": ("No", "Somewhat", "Very"),
+            "get_up": (
+                "Four times", "It is not okay to get up during flight",
+                "More than five times times", "Once", "Three times", "Twice",
+            ),
+        },
+    ),
+    "free_light_chain": Table(
+        name="free_light_chain",
+        label="Serum Free Light Chain",
+        title="7,874 residents of Olmsted County assayed for serum free light chains",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/flchain.html",
+        classes=("female", "male"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/flchain.csv",
+        header=True,
+        fields=_FREE_LIGHT_CHAIN_FIELDS,
+        labels={"F": 0, "M": 1},
+        codes={
+            "chapter": (
+                "Blood", "Circulatory", "Congenital", "Digestive", "Endocrine", "External Causes",
+                "Genitourinary", "Ill Defined", "Infectious", "Injury and Poisoning", "Mental",
+                "Musculoskeletal", "Neoplasms", "Nervous", "Respiratory", "Skin",
+            ),
+        },
+    ),
+    "fuel_economy": Table(
+        name="fuel_economy",
+        label="Fuel Economy from 1999 to 2008",
+        title="234 car models and what each did to the gallon on the highway",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/mpg.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/mpg.csv",
+        header=True,
+        text_size=22,
+        fields=_FUEL_ECONOMY_FIELDS,
+        codes={
+            "manufacturer": (
+                "audi", "chevrolet", "dodge", "ford", "honda", "hyundai", "jeep", "land rover",
+                "lincoln", "mercury", "nissan", "pontiac", "subaru", "toyota", "volkswagen",
+            ),
+            "trans": (
+                "auto(av)", "auto(l3)", "auto(l4)", "auto(l5)", "auto(l6)", "auto(s4)", "auto(s5)",
+                "auto(s6)", "manual(m5)", "manual(m6)",
+            ),
+            "drv": ("4", "f", "r"),
+            "fl": ("c", "d", "e", "p", "r"),
+            "class": ("2seater", "compact", "midsize", "minivan", "pickup", "subcompact", "suv"),
+        },
+    ),
+    "galton_heights": Table(
+        name="galton_heights",
+        label="Galton's Heights",
+        title="898 adult children measured with their parents",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Galton.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Galton.csv",
+        header=True,
+        text_size=4,
+        fields=_GALTON_HEIGHTS_FIELDS,
+        codes={
+            "sex": ("F", "M"),
+        },
+    ),
+    "gapminder": Table(
+        name="gapminder",
+        label="Gapminder",
+        title="1,704 country-years of life expectancy, population and income",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/gapminder/gapminder.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/gapminder/gapminder.csv",
+        header=True,
+        text_size=24,
+        fields=_GAPMINDER_FIELDS,
+        codes={
+            "continent": ("Africa", "Americas", "Asia", "Europe", "Oceania"),
+        },
+    ),
+    "gestation_births": Table(
+        name="gestation_births",
+        label="Child Health and Development Births",
+        title="1,236 births in the Child Health and Development Studies",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Gestation.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Gestation.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_GESTATION_BIRTHS_FIELDS,
+        codes={
+            "plurality": ("single fetus",),
+            "outcome": ("live birth",),
+            "sex": ("male",),
+            "race": ("asian", "black", "mex", "mixed", "white"),
+            "ed": (
+                "8th -12th grade - did not graduate", "College graduate",
+                "HS graduate--no other schooling", "HS+some college", "HS+trade",
+                "Trade school HS unclear", "less than 8th grade",
+            ),
+            "drace": ("asian", "black", "mex", "white"),
+            "marital": ("divorced", "legally separated", "married", "never married"),
+            "inc": (
+                "0-2500", "10000-12500", "12500-15000", "15000+", "15000-17500", "17500-20000",
+                "20000-22500", "2500-5000", "5000-7500", "7500-10000",
+            ),
+            "smoke": ("never", "now", "once did, not now", "until current pregnancy"),
+            "time_code": (
+                "1 to 2 years ago", "10+ years ago", "2 to 3 years ago", "3 to 4 years ago",
+                "5 to 9 years ago", "don't know", "during current preg", "never smoked",
+                "still smokes", "within 1 yr",
+            ),
+            "number": (
+                "1-4 per day", "10-14 per day", "15-19 per day", "20-29 per day", "30-39 per day",
+                "40-60 per day", "5-9 per day", "60+ per day", "never",
+            ),
+        },
+    ),
+    "granulomatous_disease": Table(
+        name="granulomatous_disease",
+        label="Chronic Granulomatous Disease",
+        title="203 infection records from a trial of gamma interferon",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/cgd.html",
+        classes=("placebo", "interferon"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/cgd.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_GRANULOMATOUS_DISEASE_FIELDS,
+        labels={"placebo": 0, "rIFN-g": 1},
+        codes={
+            "center": (
+                "Amsterdam", "Copenhagen", "Harvard Medical Sch", "L.A. Children's Hosp",
+                "Mott Children's Hosp", "Mt. Sinai Medical Ctr", "NIH", "Scripps Institute",
+                "Texas Children's Hosp", "Univ. of Minnesota", "Univ. of Utah",
+                "Univ. of Washington", "Univ. of Zurich",
+            ),
+            "sex": ("female", "male"),
+            "inherit": ("X-linked", "autosomal"),
+            "hos_cat": ("Europe:Amsterdam", "Europe:other", "US:NIH", "US:other"),
+        },
+    ),
+    "greenhouse_gases": Table(
+        name="greenhouse_gases",
+        label="Greenhouse Gas Concentrations",
+        title="300 ice-core readings of three greenhouse gases over two thousand years",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/greenhouse_gases.html",
+        classes=("carbon_dioxide", "methane", "nitrous_oxide"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/greenhouse_gases.csv",
+        header=True,
+        fields=_GREENHOUSE_GASES_FIELDS,
+        labels={"CO2": 0, "CH4": 1, "N2O": 2},
+    ),
+    "grouse_ticks": Table(
+        name="grouse_ticks",
+        label="Ticks on Red Grouse Chicks",
+        title="403 grouse chicks and how many ticks each carried",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/grouseticks.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/grouseticks.csv",
+        header=True,
+        fields=_GROUSE_TICKS_FIELDS,
+    ),
+    "guns_and_crime": Table(
+        name="guns_and_crime",
+        label="Guns and Crime",
+        title="1,173 American state-years of crime rates and whether a carry law was in force",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/Guns.html",
+        classes=("no_law", "law"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/Guns.csv",
+        header=True,
+        text_size=20,
+        fields=_GUNS_AND_CRIME_FIELDS,
+        labels={"no": 0, "yes": 1},
+    ),
+    "hate_crimes": Table(
+        name="hate_crimes",
+        label="Hate Crimes and Income Inequality",
+        title="51 American states and how many hate crimes each reported",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/hate_crimes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/hate_crimes.csv",
+        header=True,
+        text_size=20,
+        fields=_HATE_CRIMES_FIELDS,
+    ),
+    "help_study": Table(
+        name="help_study",
+        label="Health Evaluation and Linkage to Primary Care",
+        title="453 adults leaving detoxification and which substance each used",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/HELPrct.html",
+        classes=("alcohol", "cocaine", "heroin"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/HELPrct.csv",
+        header=True,
+        fields=_HELP_STUDY_FIELDS,
+        labels={"alcohol": 0, "cocaine": 1, "heroin": 2},
+        codes={
+            "anysub": ("no", "yes"),
+            "sex": ("female", "male"),
+            "homeless": ("homeless", "housed"),
+            "racegrp": ("black", "hispanic", "other", "white"),
+        },
+    ),
+    "high_school_and_beyond": Table(
+        name="high_school_and_beyond",
+        label="High School and Beyond",
+        title="200 American schoolchildren and which programme each was in",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/hsb2.html",
+        classes=("academic", "general", "vocational"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/hsb2.csv",
+        header=True,
+        fields=_HIGH_SCHOOL_AND_BEYOND_FIELDS,
+        labels={"academic": 0, "general": 1, "vocational": 2},
+        codes={
+            "gender": ("female", "male"),
+            "race": ("african american", "asian", "hispanic", "white"),
+            "ses": ("high", "low", "middle"),
+            "schtyp": ("private", "public"),
+        },
+    ),
+    "historic_co2": Table(
+        name="historic_co2",
+        label="Atmospheric Carbon Dioxide",
+        title="694 readings of atmospheric carbon dioxide over eight hundred thousand years",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/historic_co2.html",
+        classes=("ice_cores", "mauna_loa"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/historic_co2.csv",
+        header=True,
+        fields=_HISTORIC_CO2_FIELDS,
+        labels={"Ice Cores": 0, "Mauna Loa": 1},
+    ),
+    "hpc_jobs": Table(
+        name="hpc_jobs",
+        label="High-Performance Computing Jobs",
+        title="4,331 jobs run on a compute cluster and how long each took",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/hpc_data.html",
+        classes=("very_fast", "fast", "moderate", "long"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/hpc_data.csv",
+        header=True,
+        fields=_HPC_JOBS_FIELDS,
+        labels={"VF": 0, "F": 1, "M": 2, "L": 3},
+        codes={
+            "protocol": ("A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"),
+            "day": ("Fri", "Mon", "Sat", "Sun", "Thu", "Tue", "Wed"),
+        },
+    ),
+    "infant_mortality": Table(
+        name="infant_mortality",
+        label="Infant Mortality by Nation",
+        title="105 nations around 1970 and how many infants each lost per thousand born",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Leinhardt.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Leinhardt.csv",
+        header=True,
+        text_size=24,
+        fields=_INFANT_MORTALITY_FIELDS,
+        codes={
+            "region": ("Africa", "Americas", "Asia", "Europe"),
+            "oil": ("no", "yes"),
+        },
+    ),
+    "infertility": Table(
+        name="infertility",
+        label="Infertility after Abortion",
+        title="248 women in a matched study of infertility, cases and their controls",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/infert.html",
+        classes=("control", "case"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/infert.csv",
+        header=True,
+        fields=_INFERTILITY_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={
+            "education": ("0-5yrs", "12+ yrs", "6-11yrs"),
+        },
+    ),
+    "insect_sprays": Table(
+        name="insect_sprays",
+        label="Effectiveness of Insect Sprays",
+        title="72 plots treated with six insecticides and how many insects survived",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/InsectSprays.html",
+        classes=("a", "b", "c", "d", "e", "f"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/InsectSprays.csv",
+        header=True,
+        fields=_INSECT_SPRAYS_FIELDS,
+        labels={"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5},
+    ),
+    "italian_olive_oils": Table(
+        name="italian_olive_oils",
+        label="Italian Olive Oils",
+        title="572 Italian olive oils and which part of the country each came from",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/olive.html",
+        classes=("northern_italy", "sardinia", "southern_italy"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/olive.csv",
+        header=True,
+        fields=_ITALIAN_OLIVE_OILS_FIELDS,
+        labels={"Northern Italy": 0, "Sardinia": 1, "Southern Italy": 2},
+        codes={
+            "area": (
+                "Calabria", "Coast-Sardinia", "East-Liguria", "Inland-Sardinia", "North-Apulia",
+                "Sicily", "South-Apulia", "Umbria", "West-Liguria",
+            ),
+        },
+    ),
+    "lecture_ratings": Table(
+        name="lecture_ratings",
+        label="University Lecture Ratings",
+        title="73,421 ratings students at ETH Zurich gave their lecturers",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/InstEval.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/InstEval.csv",
+        header=True,
+        fields=_LECTURE_RATINGS_FIELDS,
+    ),
+    "lending_club": Table(
+        name="lending_club",
+        label="Lending Club Loans",
+        title="9,857 personal loans and whether each went bad",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/lending_club.html",
+        classes=("bad", "good"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/lending_club.csv",
+        header=True,
+        text_size=2,
+        fields=_LENDING_CLUB_FIELDS,
+        labels={"bad": 0, "good": 1},
+        codes={
+            "term": ("term_36", "term_60"),
+            "verification_status": ("Not_Verified", "Source_Verified", "Verified"),
+            "emp_length": (
+                "emp_1", "emp_2", "emp_3", "emp_4", "emp_5", "emp_6", "emp_7", "emp_8", "emp_9",
+                "emp_ge_10", "emp_lt_1", "emp_unk",
+            ),
+        },
+    ),
+    "leptograpsus_crabs": Table(
+        name="leptograpsus_crabs",
+        label="Leptograpsus Crabs",
+        title="200 rock crabs measured five ways, in two colour forms",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/crabs.html",
+        classes=("blue", "orange"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/crabs.csv",
+        header=True,
+        fields=_LEPTOGRAPSUS_CRABS_FIELDS,
+        labels={"B": 0, "O": 1},
+        codes={
+            "sex": ("F", "M"),
+        },
+    ),
+    "life_cycle_savings": Table(
+        name="life_cycle_savings",
+        label="Intercountry Life-Cycle Savings",
+        title="50 countries in the 1960s and how much of their income each saved",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/LifeCycleSavings.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/LifeCycleSavings.csv",
+        header=True,
+        text_size=14,
+        fields=_LIFE_CYCLE_SAVINGS_FIELDS,
+    ),
+    "liver_transplant_list": Table(
+        name="liver_transplant_list",
+        label="Liver Transplant Waiting List",
+        title="815 people put on a liver transplant list and what became of each",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/transplant.html",
+        classes=("waiting", "died", "transplanted", "withdrawn"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/transplant.csv",
+        header=True,
+        fields=_LIVER_TRANSPLANT_LIST_FIELDS,
+        labels={"censored": 0, "death": 1, "ltx": 2, "withdraw": 3},
+        codes={
+            "sex": ("f", "m"),
+            "abo": ("A", "AB", "B", "O"),
+        },
+    ),
+    "loblolly_pines": Table(
+        name="loblolly_pines",
+        label="Growth of Loblolly Pines",
+        title="84 measurements of loblolly pine seedlings and how tall each stood",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/Loblolly.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/Loblolly.csv",
+        header=True,
+        fields=_LOBLOLLY_PINES_FIELDS,
+    ),
+    "low_birth_weight": Table(
+        name="low_birth_weight",
+        label="Low Infant Birth Weight",
+        title="189 births at a Massachusetts hospital and how much each baby weighed",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/birthwt.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/birthwt.csv",
+        header=True,
+        fields=_LOW_BIRTH_WEIGHT_FIELDS,
+    ),
+    "lung_cancer_survival": Table(
+        name="lung_cancer_survival",
+        label="NCCTG Lung Cancer",
+        title="228 patients with advanced lung cancer and how long each lived",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/cancer.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/cancer.csv",
+        header=True,
+        fields=_LUNG_CANCER_SURVIVAL_FIELDS,
+    ),
+    "mammal_sleep": Table(
+        name="mammal_sleep",
+        label="Mammal Sleep",
+        title="83 mammals and how long each sleeps in a day",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/msleep.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/msleep.csv",
+        header=True,
+        text_size=30,
+        fields=_MAMMAL_SLEEP_FIELDS,
+        codes={
+            "vore": ("carni", "herbi", "insecti", "omni"),
+            "order": (
+                "Afrosoricida", "Artiodactyla", "Carnivora", "Cetacea", "Chiroptera", "Cingulata",
+                "Didelphimorphia", "Diprotodontia", "Erinaceomorpha", "Hyracoidea", "Lagomorpha",
+                "Monotremata", "Perissodactyla", "Pilosa", "Primates", "Proboscidea", "Rodentia",
+                "Scandentia", "Soricomorpha",
+            ),
+            "conservation": ("cd", "domesticated", "en", "lc", "nt", "vu"),
+        },
+    ),
+    "marijuana_arrests": Table(
+        name="marijuana_arrests",
+        label="Toronto Marijuana Arrests",
+        title="5,226 people arrested in Toronto and whether each was released with a summons",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Arrests.html",
+        classes=("held", "released"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Arrests.csv",
+        header=True,
+        fields=_MARIJUANA_ARRESTS_FIELDS,
+        labels={"No": 0, "Yes": 1},
+        codes={
+            "colour": ("Black", "White"),
+            "sex": ("Female", "Male"),
+            "employed": ("No", "Yes"),
+        },
+    ),
+    "marriage_licences": Table(
+        name="marriage_licences",
+        label="Mobile County Marriage Licences",
+        title="98 people named on marriage licences in Mobile County",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Marriage.html",
+        classes=("bride", "groom"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Marriage.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=9,
+        fields=_MARRIAGE_LICENCES_FIELDS,
+        labels={"Bride": 0, "Groom": 1},
+        codes={
+            "officialtitle": (
+                "BISHOP", "CATHOLIC PRIEST", "CHIEF CLERK", "CIRCUIT JUDGE", "ELDER",
+                "MARRIAGE OFFICIAL", "MINISTER", "PASTOR", "REVEREND",
+            ),
+            "race": ("American Indian", "Black", "Hispanic", "White"),
+            "prevconc": ("Death", "Divorce"),
+            "sign": (
+                "Aquarius", "Aries", "Cancer", "Capricorn", "Gemini", "Leo", "Libra", "Pisces",
+                "Saggitarius", "Scorpio", "Taurus", "Virgo",
+            ),
+        },
+    ),
+    "math_achievement": Table(
+        name="math_achievement",
+        label="Mathematics Achievement Scores",
+        title="7,185 American schoolchildren and how each scored in mathematics",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/MathAchieve.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/MathAchieve.csv",
+        header=True,
+        fields=_MATH_ACHIEVEMENT_FIELDS,
+        codes={
+            "minority": ("No", "Yes"),
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "medical_care_demand": Table(
+        name="medical_care_demand",
+        label="Demand for Medical Care",
+        title="4,406 elderly Americans in a 1987 survey and how often each saw a doctor",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/NMES1988.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/NMES1988.csv",
+        header=True,
+        fields=_MEDICAL_CARE_DEMAND_FIELDS,
+        codes={
+            "health": ("average", "excellent", "poor"),
+            "adl": ("limited", "normal"),
+            "region": ("midwest", "northeast", "other", "west"),
+            "afam": ("no", "yes"),
+            "gender": ("female", "male"),
+        },
+    ),
+    "mid_atlantic_wages": Table(
+        name="mid_atlantic_wages",
+        label="Mid-Atlantic Wages",
+        title="3,000 men in the mid-Atlantic states and what each earned",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Wage.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Wage.csv",
+        header=True,
+        fields=_MID_ATLANTIC_WAGES_FIELDS,
+        codes={
+            "maritl": (
+                "1. Never Married", "2. Married", "3. Widowed", "4. Divorced", "5. Separated",
+            ),
+            "race": ("1. White", "2. Black", "3. Asian", "4. Other"),
+            "education": (
+                "1. < HS Grad", "2. HS Grad", "3. Some College", "4. College Grad",
+                "5. Advanced Degree",
+            ),
+            "region": ("2. Middle Atlantic",),
+            "jobclass": ("1. Industrial", "2. Information"),
+            "health": ("1. <=Good", "2. >=Very Good"),
+            "health_ins": ("1. Yes", "2. No"),
+        },
+    ),
+    "midwest_counties": Table(
+        name="midwest_counties",
+        label="Midwest Demographics",
+        title="437 counties of the American midwest and how many in each were poor",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/midwest.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/midwest.csv",
+        header=True,
+        text_size=14,
+        fields=_MIDWEST_COUNTIES_FIELDS,
+        codes={
+            "state": ("IL", "IN", "MI", "OH", "WI"),
+            "category": (
+                "AAR", "AAU", "AHR", "AHU", "ALR", "ALU", "HAR", "HAU", "HHR", "HHU", "HLR", "HLU",
+                "LAR", "LAU", "LHR", "LHU",
+            ),
+        },
+    ),
+    "monoclonal_gammopathy": Table(
+        name="monoclonal_gammopathy",
+        label="Monoclonal Gammopathy",
+        title="1,384 patients with monoclonal gammopathy followed to death",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/mgus2.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/mgus2.csv",
+        header=True,
+        fields=_MONOCLONAL_GAMMOPATHY_FIELDS,
+        codes={
+            "sex": ("F", "M"),
+        },
+    ),
+    "mortgage_denial": Table(
+        name="mortgage_denial",
+        label="Boston Mortgage Applications",
+        title="2,380 Boston mortgage applications and whether each was turned down",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/HMDA.html",
+        classes=("granted", "denied"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/HMDA.csv",
+        header=True,
+        fields=_MORTGAGE_DENIAL_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "phist": ("no", "yes"),
+        },
+    ),
+    "motor_trend_cars": Table(
+        name="motor_trend_cars",
+        label="Motor Trend Car Road Tests",
+        title="32 cars road-tested by Motor Trend in 1974 and what each did to the gallon",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/mtcars.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/mtcars.csv",
+        header=True,
+        text_size=19,
+        fields=_MOTOR_TREND_CARS_FIELDS,
+    ),
+    "movielens": Table(
+        name="movielens",
+        label="MovieLens Ratings",
+        title="100,004 ratings people gave to films",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/movielens.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/movielens.csv",
+        header=True,
+        text_size=152,
+        fields=_MOVIELENS_FIELDS,
+    ),
+    "new_york_air": Table(
+        name="new_york_air",
+        label="New York Air Quality",
+        title="153 days in New York in 1973 and the ozone measured on each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/airquality.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/airquality.csv",
+        header=True,
+        fields=_NEW_YORK_AIR_FIELDS,
+    ),
+    "nyc_flights": Table(
+        name="nyc_flights",
+        label="Flights out of New York in 2013",
+        title="336,776 flights out of New York in 2013 and how late each arrived",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nycflights13/flights.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nycflights13/flights.csv",
+        header=True,
+        dates="%Y-%m-%dT%H:%M:%SZ",
+        text_size=6,
+        fields=_NYC_FLIGHTS_FIELDS,
+        codes={
+            "carrier": (
+                "9E", "AA", "AS", "B6", "DL", "EV", "F9", "FL", "HA", "MQ", "OO", "UA", "US", "VX",
+                "WN", "YV",
+            ),
+            "origin": ("EWR", "JFK", "LGA"),
+        },
+    ),
+    "nyc_weather": Table(
+        name="nyc_weather",
+        label="Hourly Weather in New York",
+        title="26,115 hours of weather at the three New York airports",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nycflights13/weather.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nycflights13/weather.csv",
+        header=True,
+        dates="%Y-%m-%dT%H:%M:%SZ",
+        fields=_NYC_WEATHER_FIELDS,
+        codes={
+            "origin": ("EWR", "JFK", "LGA"),
+        },
+    ),
+    "occupational_prestige": Table(
+        name="occupational_prestige",
+        label="Prestige of Canadian Occupations",
+        title="102 Canadian occupations and how each was rated for prestige",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Prestige.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Prestige.csv",
+        header=True,
+        text_size=25,
+        fields=_OCCUPATIONAL_PRESTIGE_FIELDS,
+        codes={
+            "type": ("bc", "prof", "wc"),
+        },
+    ),
+    "oesophageal_cancer": Table(
+        name="oesophageal_cancer",
+        label="Smoking, Alcohol and Oesophageal Cancer",
+        title="88 groups of French men and how many in each had oesophageal cancer",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/esoph.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/esoph.csv",
+        header=True,
+        fields=_OESOPHAGEAL_CANCER_FIELDS,
+        codes={
+            "agegp": ("25-34", "35-44", "45-54", "55-64", "65-74", "75+"),
+            "alcgp": ("0-39g/day", "120+", "40-79", "80-119"),
+            "tobgp": ("0-9g/day", "10-19", "20-29", "30+"),
+        },
+    ),
+    "old_faithful": Table(
+        name="old_faithful",
+        label="Old Faithful Geyser",
+        title="272 eruptions of Old Faithful and how long the wait before each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/faithful.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/faithful.csv",
+        header=True,
+        fields=_OLD_FAITHFUL_FIELDS,
+    ),
+    "orange_juice": Table(
+        name="orange_juice",
+        label="Orange Juice Purchases",
+        title="1,070 shoppers and which of two orange juices each bought",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/OJ.html",
+        classes=("citrus_hill", "minute_maid"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/OJ.csv",
+        header=True,
+        fields=_ORANGE_JUICE_FIELDS,
+        labels={"CH": 0, "MM": 1},
+        codes={
+            "store7": ("No", "Yes"),
+        },
+    ),
+    "orange_trees": Table(
+        name="orange_trees",
+        label="Growth of Orange Trees",
+        title="35 measurements of orange trees and how far around each had grown",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/Orange.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/Orange.csv",
+        header=True,
+        fields=_ORANGE_TREES_FIELDS,
+    ),
+    "orchard_sprays": Table(
+        name="orchard_sprays",
+        label="Potency of Orchard Sprays",
+        title="64 cells of a Latin square and how far each spray put the bees off",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/OrchardSprays.html",
+        classes=("a", "b", "c", "d", "e", "f", "g", "h"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/OrchardSprays.csv",
+        header=True,
+        fields=_ORCHARD_SPRAYS_FIELDS,
+        labels={"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6, "H": 7},
+    ),
+    "orthodontic_growth": Table(
+        name="orthodontic_growth",
+        label="Orthodontic Growth Curves",
+        title="108 skull measurements of children followed through adolescence",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Orthodont.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Orthodont.csv",
+        header=True,
+        text_size=3,
+        fields=_ORTHODONTIC_GROWTH_FIELDS,
+        codes={
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "oxford_boys": Table(
+        name="oxford_boys",
+        label="Heights of Boys in Oxford",
+        title="234 height measurements of twenty-six boys in Oxford",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Oxboys.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Oxboys.csv",
+        header=True,
+        fields=_OXFORD_BOYS_FIELDS,
+    ),
+    "penicillin_testing": Table(
+        name="penicillin_testing",
+        label="Variation in Penicillin Testing",
+        title="144 plates of a penicillin assay and how wide the clear zone grew",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/Penicillin.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/Penicillin.csv",
+        header=True,
+        fields=_PENICILLIN_TESTING_FIELDS,
+        codes={
+            "plate": (
+                "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+                "q", "r", "s", "t", "u", "v", "w", "x",
+            ),
+            "sample": ("A", "B", "C", "D", "E", "F"),
+        },
+    ),
+    "petroleum_rock": Table(
+        name="petroleum_rock",
+        label="Measurements on Petroleum Rock",
+        title="48 slices of reservoir rock and how well each let fluid through",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/rock.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/rock.csv",
+        header=True,
+        fields=_PETROLEUM_ROCK_FIELDS,
+    ),
+    "phenobarbital": Table(
+        name="phenobarbital",
+        label="Phenobarbital in Newborn Infants",
+        title="744 doses given and blood samples drawn from newborn infants",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Phenobarb.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Phenobarb.csv",
+        header=True,
+        fields=_PHENOBARBITAL_FIELDS,
+        codes={
+            "apgarind": ("< 5", ">= 5"),
+        },
+    ),
+    "pima_diabetes": Table(
+        name="pima_diabetes",
+        label="Diabetes in Pima Women",
+        title="200 Pima women and whether each tested diabetic",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/Pima.tr.html",
+        classes=("negative", "positive"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/Pima.tr.csv",
+        header=True,
+        fields=_PIMA_DIABETES_FIELDS,
+        labels={"No": 0, "Yes": 1},
+    ),
+    "professor_salaries": Table(
+        name="professor_salaries",
+        label="Salaries for Professors",
+        title="397 American professors and what each was paid over 2008 and 2009",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Salaries.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Salaries.csv",
+        header=True,
+        fields=_PROFESSOR_SALARIES_FIELDS,
+        codes={
+            "rank": ("AssocProf", "AsstProf", "Prof"),
+            "discipline": ("A", "B"),
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "psid_labour": Table(
+        name="psid_labour",
+        label="Labour Force Participation in the PSID",
+        title="753 married women in the 1976 panel study and whether each worked for pay",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/PSID1976.html",
+        classes=("at_home", "working"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/PSID1976.csv",
+        header=True,
+        fields=_PSID_LABOUR_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "city": ("no", "yes"),
+        },
+    ),
+    "reported_weight": Table(
+        name="reported_weight",
+        label="Self-Reports of Height and Weight",
+        title="200 people who gave both their measured and their reported weight",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Davis.html",
+        classes=("female", "male"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Davis.csv",
+        header=True,
+        fields=_REPORTED_WEIGHT_FIELDS,
+        labels={"F": 0, "M": 1},
+    ),
+    "resume_callbacks": Table(
+        name="resume_callbacks",
+        label="Which Resume Attributes Drive Callbacks",
+        title="4,870 fictitious resumes sent to employers and which drew a call back",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/resume.html",
+        classes=("no_callback", "called_back"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/resume.csv",
+        header=True,
+        text_size=8,
+        fields=_RESUME_CALLBACKS_FIELDS,
+        labels={"0": 0, "1": 1},
+        codes={
+            "job_city": ("Boston", "Chicago"),
+            "job_industry": (
+                "business_and_personal_service", "finance_insurance_real_estate", "manufacturing",
+                "other_service", "transportation_communication", "wholesale_and_retail_trade",
+            ),
+            "job_type": (
+                "clerical", "manager", "retail_sales", "sales_rep", "secretary", "supervisor",
+            ),
+            "job_ownership": ("nonprofit", "private", "public", "unknown"),
+            "job_req_min_experience": (
+                "0", "0.5", "1", "10", "2", "3", "4", "5", "6", "7", "8", "some",
+            ),
+            "job_req_school": ("college", "high_school_grad", "none_listed", "some_college"),
+            "race": ("black", "white"),
+            "gender": ("f", "m"),
+            "resume_quality": ("high", "low"),
+        },
+    ),
+    "retinopathy_laser": Table(
+        name="retinopathy_laser",
+        label="Laser Treatment for Diabetic Retinopathy",
+        title="394 eyes treated with laser coagulation and how long each kept its sight",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/retinopathy.html",
+        classes=("argon", "xenon"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/retinopathy.csv",
+        header=True,
+        fields=_RETINOPATHY_LASER_FIELDS,
+        labels={"argon": 0, "xenon": 1},
+        codes={
+            "eye": ("left", "right"),
+            "type": ("adult", "juvenile"),
+        },
+    ),
+    "sat_and_gpa": Table(
+        name="sat_and_gpa",
+        label="SAT Scores and College Grades",
+        title="1,000 students and the grade average each finished the first year with",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/satgpa.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/satgpa.csv",
+        header=True,
+        fields=_SAT_AND_GPA_FIELDS,
+    ),
+    "school_absences": Table(
+        name="school_absences",
+        label="Absences in Rural New South Wales",
+        title="146 Australian schoolchildren and how many days each missed",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/quine.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/quine.csv",
+        header=True,
+        fields=_SCHOOL_ABSENCES_FIELDS,
+        codes={
+            "eth": ("A", "N"),
+            "sex": ("F", "M"),
+            "age": ("F0", "F1", "F2", "F3"),
+            "lrn": ("AL", "SL"),
+        },
+    ),
+    "seat_belt_laws": Table(
+        name="seat_belt_laws",
+        label="Mandatory Seat Belt Laws",
+        title="765 American state-years of road deaths and how belt wearing was enforced",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/USSeatBelts.html",
+        classes=("none", "primary", "secondary"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/USSeatBelts.csv",
+        header=True,
+        text_size=2,
+        fields=_SEAT_BELT_LAWS_FIELDS,
+        labels={"no": 0, "primary": 1, "secondary": 2},
+        codes={
+            "speed65": ("no", "yes"),
+        },
+    ),
+    "seattle_pets": Table(
+        name="seattle_pets",
+        label="Names of Pets in Seattle",
+        title="52,519 licensed pets in Seattle and what kind of animal each is",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/seattlepets.html",
+        classes=("cat", "dog", "goat", "pig"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/seattlepets.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        text_size=55,
+        fields=_SEATTLE_PETS_FIELDS,
+        labels={"Cat": 0, "Dog": 1, "Goat": 2, "Pig": 3},
+    ),
+    "sleep_deprivation": Table(
+        name="sleep_deprivation",
+        label="Reaction Times under Sleep Deprivation",
+        title="180 reaction times from eighteen drivers kept short of sleep",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/sleepstudy.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/sleepstudy.csv",
+        header=True,
+        fields=_SLEEP_DEPRIVATION_FIELDS,
+    ),
+    "slid_wages": Table(
+        name="slid_wages",
+        label="Survey of Labour and Income Dynamics",
+        title="7,425 Ontario workers and what each earned an hour",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/SLID.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/SLID.csv",
+        header=True,
+        fields=_SLID_WAGES_FIELDS,
+        codes={
+            "sex": ("Female", "Male"),
+            "language": ("English", "French", "Other"),
+        },
+    ),
+    "snail_mortality": Table(
+        name="snail_mortality",
+        label="Snail Mortality",
+        title="96 groups of snails held in a laboratory and how many died",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/snails.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/snails.csv",
+        header=True,
+        fields=_SNAIL_MORTALITY_FIELDS,
+        codes={
+            "species": ("A", "B"),
+        },
+    ),
+    "soybean_growth": Table(
+        name="soybean_growth",
+        label="Growth of Soybean Plants",
+        title="412 weighings of soybean plants through a growing season",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Soybean.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Soybean.csv",
+        header=True,
+        text_size=6,
+        fields=_SOYBEAN_GROWTH_FIELDS,
+        codes={
+            "variety": ("F", "P"),
+        },
+    ),
+    "sp500_daily": Table(
+        name="sp500_daily",
+        label="S&P 500 Daily Returns",
+        title="1,250 trading days on the S&P 500 and whether the index rose",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Smarket.html",
+        classes=("down", "up"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Smarket.csv",
+        header=True,
+        fields=_SP500_DAILY_FIELDS,
+        labels={"Down": 0, "Up": 1},
+    ),
+    "sp500_weekly": Table(
+        name="sp500_weekly",
+        label="S&P 500 Weekly Returns",
+        title="1,089 weeks on the S&P 500 and whether the index rose",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/Weekly.html",
+        classes=("down", "up"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/Weekly.csv",
+        header=True,
+        fields=_SP500_WEEKLY_FIELDS,
+        labels={"Down": 0, "Up": 1},
+    ),
+    "spruce_growth": Table(
+        name="spruce_growth",
+        label="Growth of Spruce Trees",
+        title="1,027 measurements of spruce trees grown in ozone chambers",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Spruce.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Spruce.csv",
+        header=True,
+        text_size=5,
+        fields=_SPRUCE_GROWTH_FIELDS,
+    ),
+    "stanford_heart": Table(
+        name="stanford_heart",
+        label="Stanford Heart Transplants",
+        title="172 follow-up records from the Stanford heart transplant programme",
+        licence="LGPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/survival/heart.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/survival/heart.csv",
+        header=True,
+        fields=_STANFORD_HEART_FIELDS,
+    ),
+    "star_properties": Table(
+        name="star_properties",
+        label="Physical Properties of Stars",
+        title="96 stars and how hot the surface of each burns",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/stars.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/stars.csv",
+        header=True,
+        text_size=17,
+        fields=_STAR_PROPERTIES_FIELDS,
+        codes={
+            "type": ("A", "B", "DA", "DB", "DF", "F", "G", "K", "M", "O"),
+        },
+    ),
+    "state_sat_scores": Table(
+        name="state_sat_scores",
+        label="State by State SAT Data",
+        title="50 American states and what each spent on a pupil",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/SAT.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/SAT.csv",
+        header=True,
+        text_size=14,
+        fields=_STATE_SAT_SCORES_FIELDS,
+    ),
+    "steak_preferences": Table(
+        name="steak_preferences",
+        label="How Americans Like Their Steak",
+        title="550 Americans and how each likes a steak cooked",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/steak_survey.html",
+        classes=("rare", "medium_rare", "medium", "medium_well", "well_done", "no_answer"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/steak_survey.csv",
+        header=True,
+        fields=_STEAK_PREFERENCES_FIELDS,
+        labels={"Rare": 0, "Medium rare": 1, "Medium": 2, "Medium Well": 3, "Well": 4, "": 5},
+        codes={
+            "lottery_a": ("FALSE", "TRUE"),
+            "age": ("18-29", "30-44", "45-60", "> 60"),
+            "hhold_income": (
+                "$0 - $24,999", "$100,000 - $149,999", "$150,000+", "$25,000 - $49,999",
+                "$50,000 - $99,999",
+            ),
+            "educ": (
+                "Bachelor degree", "Graduate degree", "High school degree",
+                "Less than high school degree", "Some college or Associate degree",
+            ),
+            "region": (
+                "East North Central", "East South Central", "Middle Atlantic", "Mountain",
+                "New England", "Pacific", "South Atlantic", "West North Central",
+                "West South Central",
+            ),
+        },
+    ),
+    "student_survey": Table(
+        name="student_survey",
+        label="Adelaide Student Survey",
+        title="237 Australian statistics students and which hand each wrote with",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/survey.html",
+        classes=("left", "right", "not_recorded"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/survey.csv",
+        header=True,
+        fields=_STUDENT_SURVEY_FIELDS,
+        labels={"Left": 0, "Right": 1, "": 2},
+        codes={
+            "sex": ("Female", "Male"),
+            "fold": ("L on R", "Neither", "R on L"),
+            "clap": ("Left", "Neither", "Right"),
+            "exer": ("Freq", "None", "Some"),
+            "smoke": ("Heavy", "Never", "Occas", "Regul"),
+            "m_i": ("Imperial", "Metric"),
+        },
+    ),
+    "swiss_fertility": Table(
+        name="swiss_fertility",
+        label="Swiss Fertility in 1888",
+        title="47 French-speaking Swiss provinces in 1888 and how fertile each was",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/swiss.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/swiss.csv",
+        header=True,
+        text_size=12,
+        fields=_SWISS_FERTILITY_FIELDS,
+    ),
+    "swiss_labour": Table(
+        name="swiss_labour",
+        label="Swiss Labour Market Participation",
+        title="872 Swiss women and whether each was in the labour force",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/SwissLabor.html",
+        classes=("at_home", "working"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/SwissLabor.csv",
+        header=True,
+        fields=_SWISS_LABOUR_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "foreign": ("no", "yes"),
+        },
+    ),
+    "tarantino_scripts": Table(
+        name="tarantino_scripts",
+        label="Swearing and Death in Tarantino Films",
+        title="1,894 curses and deaths counted through seven Tarantino films",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/fivethirtyeight/tarantino.html",
+        classes=(
+            "reservoir_dogs", "pulp_fiction", "jackie_brown", "kill_bill_1", "kill_bill_2",
+            "inglourious_basterds", "django_unchained",
+        ),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/fivethirtyeight/tarantino.csv",
+        header=True,
+        text_size=13,
+        fields=_TARANTINO_SCRIPTS_FIELDS,
+        labels={
+            "Reservoir Dogs": 0, "Pulp Fiction": 1, "Jackie Brown": 2, "Kill Bill: Vol. 1": 3,
+            "Kill Bill: Vol. 2": 4, "Inglorious Basterds": 5, "Django Unchained": 6,
+        },
+        codes={
+            "profane": ("FALSE", "TRUE"),
+        },
+    ),
+    "teaching_evaluations": Table(
+        name="teaching_evaluations",
+        label="Professor Evaluations and Beauty",
+        title="463 university courses and how the students rated the teacher",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/evals.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/evals.csv",
+        header=True,
+        fields=_TEACHING_EVALUATIONS_FIELDS,
+        codes={
+            "rank": ("teaching", "tenure track", "tenured"),
+            "ethnicity": ("minority", "not minority"),
+            "gender": ("female", "male"),
+            "language": ("english", "non-english"),
+            "cls_level": ("lower", "upper"),
+            "cls_profs": ("multiple", "single"),
+            "cls_credits": ("multi credit", "one credit"),
+            "pic_outfit": ("formal", "not formal"),
+            "pic_color": ("black&white", "color"),
+        },
+    ),
+    "telecom_churn": Table(
+        name="telecom_churn",
+        label="Telecom Customer Churn",
+        title="5,000 phone customers and whether each left",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/mlc_churn.html",
+        classes=("stayed", "left"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/mlc_churn.csv",
+        header=True,
+        text_size=2,
+        fields=_TELECOM_CHURN_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "area_code": ("area_code_408", "area_code_415", "area_code_510"),
+            "international_plan": ("no", "yes"),
+        },
+    ),
+    "telecom_contracts": Table(
+        name="telecom_contracts",
+        label="Telecom Contract Churn",
+        title="7,043 telecom customers and whether each left",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/wa_churn.html",
+        classes=("stayed", "left"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/wa_churn.csv",
+        header=True,
+        fields=_TELECOM_CONTRACTS_FIELDS,
+        labels={"No": 0, "Yes": 1},
+        codes={
+            "multiple_lines": ("No", "No phone service", "Yes"),
+            "internet_service": ("DSL", "Fiber optic", "No"),
+            "online_security": ("No", "No internet service", "Yes"),
+            "contract": ("Month-to-month", "One year", "Two year"),
+            "payment_method": (
+                "Bank transfer (automatic)", "Credit card (automatic)", "Electronic check",
+                "Mailed check",
+            ),
+        },
+    ),
+    "temperature_and_carbon": Table(
+        name="temperature_and_carbon",
+        label="Global Temperature and Carbon Emissions",
+        title="268 years of global temperature anomalies and the carbon burnt in each",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/temp_carbon.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/temp_carbon.csv",
+        header=True,
+        fields=_TEMPERATURE_AND_CARBON_FIELDS,
+    ),
+    "ten_mile_race": Table(
+        name="ten_mile_race",
+        label="The Cherry Blossom Ten Mile Race",
+        title="8,636 runners of the Cherry Blossom race and how long each took",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/TenMileRace.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/TenMileRace.csv",
+        header=True,
+        text_size=11,
+        fields=_TEN_MILE_RACE_FIELDS,
+        codes={
+            "sex": ("F", "M"),
+        },
+    ),
+    "texas_housing": Table(
+        name="texas_housing",
+        label="Housing Sales in Texas",
+        title="8,602 city-months of Texas house sales and the median price in each",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/txhousing.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/txhousing.csv",
+        header=True,
+        text_size=21,
+        fields=_TEXAS_HOUSING_FIELDS,
+    ),
+    "theophylline": Table(
+        name="theophylline",
+        label="Pharmacokinetics of Theophylline",
+        title="132 blood samples from twelve subjects given theophylline",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/Theoph.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/Theoph.csv",
+        header=True,
+        fields=_THEOPHYLLINE_FIELDS,
+    ),
+    "titanic": Table(
+        name="titanic",
+        label="Survival on the Titanic",
+        title="1,309 people aboard the Titanic and which of them lived",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/TitanicSurvival.html",
+        classes=("died", "survived"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/TitanicSurvival.csv",
+        header=True,
+        text_size=31,
+        fields=_TITANIC_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "sex": ("female", "male"),
+            "passengerclass": ("1st", "2nd", "3rd"),
+        },
+    ),
+    "tooth_growth": Table(
+        name="tooth_growth",
+        label="Vitamin C and Tooth Growth",
+        title="60 guinea pigs given vitamin C two ways and how far their teeth grew",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/ToothGrowth.html",
+        classes=("orange_juice", "ascorbic_acid"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/ToothGrowth.csv",
+        header=True,
+        fields=_TOOTH_GROWTH_FIELDS,
+        labels={"OJ": 0, "VC": 1},
+    ),
+    "travel_mode": Table(
+        name="travel_mode",
+        label="Intercity Travel Mode Choice",
+        title="840 rows of an Australian trip survey, one a way the traveller could have gone",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/TravelMode.html",
+        classes=("air", "bus", "car", "train"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/TravelMode.csv",
+        header=True,
+        fields=_TRAVEL_MODE_FIELDS,
+        labels={"air": 0, "bus": 1, "car": 2, "train": 3},
+        codes={
+            "choice": ("no", "yes"),
+        },
+    ),
+    "uk_smoking": Table(
+        name="uk_smoking",
+        label="UK Smoking Survey",
+        title="1,691 British adults and whether each smoked",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/smoking.html",
+        classes=("non_smoker", "smoker"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/smoking.csv",
+        header=True,
+        fields=_UK_SMOKING_FIELDS,
+        labels={"No": 0, "Yes": 1},
+        codes={
+            "gender": ("Female", "Male"),
+            "marital_status": ("Divorced", "Married", "Separated", "Single", "Widowed"),
+            "highest_qualification": (
+                "A Levels", "Degree", "GCSE/CSE", "GCSE/O Level", "Higher/Sub Degree",
+                "No Qualification", "ONC/BTEC", "Other/Sub Degree",
+            ),
+            "nationality": (
+                "British", "English", "Irish", "Other", "Refused", "Scottish", "Unknown", "Welsh",
+            ),
+            "ethnicity": ("Asian", "Black", "Chinese", "Mixed", "Refused", "Unknown", "White"),
+            "gross_income": (
+                "10,400 to 15,600", "15,600 to 20,800", "2,600 to 5,200", "20,800 to 28,600",
+                "28,600 to 36,400", "5,200 to 10,400", "Above 36,400", "Refused", "Under 2,600",
+                "Unknown",
+            ),
+            "region": (
+                "London", "Midlands & East Anglia", "Scotland", "South East", "South West",
+                "The North", "Wales",
+            ),
+            "type": ("Both/Mainly Hand-Rolled", "Both/Mainly Packets", "Hand-Rolled", "Packets"),
+        },
+    ),
+    "un_national_statistics": Table(
+        name="un_national_statistics",
+        label="National Statistics from the United Nations",
+        title="213 countries and how long a woman born in each could expect to live",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/UN.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/UN.csv",
+        header=True,
+        text_size=32,
+        fields=_UN_NATIONAL_STATISTICS_FIELDS,
+        codes={
+            "region": (
+                "Africa", "Asia", "Caribbean", "Europe", "Latin Amer", "North America",
+                "NorthAtlantic", "Oceania",
+            ),
+            "group": ("africa", "oecd", "other"),
+        },
+    ),
+    "us_aircraft": Table(
+        name="us_aircraft",
+        label="Aircraft Registrations",
+        title="3,322 aircraft that flew out of New York and how many seats each had",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nycflights13/planes.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nycflights13/planes.csv",
+        header=True,
+        text_size=29,
+        fields=_US_AIRCRAFT_FIELDS,
+        codes={
+            "type": ("Fixed wing multi engine", "Fixed wing single engine", "Rotorcraft"),
+            "engine": (
+                "4 Cycle", "Reciprocating", "Turbo-fan", "Turbo-jet", "Turbo-prop", "Turbo-shaft",
+            ),
+        },
+    ),
+    "us_airports": Table(
+        name="us_airports",
+        label="US Airports",
+        title="1,458 American airports and how high above the sea each stands",
+        licence="CC0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nycflights13/airports.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nycflights13/airports.csv",
+        header=True,
+        text_size=51,
+        fields=_US_AIRPORTS_FIELDS,
+        codes={
+            "dst": ("A", "N", "U"),
+            "tzone": (
+                "America/Anchorage", "America/Chicago", "America/Denver", "America/Los_Angeles",
+                "America/New_York", "America/Phoenix", "America/Vancouver", "Asia/Chongqing",
+                "Pacific/Honolulu",
+            ),
+        },
+    ),
+    "us_arrests": Table(
+        name="us_arrests",
+        label="Violent Crime Rates by US State",
+        title="50 American states and how many were murdered in each per hundred thousand",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/USArrests.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/USArrests.csv",
+        header=True,
+        text_size=14,
+        fields=_US_ARRESTS_FIELDS,
+    ),
+    "us_births_1978": Table(
+        name="us_births_1978",
+        label="US Births in 1978",
+        title="365 days of 1978 and how many Americans were born on each",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Births78.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Births78.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_US_BIRTHS_1978_FIELDS,
+        codes={
+            "wday": ("Fri", "Mon", "Sat", "Sun", "Thu", "Tue", "Wed"),
+        },
+    ),
+    "us_births_2014": Table(
+        name="us_births_2014",
+        label="US Births in 2014",
+        title="1,000 American births in 2014 and how much each baby weighed",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/births14.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/births14.csv",
+        header=True,
+        fields=_US_BIRTHS_2014_FIELDS,
+        codes={
+            "mature": ("mature mom", "younger mom"),
+            "premie": ("full term", "premie"),
+            "lowbirthweight": ("low", "not low"),
+            "sex": ("female", "male"),
+            "habit": ("nonsmoker", "smoker"),
+            "marital": ("married", "not married"),
+            "whitemom": ("not white", "white"),
+        },
+    ),
+    "us_cereals": Table(
+        name="us_cereals",
+        label="US Breakfast Cereals",
+        title="65 American breakfast cereals and which company made each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/MASS/UScereal.html",
+        classes=("general_mills", "kelloggs", "nabisco", "post", "quaker", "ralston"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/MASS/UScereal.csv",
+        header=True,
+        text_size=37,
+        fields=_US_CEREALS_FIELDS,
+        labels={"G": 0, "K": 1, "N": 2, "P": 3, "Q": 4, "R": 5},
+        codes={
+            "vitamins": ("100%", "enriched", "none"),
+        },
+    ),
+    "us_colleges": Table(
+        name="us_colleges",
+        label="US News College Data",
+        title="777 American colleges and whether each was private",
+        licence="GPL-2",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ISLR/College.html",
+        classes=("public", "private"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ISLR/College.csv",
+        header=True,
+        text_size=45,
+        fields=_US_COLLEGES_FIELDS,
+        labels={"No": 0, "Yes": 1},
+    ),
+    "us_economics": Table(
+        name="us_economics",
+        label="US Economic Time Series",
+        title="574 months of American spending, saving and unemployment",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/ggplot2/economics.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/ggplot2/economics.csv",
+        header=True,
+        dates="%Y-%m-%d",
+        fields=_US_ECONOMICS_FIELDS,
+    ),
+    "us_gun_murders": Table(
+        name="us_gun_murders",
+        label="US Gun Murders in 2010",
+        title="51 American states and how many gun murders each saw in 2010",
+        licence="Artistic-2.0",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/dslabs/murders.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/dslabs/murders.csv",
+        header=True,
+        text_size=20,
+        fields=_US_GUN_MURDERS_FIELDS,
+        codes={
+            "region": ("North Central", "Northeast", "South", "West"),
+        },
+    ),
+    "us_state_education": Table(
+        name="us_state_education",
+        label="Education by US State",
+        title="51 American states and how their students scored on the SAT",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/States.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/States.csv",
+        header=True,
+        text_size=2,
+        fields=_US_STATE_EDUCATION_FIELDS,
+        codes={
+            "region": ("ENC", "ESC", "MA", "MTN", "NE", "PAC", "SA", "WNC", "WSC"),
+        },
+    ),
+    "used_car_prices": Table(
+        name="used_car_prices",
+        label="Kelley Blue Book Car Prices",
+        title="804 used cars from the 2005 model year and what each was worth",
+        licence="MIT",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/modeldata/car_prices.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/modeldata/car_prices.csv",
+        header=True,
+        fields=_USED_CAR_PRICES_FIELDS,
+    ),
+    "utility_bills": Table(
+        name="utility_bills",
+        label="Utility Bills",
+        title="117 monthly gas and electricity bills for one house",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Utilities.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Utilities.csv",
+        header=True,
+        text_size=58,
+        fields=_UTILITY_BILLS_FIELDS,
+    ),
+    "verbal_aggression": Table(
+        name="verbal_aggression",
+        label="Verbal Aggression Item Responses",
+        title="7,584 answers to a questionnaire about wanting to curse, scold or shout",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/lme4/VerbAgg.html",
+        classes=("no", "perhaps", "yes"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/lme4/VerbAgg.csv",
+        header=True,
+        fields=_VERBAL_AGGRESSION_FIELDS,
+        labels={"no": 0, "perhaps": 1, "yes": 2},
+        codes={
+            "gender": ("F", "M"),
+            "item": (
+                "S1DoCurse", "S1DoScold", "S1DoShout", "S1WantCurse", "S1WantScold", "S1WantShout",
+                "S2DoCurse", "S2DoScold", "S2DoShout", "S2WantCurse", "S2WantScold", "S2WantShout",
+                "S3DoCurse", "S3DoScold", "S3DoShout", "S3WantCurse", "S3WantScold", "S3WantShout",
+                "S4DoCurse", "S4DoScold", "S4DoShout", "S4WantScold", "S4WantShout", "S4wantCurse",
+            ),
+            "btype": ("curse", "scold", "shout"),
+            "situ": ("other", "self"),
+            "mode": ("do", "want"),
+            "r2": ("N", "Y"),
+        },
+    ),
+    "vocabulary_test": Table(
+        name="vocabulary_test",
+        label="Vocabulary and Education",
+        title="30,351 Americans given a ten-word vocabulary test and how many each knew",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Vocab.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Vocab.csv",
+        header=True,
+        fields=_VOCABULARY_TEST_FIELDS,
+        codes={
+            "sex": ("Female", "Male"),
+        },
+    ),
+    "volunteering": Table(
+        name="volunteering",
+        label="Volunteering for Psychological Research",
+        title="1,421 people scored on two personality scales and whether each volunteered",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Cowles.html",
+        classes=("declined", "volunteered"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Cowles.csv",
+        header=True,
+        fields=_VOLUNTEERING_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "sex": ("female", "male"),
+        },
+    ),
+    "warp_breaks": Table(
+        name="warp_breaks",
+        label="Breaks in Yarn during Weaving",
+        title="54 looms of wool and how often the yarn broke on each",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/datasets/warpbreaks.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/datasets/warpbreaks.csv",
+        header=True,
+        fields=_WARP_BREAKS_FIELDS,
+        codes={
+            "wool": ("A", "B"),
+            "tension": ("H", "L", "M"),
+        },
+    ),
+    "wheat_yield_trials": Table(
+        name="wheat_yield_trials",
+        label="Wheat Yield Trials",
+        title="224 plots of a wheat variety trial and what each yielded",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/nlme/Wheat2.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/nlme/Wheat2.csv",
+        header=True,
+        text_size=10,
+        fields=_WHEAT_YIELD_TRIALS_FIELDS,
+    ),
+    "whickham_smoking": Table(
+        name="whickham_smoking",
+        label="The Whickham Smoking Survey",
+        title="1,314 women followed for twenty years and whether each was still alive",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/mosaicData/Whickham.html",
+        classes=("alive", "dead"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/mosaicData/Whickham.csv",
+        header=True,
+        fields=_WHICKHAM_SMOKING_FIELDS,
+        labels={"Alive": 0, "Dead": 1},
+        codes={
+            "smoker": ("No", "Yes"),
+        },
+    ),
+    "windsor_house_prices": Table(
+        name="windsor_house_prices",
+        label="House Prices in Windsor",
+        title="546 houses sold in Windsor, Ontario and what each fetched",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/HousePrices.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/HousePrices.csv",
+        header=True,
+        fields=_WINDSOR_HOUSE_PRICES_FIELDS,
+        codes={
+            "driveway": ("no", "yes"),
+        },
+    ),
+    "womens_labour_1975": Table(
+        name="womens_labour_1975",
+        label="US Women's Labour-Force Participation",
+        title="753 married women in 1975 and whether each worked for pay",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/Mroz.html",
+        classes=("at_home", "working"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/Mroz.csv",
+        header=True,
+        fields=_WOMENS_LABOUR_1975_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "wc": ("no", "yes"),
+        },
+    ),
+    "workplace_smoking_ban": Table(
+        name="workplace_smoking_ban",
+        label="Workplace Smoking Bans",
+        title="10,000 American workers and whether each smoked",
+        licence="GPL-2 or GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/AER/SmokeBan.html",
+        classes=("non_smoker", "smoker"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/AER/SmokeBan.csv",
+        header=True,
+        fields=_WORKPLACE_SMOKING_BAN_FIELDS,
+        labels={"no": 0, "yes": 1},
+        codes={
+            "ban": ("no", "yes"),
+            "education": ("college", "hs", "hs drop out", "master", "some college"),
+            "gender": ("female", "male"),
+        },
+    ),
+    "world_values_survey": Table(
+        name="world_values_survey",
+        label="World Values Surveys",
+        title="5,381 people in four countries and what each thought the state owed the poor",
+        licence="GPL-2 or later",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/carData/WVS.html",
+        classes=("too_little", "about_right", "too_much"),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/carData/WVS.csv",
+        header=True,
+        fields=_WORLD_VALUES_SURVEY_FIELDS,
+        labels={"Too Little": 0, "About Right": 1, "Too Much": 2},
+        codes={
+            "religion": ("no", "yes"),
+            "country": ("Australia", "Norway", "Sweden", "USA"),
+            "gender": ("female", "male"),
+        },
+    ),
+    "youth_risk_behaviour": Table(
+        name="youth_risk_behaviour",
+        label="Youth Risk Behavior Surveillance",
+        title="13,583 American schoolchildren and how much each weighed",
+        licence="GPL-3",
+        source="https://vincentarelbundock.github.io/Rdatasets/doc/openintro/yrbss.html",
+        classes=(),
+        url="https://vincentarelbundock.github.io/Rdatasets/csv/openintro/yrbss.csv",
+        header=True,
+        text_size=41,
+        fields=_YOUTH_RISK_BEHAVIOUR_FIELDS,
+        codes={
+            "gender": ("female", "male"),
+            "grade": ("10", "11", "12", "9", "other"),
+            "hispanic": ("hispanic", "not"),
+            "helmet_12m": (
+                "always", "did not ride", "most of time", "never", "rarely", "sometimes",
+            ),
+            "text_while_driving_30d": (
+                "0", "1-2", "10-19", "20-29", "3-5", "30", "6-9", "did not drive",
+            ),
+            "hours_tv_per_school_day": ("1", "2", "3", "4", "5+", "<1", "do not watch"),
+            "school_night_hours_sleep": ("10+", "5", "6", "7", "8", "9", "<5"),
+        },
+    ),
+    "gdp_per_capita_worldbank": Table(
+        name="gdp_per_capita_worldbank",
+        label="GDP per Capita (World Bank)",
+        title="7,445 country-years of output per person, in 2021 international dollars",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/gdp-per-capita-worldbank",
+        classes=(),
+        url="https://ourworldindata.org/grapher/gdp-per-capita-worldbank.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_GDP_PER_CAPITA_WORLDBANK_FIELDS,
+    ),
+    "electricity_access": Table(
+        name="electricity_access",
+        label="Access to Electricity",
+        title="7,140 country-years and the share of people with electricity at home",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-of-the-population-with-access-to-electricity",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-of-the-population-with-access-to-electricity.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_ELECTRICITY_ACCESS_FIELDS,
+    ),
+    "internet_use": Table(
+        name="internet_use",
+        label="Internet Use",
+        title="6,476 country-years and the share of people using the internet",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-of-individuals-using-the-internet",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-of-individuals-using-the-internet.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_INTERNET_USE_FIELDS,
+    ),
+    "consumer_price_inflation": Table(
+        name="consumer_price_inflation",
+        label="Consumer Price Inflation",
+        title="9,795 country-years and how fast consumer prices rose in each",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/inflation-of-consumer-prices",
+        classes=(),
+        url="https://ourworldindata.org/grapher/inflation-of-consumer-prices.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_CONSUMER_PRICE_INFLATION_FIELDS,
+    ),
+    "unemployment_rate": Table(
+        name="unemployment_rate",
+        label="Unemployment Rate",
+        title="6,986 country-years and the share of the workforce out of work",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/unemployment-rate",
+        classes=(),
+        url="https://ourworldindata.org/grapher/unemployment-rate.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_UNEMPLOYMENT_RATE_FIELDS,
+    ),
+    "freshwater_withdrawals": Table(
+        name="freshwater_withdrawals",
+        label="Freshwater Withdrawals",
+        title="6,401 country-years and how much fresh water each drew, in cubic kilometres",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/annual-freshwater-withdrawals",
+        classes=(),
+        url="https://ourworldindata.org/grapher/annual-freshwater-withdrawals.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_FRESHWATER_WITHDRAWALS_FIELDS,
+    ),
+    "air_passengers": Table(
+        name="air_passengers",
+        label="Air Passengers Carried",
+        title="8,593 country-years and how many air passengers each carried",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/air-passengers-carried",
+        classes=(),
+        url="https://ourworldindata.org/grapher/air-passengers-carried.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_AIR_PASSENGERS_FIELDS,
+    ),
+    "mobile_subscriptions": Table(
+        name="mobile_subscriptions",
+        label="Mobile Phone Subscriptions",
+        title="9,521 country-years and how many mobile subscriptions each had per hundred people",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/mobile-cellular-subscriptions-per-100-people",
+        classes=(),
+        url="https://ourworldindata.org/grapher/mobile-cellular-subscriptions-per-100-people.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=56,
+        fields=_MOBILE_SUBSCRIPTIONS_FIELDS,
+    ),
+    "internet_users": Table(
+        name="internet_users",
+        label="Internet Users",
+        title="6,006 country-years and how many people used the internet in each",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/number-of-internet-users",
+        classes=(),
+        url="https://ourworldindata.org/grapher/number-of-internet-users.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_INTERNET_USERS_FIELDS,
+    ),
+    "co2_emissions": Table(
+        name="co2_emissions",
+        label="Annual CO2 Emissions",
+        title="29,384 country-years of carbon dioxide emitted, in tonnes",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/annual-co2-emissions-per-country",
+        classes=(),
+        url="https://ourworldindata.org/grapher/annual-co2-emissions-per-country.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_CO2_EMISSIONS_FIELDS,
+    ),
+    "co2_emissions_per_person": Table(
+        name="co2_emissions_per_person",
+        label="CO2 Emissions per Person",
+        title="26,509 country-years of carbon dioxide emitted for every person living there",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/co-emissions-per-capita",
+        classes=(),
+        url="https://ourworldindata.org/grapher/co-emissions-per-capita.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_CO2_EMISSIONS_PER_PERSON_FIELDS,
+    ),
+    "cumulative_co2_emissions": Table(
+        name="cumulative_co2_emissions",
+        label="Cumulative CO2 Emissions",
+        title="27,563 country-years of carbon dioxide emitted since 1750, in tonnes",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/cumulative-co2-emissions",
+        classes=(),
+        url="https://ourworldindata.org/grapher/cumulative-co2-emissions.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_CUMULATIVE_CO2_EMISSIONS_FIELDS,
+    ),
+    "co2_per_dollar": Table(
+        name="co2_per_dollar",
+        label="Carbon Intensity of Output",
+        title="17,528 country-years of carbon dioxide emitted for every dollar of output",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/co2-intensity",
+        classes=(),
+        url="https://ourworldindata.org/grapher/co2-intensity.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=29,
+        fields=_CO2_PER_DOLLAR_FIELDS,
+    ),
+    "renewable_electricity": Table(
+        name="renewable_electricity",
+        label="Renewable Share of Electricity",
+        title="7,872 country-years and the share of electricity generated from renewables",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-electricity-renewables",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-electricity-renewables.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_RENEWABLE_ELECTRICITY_FIELDS,
+    ),
+    "electricity_generation": Table(
+        name="electricity_generation",
+        label="Electricity Generation",
+        title="7,913 country-years of electricity generated, in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/electricity-generation",
+        classes=(),
+        url="https://ourworldindata.org/grapher/electricity-generation.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=35,
+        fields=_ELECTRICITY_GENERATION_FIELDS,
+    ),
+    "renewable_energy": Table(
+        name="renewable_energy",
+        label="Renewable Share of Energy",
+        title="6,379 country-years and the share of primary energy that came from renewables",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/renewable-share-energy",
+        classes=(),
+        url="https://ourworldindata.org/grapher/renewable-share-energy.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=30,
+        fields=_RENEWABLE_ENERGY_FIELDS,
+    ),
+    "energy_use_per_person": Table(
+        name="energy_use_per_person",
+        label="Energy Use per Person",
+        title="11,225 country-years of primary energy used per person, in kilowatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/per-capita-energy-use",
+        classes=(),
+        url="https://ourworldindata.org/grapher/per-capita-energy-use.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_ENERGY_USE_PER_PERSON_FIELDS,
+    ),
+    "primary_energy": Table(
+        name="primary_energy",
+        label="Primary Energy Consumption",
+        title="13,414 country-years of primary energy used, in terawatt-hours",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/primary-energy-cons",
+        classes=(),
+        url="https://ourworldindata.org/grapher/primary-energy-cons.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_PRIMARY_ENERGY_FIELDS,
+    ),
+    "cereal_yields": Table(
+        name="cereal_yields",
+        label="Cereal Yields",
+        title="13,488 country-years of cereal harvested, in tonnes a hectare",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/cereal-yield",
+        classes=(),
+        url="https://ourworldindata.org/grapher/cereal-yield.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_CEREAL_YIELDS_FIELDS,
+    ),
+    "calorie_supply": Table(
+        name="calorie_supply",
+        label="Daily Calorie Supply",
+        title="13,454 country-years and how many calories a day each had for every person",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/daily-per-capita-caloric-supply",
+        classes=(),
+        url="https://ourworldindata.org/grapher/daily-per-capita-caloric-supply.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=45,
+        fields=_CALORIE_SUPPLY_FIELDS,
+    ),
+    "gdp_per_capita_maddison": Table(
+        name="gdp_per_capita_maddison",
+        label="GDP per Capita (Maddison)",
+        title="21,586 country-years of output per person back to the year one, in 2011 dollars",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/gdp-per-capita-maddison",
+        classes=(),
+        url="https://ourworldindata.org/grapher/gdp-per-capita-maddison.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=48,
+        fields=_GDP_PER_CAPITA_MADDISON_FIELDS,
+    ),
+    "population_density": Table(
+        name="population_density",
+        label="Population Density",
+        title="76,576 country-years and how many people lived on each square kilometre",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/population-density",
+        classes=(),
+        url="https://ourworldindata.org/grapher/population-density.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_POPULATION_DENSITY_FIELDS,
+    ),
+    "urban_population": Table(
+        name="urban_population",
+        label="Urban Population Share",
+        title="21,052 country-years and the share of people living in towns and cities",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/share-of-population-urban",
+        classes=(),
+        url="https://ourworldindata.org/grapher/share-of-population-urban.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=61,
+        fields=_URBAN_POPULATION_FIELDS,
+    ),
+    "life_expectancy_at_birth": Table(
+        name="life_expectancy_at_birth",
+        label="Life Expectancy at Birth",
+        title="18,722 country-years and how long a child born then could expect to live",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/life-expectancy-at-birth-total-years",
+        classes=(),
+        url="https://ourworldindata.org/grapher/life-expectancy-at-birth-total-years.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=59,
+        fields=_LIFE_EXPECTANCY_AT_BIRTH_FIELDS,
+    ),
+    "child_mortality": Table(
+        name="child_mortality",
+        label="Child Mortality",
+        title="17,066 country-years and how many children in a hundred died before turning five",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/child-mortality",
+        classes=(),
+        url="https://ourworldindata.org/grapher/child-mortality.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_CHILD_MORTALITY_FIELDS,
+    ),
+    "child_mortality_igme": Table(
+        name="child_mortality_igme",
+        label="Child Mortality (UN IGME)",
+        title="13,980 country-years of child deaths per hundred live births, as the UN counts them",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/child-mortality-igme",
+        classes=(),
+        url="https://ourworldindata.org/grapher/child-mortality-igme.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=32,
+        fields=_CHILD_MORTALITY_IGME_FIELDS,
+    ),
+    "adult_literacy": Table(
+        name="adult_literacy",
+        label="Adult Literacy",
+        title="1,833 country-years and the share of adults who could read and write",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/literacy-rate-adults",
+        classes=(),
+        url="https://ourworldindata.org/grapher/literacy-rate-adults.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=51,
+        fields=_ADULT_LITERACY_FIELDS,
+    ),
+    "human_development_index": Table(
+        name="human_development_index",
+        label="Human Development Index",
+        title="6,604 country-years scored on health, schooling and income together",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/human-development-index",
+        classes=(),
+        url="https://ourworldindata.org/grapher/human-development-index.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=38,
+        fields=_HUMAN_DEVELOPMENT_INDEX_FIELDS,
+    ),
+    "sea_level": Table(
+        name="sea_level",
+        label="Global Sea Level",
+        title="563 monthly readings of how far the sea has risen since 1880, in millimetres",
+        licence="CC BY 4.0",
+        source="https://ourworldindata.org/grapher/sea-level",
+        classes=(),
+        url="https://ourworldindata.org/grapher/sea-level.csv?v=1&csvType=full&useColumnShortNames=true",
+        header=True,
+        text_size=8,
+        fields=_SEA_LEVEL_FIELDS,
     ),
 }
 
