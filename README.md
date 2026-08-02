@@ -148,7 +148,10 @@ than a class, fetched from whoever publishes them and carrying their licence
 in the file, so a training loop can read them straight off a storage element
 without anybody having to leave the tools they already use. Images, audio,
 text, dates, timestamps, spreadsheets and plain blocks of numbers all fit;
-none of the data is redistributed here, only the converter.
+none of the data is redistributed here, only the converter. Three programs in
+`examples/` train off a `root://` URL and print what they held while doing it
+— an MLP on MNIST, an autoencoder on CIFAR-10 and a small convolutional net on
+Fashion-MNIST, none of them holding more than a pool of rows of the file.
 
 ```python
 import torch, xrd.root, xrd.root.ml

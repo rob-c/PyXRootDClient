@@ -329,6 +329,27 @@ the batching belongs here and not in the loader. Several workers split the
 entry range between them, so each reads a different part of the file rather
 than all of them reading all of it.
 
+The sets in `xrd.root.datasets` keep one tree per class, which is the wrong
+order to learn in: a loop over those trees in turn shows a model five thousand
+cats and then five thousand dogs. `mixed` reads `step` entries from each tree,
+shuffles that pool together and cuts `batch` rows off it at a time, so every
+minibatch holds every class:
+
+```python
+with xrd.root.open_root("root://127.0.0.1:21094//cifar10.root") as handle:
+    trees = [handle[name] for name in handle.trees() if name.startswith("train_")]
+    loader = torch.utils.data.DataLoader(
+        xrd.root.ml.mixed(trees, ["image", "label"], step=1024, batch=256, device="cuda"),
+        batch_size=None,
+    )
+```
+
+`step` is what the memory costs — a pool of that many rows from each tree, and
+nothing else of the file. The shuffling is PyTorch's own, so `torch.manual_seed`
+settles it; `shuffle=False` is for the pass that scores a model, where the
+order makes no difference and the rows can be watched going by. Three worked
+examples are in [Training playbooks](playbooks.md).
+
 Fixed-size array columns arrive shaped `(entries, width)`. Variable ones are
 padded to the widest row in the batch, or to a width you give:
 
@@ -1411,29 +1432,27 @@ $ python -m xrd.testing datasets --port 21094 --pattern '*.root'
 serving 5 files on root://127.0.0.1:21094/ with no login
 ```
 
-Then the ten class trees are ten streams, mixed a batch at a time. Nothing is
+Then the ten class trees are one stream, mixed a batch at a time. Nothing is
 downloaded first; each pull is one basket off the wire:
 
 ```python
-import itertools, torch
+import torch
 from xrd.root import open_root
-from xrd.root.ml import dataset
+from xrd.root.ml import mixed
 
 URL = "root://127.0.0.1:21094//home/you/datasets/mnist.root"
 
 with open_root(URL) as handle:
-    loaders = [
-        torch.utils.data.DataLoader(
-            dataset(handle[f"train_{cls}"], ["image", "label"], step=512),
-            batch_size=None)
-        for cls in range(10)
-    ]
-    for parts in itertools.zip_longest(*loaders):
-        parts = [part for part in parts if part is not None]
-        x = torch.cat([p["image"] for p in parts]).cuda().float().div_(255)
-        y = torch.cat([p["label"] for p in parts]).cuda().long()
-        train(x.view(-1, 1, 28, 28), y)          # 60,000 rows an epoch
+    trees = [handle[f"train_{cls}"] for cls in range(10)]
+    loader = torch.utils.data.DataLoader(
+        mixed(trees, ["image", "label"], step=512, batch=256, device="cuda"),
+        batch_size=None)
+    for batch in loader:                         # 60,000 rows an epoch
+        train(batch["image"].float().view(-1, 1, 28, 28) / 255, batch["label"].long())
 ```
+
+Three programs that run as they stand — an MLP, an autoencoder and a small
+convolutional net — are in [Training playbooks](playbooks.md).
 
 A regression set is simpler still, being one tree of every row, with the number
 to predict a column beside the rest:

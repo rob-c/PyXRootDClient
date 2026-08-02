@@ -19,6 +19,7 @@ from xrd.root import Jagged, UnsupportedFeatureError, open_root
 from xrd.root.ml import (
     dataset,
     iter_tensors,
+    mixed,
     numeric,
     tf_dataset,
     to_tensor,
@@ -40,13 +41,36 @@ class Tensor:
         self.device = device
 
     def __len__(self):
-        return len(self.values)
+        return self.shape[0] if self.shape else len(self.values)
+
+    @property
+    def width(self):
+        """How many values one of its rows holds, one for a column of numbers."""
+        return self.shape[1] if self.shape else 1
+
+    def rows(self):
+        return [self.values[at : at + self.width] for at in range(0, len(self.values), self.width)]
+
+    def __getitem__(self, key):
+        """A slice of the rows, or the rows another tensor names, as torch does."""
+        rows = self.rows()
+        taken = rows[key] if isinstance(key, slice) else [rows[at] for at in key.values]
+        shape = (len(taken), self.width) if self.shape else None
+        return Tensor([value for row in taken for value in row], self.dtype, shape, self.device)
 
     def reshape(self, rows, width):
         return Tensor(self.values, self.dtype, (rows, width), self.device)
 
     def to(self, device):
         return Tensor(self.values, self.dtype, self.shape, device)
+
+
+def _cat(tensors):
+    """The tensors one after another, as ``torch.cat`` puts them."""
+    first = tensors[0]
+    shape = (sum(len(tensor) for tensor in tensors), first.width) if first.shape else None
+    values = [value for tensor in tensors for value in tensor.values]
+    return Tensor(values, first.dtype, shape, first.device)
 
 
 @pytest.fixture
@@ -56,6 +80,11 @@ def torch(monkeypatch):
     for name in ("int8", "uint8", "int16", "int32", "int64", "float32", "float64"):
         setattr(module, name, name)
     module.frombuffer = lambda values, dtype: Tensor(values, dtype)
+    module.cat = _cat
+    # Reversing rather than shuffling: a permutation a test can recognise.
+    module.randperm = lambda rows, device=None: Tensor(
+        reversed(range(rows)), "int64", device=device
+    )
 
     data = types.ModuleType("torch.utils.data")
 
@@ -168,6 +197,61 @@ def test_several_workers_split_the_entries_between_them(torch, flat):
 
     torch.utils.data.get_worker_info = lambda: types.SimpleNamespace(id=9, num_workers=3)
     assert list(iter(dataset(flat, ["Int32"], step=10))) == []
+
+
+# -- several trees at once, which is how the class-per-tree sets are read ---
+
+
+@pytest.fixture
+def classes():
+    """Two trees of unequal length, one column, the rows numbered across both."""
+    import io
+
+    from xrd.root import create
+
+    buf = io.BytesIO()
+    with create(buf) as out:
+        out.tree("cats", {"index": "i"}).extend([{"index": n} for n in (0, 2, 3, 5)])
+        out.tree("dogs", {"index": "i"}).extend([{"index": n} for n in (1, 4)])
+    with open_root(io.BytesIO(buf.getvalue())) as handle:
+        yield [handle["cats"], handle["dogs"]]
+
+
+def test_a_read_from_every_tree_is_pooled_into_one_batch(torch, classes):
+    batches = list(iter(mixed(classes, ["index"], step=2, shuffle=False)))
+    assert [batch["index"].values for batch in batches] == [[0, 2, 1, 4], [3, 5]]
+
+
+def test_a_batch_size_cuts_the_pool_into_minibatches(torch, classes):
+    pooled = mixed(classes, ["index"], step=2, batch=3, shuffle=False)
+    assert [batch["index"].values for batch in pooled] == [[0, 2, 1], [4], [3, 5]]
+
+
+def test_the_pool_is_shuffled_by_pytorchs_own_shuffling(torch, classes):
+    batches = list(iter(mixed(classes, ["index"], step=2, device="cuda")))
+    assert [batch["index"].values for batch in batches] == [[4, 1, 2, 0], [5, 3]]
+    assert batches[0]["index"].device == "cuda"
+
+
+def test_the_length_is_the_number_of_batches_it_will_hand_over(torch, classes):
+    for step, batch in ((2, None), (2, 3), (1, 2), (10, 4), (3, 1), (4, 10)):
+        pooled = mixed(classes, step=step, batch=batch, shuffle=False)
+        assert len(pooled) == len(list(iter(pooled))), (step, batch)
+
+
+def test_every_tree_is_split_between_the_workers(torch, classes):
+    torch.utils.data.get_worker_info = lambda: types.SimpleNamespace(id=0, num_workers=2)
+    first = mixed(classes, ["index"], step=2, shuffle=False)
+    assert [batch["index"].values for batch in first] == [[0, 2, 1]]
+
+    torch.utils.data.get_worker_info = lambda: types.SimpleNamespace(id=1, num_workers=2)
+    second = mixed(classes, ["index"], step=2, shuffle=False)
+    assert [batch["index"].values for batch in second] == [[3, 5, 4]]
+
+
+def test_mixing_needs_a_tree_to_read(torch):
+    with pytest.raises(ValueError, match="it was given none"):
+        mixed([])
 
 
 class TfTensor:

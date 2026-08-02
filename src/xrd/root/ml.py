@@ -35,6 +35,7 @@ __all__ = [
     "to_tensors",
     "iter_tensors",
     "dataset",
+    "mixed",
     "to_tf_tensor",
     "to_tf_tensors",
     "tf_dataset",
@@ -278,12 +279,7 @@ def dataset(
         """Entries of one tree, in batches, over whatever it was opened on."""
 
         def __iter__(self) -> Iterator[dict[str, Any]]:
-            start, stop = 0, len(tree)
-            worker = torch.utils.data.get_worker_info()
-            if worker is not None:
-                share = -(-len(tree) // worker.num_workers)
-                start = min(worker.id * share, stop)
-                stop = min(start + share, stop)
+            start, stop = _share(torch, len(tree))
             return iter_tensors(
                 tree, names, step=step, entry_start=start, entry_stop=stop, device=device
             )
@@ -292,3 +288,105 @@ def dataset(
             return -(-len(tree) // step)
 
     return TreeDataset()
+
+
+def _share(torch: Any, entries: int) -> tuple[int, int]:
+    """Which slice of ``entries`` the calling loader process is to read.
+
+    All of them outside a worker, and an equal share of them inside one, so
+    that several workers read a file between them rather than each reading all
+    of it.
+    """
+    worker = torch.utils.data.get_worker_info()
+    if worker is None:
+        return 0, entries
+    share = -(-entries // worker.num_workers)
+    start = min(worker.id * share, entries)
+    return start, min(start + share, entries)
+
+
+def _cut(
+    torch: Any, pool: list[dict[str, Any]], batch: int | None, shuffle: bool, device: Any
+) -> Iterator[dict[str, Any]]:
+    """One read from each tree, put together and handed out a batch at a time.
+
+    A pool of one is left as it is rather than copied through ``cat``, which is
+    what the last rounds are once the shorter trees have run out.
+    """
+    if len(pool) == 1:
+        columns = pool[0]
+    else:
+        columns = {name: torch.cat([chunk[name] for chunk in pool]) for name in pool[0]}
+    rows = len(next(iter(columns.values())))
+    if shuffle:
+        order = torch.randperm(rows, device=device)
+        columns = {name: values[order] for name, values in columns.items()}
+    size = rows if batch is None else batch
+    for at in range(0, rows, size):
+        yield {name: values[at : at + size] for name, values in columns.items()}
+
+
+def mixed(
+    trees: Sequence[TTree],
+    names: Sequence[str] | None = None,
+    *,
+    step: int = DEFAULT_STEP,
+    batch: int | None = None,
+    shuffle: bool = True,
+    device: Any = None,
+) -> Any:
+    """A PyTorch ``IterableDataset`` over several trees at once, rows mixed.
+
+        >>> loader = DataLoader(mixed(trees, batch=256), batch_size=None)  # doctest: +SKIP
+
+    The sets in :mod:`xrd.root.datasets` keep one tree per class, which is the
+    wrong order to learn in: a loop over the trees in turn shows a model five
+    thousand cats and then five thousand dogs. This reads ``step`` entries from
+    each tree, shuffles that pool together and cuts ``batch`` rows off it at a
+    time, so every minibatch holds every class while the file is still read a
+    basket at a time and only a pool of it is ever in memory.
+
+    ``batch`` left out hands the whole pool over at once. The shuffling is
+    PyTorch's own, so :func:`torch.manual_seed` settles what it does; pass
+    ``shuffle=False`` for the pass that scores a model, where the order of the
+    rows makes no difference and their arrival can be watched.
+
+    Columns of a fixed width only: a jagged one is padded to the widest row of
+    each tree's own read, and the pool would be putting different widths side
+    by side.
+    """
+    torch = _torch()
+    trees = list(trees)
+    if not trees:
+        raise ValueError("mixed() needs a tree to read: it was given none")
+
+    class MixedDataset(torch.utils.data.IterableDataset):  # type: ignore[misc, name-defined]
+        """Entries of several trees, pooled and shuffled, in batches."""
+
+        def __iter__(self) -> Iterator[dict[str, Any]]:
+            left = [
+                iter_tensors(
+                    tree, names, step=step, entry_start=start, entry_stop=stop, device=device
+                )
+                for tree, (start, stop) in ((t, _share(torch, len(t))) for t in trees)
+            ]
+            while left:
+                pool = []
+                for stream in list(left):
+                    chunk = next(stream, None)
+                    if chunk is None:
+                        left.remove(stream)
+                    else:
+                        pool.append(chunk)
+                if pool:
+                    yield from _cut(torch, pool, batch, shuffle, device)
+
+        def __len__(self) -> int:
+            left, batches = [len(tree) for tree in trees], 0
+            while any(left):
+                rows = sum(min(step, entries) for entries in left)
+                batches += 1 if batch is None else -(-rows // batch)
+                left = [max(0, entries - step) for entries in left]
+            return batches
+
+    return MixedDataset()

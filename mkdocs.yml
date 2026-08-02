@@ -39,6 +39,7 @@ nav:
       - HTTP and WebDAV: http.md
       - S3 object storage: s3.md
       - ROOT files: root.md
+      - Training playbooks: playbooks.md
       - fsspec: fsspec.md
       - Command line: cli.md
       - Safety: safety.md
