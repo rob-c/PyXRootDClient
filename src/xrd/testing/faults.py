@@ -266,10 +266,12 @@ class FaultProxy:
                 chunk = self._doctor(chunk, seen)
                 if self._delay and seen >= self._delay_after:
                     time.sleep(self._delay)
+                seen += len(chunk)
+                # Count before forwarding, so that a caller who has the bytes
+                # can never read a total that leaves them out.
+                self.bytes_from_server += len(chunk)
                 for piece in _pieces(chunk, self._chop):
                     client.sendall(piece)
-                seen += len(chunk)
-                self.bytes_from_server += len(chunk)
         except OSError:
             pass
         finally:
