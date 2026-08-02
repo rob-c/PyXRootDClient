@@ -163,11 +163,27 @@ Generated from the source. Everything below is importable from the top-level
 
 ::: xrd.root.WritableTree
 
+### Datasets
+
+::: xrd.root.datasets.convert
+
+::: xrd.root.datasets.describe
+
+::: xrd.root.datasets.Dataset
+
+::: xrd.root.datasets.Images
+
+::: xrd.root.datasets.CIFAR
+
+::: xrd.root.datasets.Table
+
+::: xrd.root.datasets.read_idx
+
+::: xrd.root.datasets.read_table
+
+::: xrd.root.datasets.fetch
+
 ::: xrd.root.mnist.convert
-
-::: xrd.root.mnist.read_idx
-
-::: xrd.root.mnist.fetch
 
 ### Into a framework
 

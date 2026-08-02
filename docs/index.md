@@ -66,7 +66,7 @@ can only honestly be tested against a live KDC.
 The wire protocol, the session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
-reader and writer are implemented and tested - 2828 tests, the great majority of which need no network, no KDC and no
+reader and writer are implemented and tested - 2882 tests, the great majority of which need no network, no KDC and no
 `openssl`, plus [interoperability and parity suites](interop.md) that run
 against a real `xrootd` daemon and the official bindings side by side.
 Coverage is 100% of statements and branches across the package, and `proto/`,

@@ -19,4 +19,4 @@ htmlcov/
 venv/
 
 # Generated datasets
-/mnist.root
+/datasets/

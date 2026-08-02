@@ -123,10 +123,12 @@ physics data is worse than a refusal. Histograms and graphs draw themselves —
 characters when it is not — and `xrd.root.create` writes a new ROOT file:
 trees filled entry by entry and flushed a basket at a time, histograms,
 graphs, strings and arrays of numbers, under every compression ROOT itself
-writes, still from nothing but the standard library. `xrd.root.mnist` is the
-worked example, turning the handwritten digits into a tree per class — 70,000
-images in an 11.6 MB file — for a training loop that reads them straight off a
-storage element.
+writes, still from nothing but the standard library. `xrd.root.datasets` turns
+the sets machine learning is taught with — MNIST, Fashion-MNIST, KMNIST,
+CIFAR-10, CIFAR-100, Iris, the Palmer penguins and Covertype — into ROOT files
+a tree per class, fetched from whoever publishes them and carrying their
+licence in the file, so a training loop can read them straight off a storage
+element without anybody having to leave the tools they already use.
 
 ```python
 import torch, xrd.root, xrd.root.ml
@@ -247,7 +249,7 @@ The wire protocol, session state machine, the whole authentication ladder,
 file and namespace APIs, `pathlib` bindings, the async facade, HTTP/WebDAV,
 S3, the copy engine, the CLI, the fsspec bindings and the pure-Python ROOT
 reader and writer are implemented and tested —
-2828 tests, of which the great majority need no network, no KDC and no
+2882 tests, of which the great majority need no network, no KDC and no
 `openssl`. The remainder are the interoperability suite, which runs against a
 real `xrootd` daemon and reads back what `xrdcp` and `xrdfs` write, and the
 parity suite, which runs every operation through this client and the official

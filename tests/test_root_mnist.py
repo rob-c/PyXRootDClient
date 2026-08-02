@@ -64,7 +64,7 @@ def test_something_that_is_not_an_idx_file_is_refused():
 
 
 def test_an_idx_file_of_something_other_than_bytes_is_refused_by_what_it_holds():
-    with pytest.raises(ValueError, match="holds floats, and MNIST holds unsigned bytes"):
+    with pytest.raises(ValueError, match="holds floats, and these image sets hold unsigned bytes"):
         read_idx(b"\x00\x00\x0d\x01" + struct.pack(">i", 1) + bytes(4))
     with pytest.raises(ValueError, match="holds values of type 0x42"):
         read_idx(b"\x00\x00\x42\x01" + struct.pack(">i", 1) + b"\x00")
@@ -116,7 +116,7 @@ def test_every_image_lands_in_the_tree_for_its_own_digit():
         "train_5": 0, "train_6": 0, "train_7": 0, "train_8": 0, "train_9": 1,
     }
     with read_back(data) as back:
-        assert sorted(back.keys()) == [f"train_{digit}" for digit in range(10)]
+        assert sorted(back.keys()) == [*(f"train_{digit}" for digit in range(10)), "train_about"]
         for digit in range(10):
             tree = back[f"train_{digit}"]
             assert len(tree) == digits.count(digit)
@@ -144,7 +144,7 @@ def test_the_columns_are_what_a_training_loop_needs_and_nothing_else():
         assert tree.keys() == list(COLUMNS)
         assert tree.typenames() == {"image": "uint8", "label": "int32", "index": "int32"}
         assert [tree[name].length for name in COLUMNS] == [PIXELS, 1, 1]
-        assert tree.title.startswith("MNIST train images of the digit 4")
+        assert tree.title == "MNIST train images of class 4, 28x28 greyscale"
 
 
 def test_the_test_split_is_named_for_itself_so_both_fit_in_one_file():
@@ -155,7 +155,7 @@ def test_the_test_split_is_named_for_itself_so_both_fit_in_one_file():
     assert first["train_1"] == 2
     assert second["test_1"] == 1
     with read_back(buf.getvalue()) as back:
-        assert len(back.keys()) == 20
+        assert len(back.keys()) == 22
         assert len(back["train_1"]) == 2
         assert len(back["test_1"]) == 1
         assert back["test_1"].title.startswith("MNIST test images")
@@ -241,5 +241,5 @@ def test_a_label_for_every_image_is_required():
 
 
 def test_a_label_that_is_not_a_digit_is_refused_by_which_image_it_is():
-    with pytest.raises(ValueError, match="image 1 is labelled 10, and MNIST is the digits"):
+    with pytest.raises(ValueError, match="row 1 of MNIST is labelled 10, and it has 10 classes"):
         convert(io.BytesIO(), images=images(2), labels=labels([3, 10]))

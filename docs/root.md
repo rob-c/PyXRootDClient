@@ -446,7 +446,9 @@ hold, so ROOT, uproot and this library's own reader all walk it the same way.
 
 `xrd.root.mnist` is the worked example: it fetches the handwritten digits —
 through this library, so the source can be a URL, a path or bytes already in
-hand — and writes them as one tree per class.
+hand — and writes them as one tree per class. It is one of the eight in
+[`xrd.root.datasets`](#the-datasets-everyone-teaches-with) under its own name,
+because it is the one everybody starts with.
 
 ```python
 from xrd.root import create, mnist
@@ -495,6 +497,109 @@ shuffling across them is whatever your training would do anyway.
 
 Point `open_root` at a `root://` or `https://` URL and the same loop trains
 straight off a storage element, reading the baskets it needs and nothing else.
+
+### The datasets everyone teaches with
+
+MNIST is one of eight. `xrd.root.datasets` converts the sets machine learning
+is actually taught and benchmarked with, all of them the same way — one tree
+per class, the label beside the data, and the row's place in the original file
+so any number can be traced back to where it came from.
+
+```python
+from xrd.root import datasets
+
+datasets.convert("cifar10", "cifar10.root", split="train")
+# {'train_airplane': 5000, 'train_automobile': 5000, ... 'train_truck': 5000}
+
+datasets.convert("iris", "iris.root")
+# {'setosa': 50, 'versicolor': 50, 'virginica': 50}
+```
+
+`describe()` prints the lot, with the licence and the source of each:
+
+| name | what it is | licence | converted |
+| --- | --- | --- | --- |
+| `mnist` | 70,000 handwritten digits, 28×28 greyscale, 10 classes | CC BY-SA 3.0 | 11.6 MB |
+| `fashion_mnist` | 70,000 clothing photographs, 28×28 greyscale, 10 classes | MIT | 30.7 MB |
+| `kmnist` | 70,000 classical Japanese characters, 28×28 greyscale, 10 classes | CC BY-SA 4.0 | 21.6 MB |
+| `cifar10` | 60,000 photographs, 32×32 colour, 10 classes | see below | 169.1 MB |
+| `cifar100` | 60,000 photographs, 32×32 colour, 100 classes in 20 superclasses | see below | 167.3 MB |
+| `iris` | 150 iris flowers measured four ways, 3 species | CC BY 4.0 | 9 kB |
+| `penguins` | 344 penguins measured at Palmer Station, 3 species | CC0 | 13 kB |
+| `covertype` | 581,012 patches of Colorado forest, 54 features, 7 cover types | CC BY 4.0 | 8.3 MB |
+
+The last column is one file holding every split, written with the default
+`zlib`, as measured on a conversion of all eight — both splits of a set that
+has them, a tree a class, and the `about` key beside them.
+
+Nothing is redistributed here. Each set is fetched from whoever publishes it,
+on the machine doing the converting, and the licences above are what those
+publishers say — read them before passing the converted file on. The CIFAR
+sets have no formal licence at all; Krizhevsky asks that the tech report be
+cited. So that a file outlives the program that made it, `convert` writes an
+`about` key beside the trees holding the same statement:
+
+```python
+with xrd.root.open_root("cifar10.root") as f:
+    print(f["train_about"])
+# CIFAR-10: 60,000 photographs, 32x32 colour, 10 classes
+# split: train
+# licence: no formal licence; Krizhevsky asks that the tech report be cited
+# source: https://www.cs.toronto.edu/~kriz/cifar.html
+# converted by xrd.root.datasets, one tree per class
+```
+
+The CIFAR sets are taken in their **binary** distribution rather than the
+Python one, on purpose: the Python one is a pickle, and unpickling a download
+is a way to run somebody else's code. Every archive here — IDX, tar, zip,
+gzip, CSV — is read with the standard library and nothing else.
+
+Images come out exactly as the archive laid them: CIFAR is 3072 bytes an
+entry, 1024 red then 1024 green then 1024 blue, which is what PyTorch wants,
+so the loop is the MNIST one with a wider `view`:
+
+```python
+loaders = [
+    torch.utils.data.DataLoader(
+        xrd.root.ml.dataset(f[f"train_{cls}"], ["image", "label"], step=64),
+        batch_size=None,
+    )
+    for cls in ("airplane", "automobile", "bird", "cat", "deer",
+                "dog", "frog", "horse", "ship", "truck")
+]
+for parts in zip(*loaders):
+    x = torch.cat([part["image"] for part in parts]).float().div_(255)
+    loss = criterion(model(x.view(-1, 3, 32, 32)), ...)
+```
+
+The tabular sets become one column per field instead of one wide array:
+
+```python
+with xrd.root.open_root("penguins.root") as f:
+    print(xrd.root.ml.numeric(f["gentoo"]))
+# ['island', 'bill_length_mm', 'bill_depth_mm', 'flipper_length_mm',
+#  'body_mass_g', 'sex', 'year', 'label', 'index']
+```
+
+Trees hold numbers, so the categories are numbered: `datasets.DATASETS[
+"penguins"].codes` says which is which, and a category nobody declared is
+refused rather than guessed at. A measurement nobody took becomes a NaN, which
+is what every reader downstream already means by it; a category nobody
+recorded becomes `-1`, because there is no such code.
+
+Converting is one pass, and `parts=` takes archives already on disk when you
+would rather not download them twice:
+
+```python
+datasets.convert("cifar100", "cifar100.root", split="test",
+                 parts={"archive": "cifar-100-binary.tar.gz"})
+```
+
+`base=` points the downloads at a mirror of your own, and `target` may be a
+`WritableFile` already open, which is how several splits end up in one file.
+Adding a dataset of your own is an `Images`, `CIFAR` or `Table` in the
+registry — each is a frozen dataclass saying where the data is and what its
+fields mean, with no code to write for the common shapes.
 
 ## Compression
 
