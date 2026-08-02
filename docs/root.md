@@ -251,6 +251,14 @@ a physics file should not need a wheel to be read; zstd uses Python 3.14's own
 `compression.zstd` where there is one and the `zstandard` package otherwise,
 and is the one case where a file may need something installed.
 
+## Old files
+
+A tree written by ROOT 4 opens like any other. Those files count entries in
+doubles and keep their seek points in 32-bit integers, and one small enough
+never to have been flushed holds its baskets inside the branch record rather
+than out in the file — all of which is read here, so a decade-old Geant4 run
+needs no copying forward first. ROOT 3 and older are refused by name.
+
 ## What it refuses, and why by name
 
 A plausible misreading of physics data is worse than a refusal, so anything
@@ -274,7 +282,7 @@ What is named that way:
 - a `multimap`, whose duplicate keys a `dict` would silently drop, and a map
   keyed by a container or nested inside one;
 - a container written field by field rather than value by value;
-- trees written by ROOT 4 or older.
+- trees written by ROOT 3 or older.
 
 ## Errors
 

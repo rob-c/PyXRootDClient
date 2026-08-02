@@ -86,11 +86,35 @@ class Jagged(Sequence[Any]):
 
 
 class Basket:
-    """One compressed block of entries, decompressed and ready to slice."""
+    """One compressed block of entries, decompressed and ready to slice.
+
+    Nearly always a record of its own somewhere else in the file, which is
+    what makes reading a range of entries cheap. A tree small enough never to
+    have flushed one keeps its baskets inside the branch instead, and those
+    arrive with their bytes already in hand.
+    """
 
     __slots__ = ("keylen", "nevsize", "nevbuf", "last", "data", "offsets")
 
-    def __init__(self, source: Source, seek: int, nbytes: int, has_offsets: bool) -> None:
+    def __init__(
+        self,
+        keylen: int,
+        nevsize: int,
+        nevbuf: int,
+        last: int,
+        data: bytes,
+        offsets: list[int],
+    ) -> None:
+        self.keylen = keylen
+        self.nevsize = nevsize
+        self.nevbuf = nevbuf
+        self.last = last
+        self.data = data
+        self.offsets = offsets
+
+    @classmethod
+    def keyed(cls, source: Source, seek: int, nbytes: int, has_offsets: bool) -> Basket:
+        """The usual kind: a record of its own, read from where the branch says."""
         from .file import Key
 
         raw = source.read(seek, nbytes)
@@ -98,21 +122,53 @@ class Basket:
         key = Key(head)
         head.i16()  # the basket's own version, which adds nothing we use
         head.i32()  # the buffer size it was built with
-        self.nevsize = head.i32()
-        if self.nevsize < 0:  # a negative size means feature bits follow
-            self.nevsize = -self.nevsize
+        nevsize = head.i32()
+        if nevsize < 0:  # a negative size means feature bits follow
+            nevsize = -nevsize
             head.skip_record()
-        self.nevbuf = head.i32()
-        self.last = head.i32()
+        nevbuf, last = head.i32(), head.i32()
 
-        self.keylen = key.keylen
         payload = raw[key.keylen :]
-        self.data = decompress(payload, key.objlen) if key.compressed else payload
-        self.offsets: list[int] = []
+        data = decompress(payload, key.objlen) if key.compressed else payload
+        offsets: list[int] = []
         if has_offsets:
-            at = Buffer(self.data, key.keylen)
-            at.pos = self.last
-            self.offsets = at.i32s(at.i32())
+            at = Buffer(data, key.keylen)
+            at.pos = last
+            offsets = at.i32s(at.i32())
+        return cls(key.keylen, nevsize, nevbuf, last, data, offsets)
+
+    @classmethod
+    def inline(cls, buf: Buffer) -> Basket | None:
+        """A basket written into the branch record, bytes and all.
+
+        ``None`` says this one kept no bytes and the branch's seek point is
+        where they are, which is how a tree that was flushed writes the
+        placeholders it has already emptied.
+        """
+        from .file import Key
+
+        key = Key(buf)
+        version = buf.i16()
+        buf.i32()  # the buffer size it was built with
+        nevsize = buf.i32()
+        if nevsize < 0:
+            nevsize = -nevsize
+            buf.skip_record()
+        nevbuf, last = buf.i32(), buf.i32()
+        flag = buf.u8()
+        offsets: list[int] = []
+        if flag >= 80:
+            flag -= 80  # the offsets were dropped, to be worked out from the size
+        elif flag % 10 == 1 and nevbuf:
+            offsets = buf.i32s(buf.i32())
+            if 20 < flag < 40:  # the top byte of each is a displacement, not a place
+                offsets = [at & 0xFFFFFF for at in offsets]
+            if flag > 40:
+                buf.i32s(buf.i32())  # the displacements, into a tree of objects
+        if flag != 1 and flag <= 10:
+            return None
+        size = last if version > 1 else buf.i32()
+        return cls(key.keylen, nevsize, nevbuf, last, buf.take(size)[key.keylen :], offsets)
 
     def start_of(self, entry: int, offset: int) -> int:
         """Where a leaf's bytes for one entry begin, in the payload."""
@@ -191,7 +247,7 @@ class Branch:
 
     @property
     def num_baskets(self) -> int:
-        return len(self.record.basket_seek)
+        return max(len(self.record.basket_seek), len(self.record.baskets))
 
     def _refuse_if_unreadable(self) -> None:
         if isinstance(self.column, Refused):
@@ -225,9 +281,11 @@ class Branch:
 
     def basket(self, index: int) -> Basket:
         """Read one basket, remembering the last so a small step is not a reread."""
+        if index < len(self.record.baskets):
+            return self.record.baskets[index]  # already here, and never on its own
         if self._cached is not None and self._cached[0] == index:
             return self._cached[1]
-        basket = Basket(
+        basket = Basket.keyed(
             self._source,
             self.record.basket_seek[index],
             self.record.basket_bytes[index],

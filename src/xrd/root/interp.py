@@ -717,7 +717,7 @@ def _plain(leaf: LeafRecord) -> Column:
 
 def _declared(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
     """A column whose type is a class name the file has to spell out."""
-    if leaf.ltype < 0:
+    if leaf.ltype < 0 or branch.whole:
         name, header = branch.classname, False  # a whole object: the branch names it
     else:
         member = source.streamers().get(branch.classname, {}).get(leaf.name)
@@ -779,5 +779,10 @@ def build(branch: BranchRecord, leaf: LeafRecord, source: Source) -> Column:
             return Rows(prim, 1, False)  # one marker byte, then the counted values
         return Flat(prim, leaf.length)
     if leaf.ltype in KINDS:
+        if branch.whole:
+            # ROOT 4 left the code at zero on a branch holding a whole
+            # collection, where a later ROOT writes -1; that the branch points
+            # at no member of its class is what says the class is the column.
+            return _declared(branch, leaf, source)
         return Refused(f"{KINDS[leaf.ltype]}, which this reader does not decode")
     return _declared(branch, leaf, source)

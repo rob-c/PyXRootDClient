@@ -17,6 +17,7 @@ from .errors import UnsupportedFeatureError
 
 if TYPE_CHECKING:
     from .file import Source
+    from .tree import Basket
 
 __all__ = ["TREE_CLASSES", "read_tree"]
 
@@ -117,7 +118,9 @@ class BranchRecord:
         "basket_seek",
         "leaves",
         "branches",
+        "baskets",
         "streamed",
+        "whole",
     )
 
     def __init__(self) -> None:
@@ -131,9 +134,15 @@ class BranchRecord:
         self.basket_seek: list[int] = []
         self.leaves: list[LeafRecord] = []
         self.branches: list[BranchRecord] = []
+        #: Baskets written into this record rather than out to one of their
+        #: own, which a tree too small to have flushed never does.
+        self.baskets: list[Basket] = []
         #: Did the class stream itself, record and all, rather than the file's
         #: streamer information writing out its members bare?
         self.streamed = False
+        #: Does this branch hold the whole class it names, rather than one
+        #: member of one? ROOT says so by giving it no member to point at.
+        self.whole = False
 
     def __repr__(self) -> str:
         return f"<BranchRecord {self.name!r} with {len(self.basket_seek)} baskets>"
@@ -168,41 +177,67 @@ def read_leaf(buf: Buffer, classname: str) -> LeafRecord:
 
 
 def read_branch(buf: Buffer) -> BranchRecord:
-    """A ``TBranch``, as written by any ROOT since 2007."""
+    """A ``TBranch``: the layout ROOT 5 settled on, or the ROOT 4 one before it.
+
+    The older one differs in its arithmetic rather than its shape: counters
+    that later became 64-bit are doubles or 32-bit integers, and the seek
+    points are 32-bit unless the file grew past two gigabytes, which the
+    marker in front of them says.
+    """
     version, end = buf.header()
-    if version < 10:
+    if version < 6:
         raise UnsupportedFeatureError(
-            f"this file has a branch written in the ROOT 4 layout (TBranch version {version}); "
+            f"this file has a branch older than any ROOT 4 wrote (TBranch version {version}); "
             f"copy it forward with hadd from any ROOT 5 or 6 and it will open"
         )
+    modern = version >= 10
     branch = BranchRecord()
     branch.name, branch.title = buf.named()
-    buf.skip_record()  # TAttFill: the colour it is drawn in
+    if version > 7:
+        buf.skip_record()  # TAttFill: the colour it is drawn in
     buf.i32()  # compression, which the baskets state for themselves
     buf.i32()  # the size a basket was aimed at
     branch.entry_offset_len = buf.i32()
     write_basket = buf.i32()
-    buf.i64()  # the entry number the next basket would start at
+    buf.i64() if modern else buf.i32()  # the entry number the next basket would start at
     if version >= 13:
         buf.skip_record()  # TIOFeatures
     buf.i32()  # this branch's offset inside its parent's entry
     max_baskets = buf.i32()
-    buf.i32()  # split level
-    branch.entries = buf.i64()
-    if version >= 11:
-        branch.first_entry = buf.i64()
-    buf.i64(), buf.i64()  # bytes written, before and after compression
+    if version > 6:
+        buf.i32()  # split level
+    if modern:
+        branch.entries = buf.i64()
+        if version >= 11:
+            branch.first_entry = buf.i64()
+        buf.i64(), buf.i64()  # bytes written, before and after compression
+    else:
+        branch.entries = int(buf.f64())
+        buf.f64(), buf.f64()
 
     branch.branches = [b for b in buf.objarray(CLASSES) if isinstance(b, BranchRecord)]
     branch.leaves = [leaf for leaf in buf.objarray(CLASSES) if isinstance(leaf, LeafRecord)]
-    buf.objarray(CLASSES)  # baskets still in memory: none, in a file that was closed
+    branch.baskets = _held(buf.objarray(CLASSES))
 
     buf.u8()
     branch.basket_bytes = buf.i32s(max_baskets)[:write_basket]
     buf.u8()
-    branch.basket_entry = buf.i64s(max_baskets)[: write_basket + 1]
-    buf.u8()
-    branch.basket_seek = buf.i64s(max_baskets)[:write_basket]
+    if modern:
+        branch.basket_entry = buf.i64s(max_baskets)[: write_basket + 1]
+        buf.u8()
+        branch.basket_seek = buf.i64s(max_baskets)[:write_basket]
+    else:
+        branch.basket_entry = buf.i32s(max_baskets)[: write_basket + 1]
+        wide = buf.u8() == 2  # 2 says the seek points needed 64 bits apiece
+        seeks = buf.i64s(max_baskets) if wide else buf.i32s(max_baskets)
+        branch.basket_seek = seeks[:write_basket]
+    if branch.baskets and not branch.basket_seek:
+        # Nothing was ever flushed, so the seek table is all zeroes and where
+        # each basket starts is what the baskets themselves say.
+        bounds = [0]
+        for basket in branch.baskets:
+            bounds.append(bounds[-1] + basket.nevbuf)
+        branch.basket_entry = bounds
     buf.resume(end)
     return branch
 
@@ -221,7 +256,7 @@ def read_branch_element(buf: Buffer) -> BranchRecord:
         buf.string(), buf.string()  # the parent class, and the TClonesArray class
         buf.u32()  # the checksum of the class this was written from
     buf.u16() if version >= 10 else buf.u32()  # that class's version
-    buf.i32()  # which member of the class this branch is, which its name says too
+    branch.whole = buf.i32() < 0  # which member this is, and -1 for none of them
     branch.streamed = buf.i32() < 0  # ROOT calls this fType, and -1 is the whole object
     buf.resume(end)
     return branch
@@ -255,6 +290,29 @@ def read_derived_branch(buf: Buffer) -> BranchRecord:
     return branch
 
 
+def read_basket(buf: Buffer) -> Basket | None:
+    """A ``TBasket`` written into the branch instead of a record of its own."""
+    from .tree import Basket
+
+    return Basket.inline(buf)
+
+
+def _held(items: list[Any]) -> list[Basket]:
+    """The baskets a branch record carries, up to the first one it does not.
+
+    Anything past a gap has been flushed to a record of its own, and the
+    branch's seek table is what says where.
+    """
+    from .tree import Basket
+
+    held = []
+    for item in items:
+        if not isinstance(item, Basket):
+            break
+        held.append(item)
+    return held
+
+
 def _leaf_class(classname: str) -> Callable[[Buffer], LeafRecord]:
     def read(buf: Buffer) -> LeafRecord:
         return read_leaf(buf, classname)
@@ -266,6 +324,7 @@ def _leaf_class(classname: str) -> Callable[[Buffer], LeafRecord]:
 CLASSES: dict[str, Any] = {
     name: _leaf_class(name) for name in (*LEAF_TYPES, *LEAF_REASONS, *PACKED_LEAVES)
 }
+CLASSES["TBasket"] = read_basket
 CLASSES["TBranch"] = read_branch
 CLASSES["TBranchElement"] = read_branch_element
 CLASSES["TBranchObject"] = read_branch_object
@@ -281,17 +340,19 @@ def read_tree(buf: Buffer, source: Source, name: str, classname: str = "TTree") 
         buf.header()  # a TNtuple is a TTree with a field after it
 
     version, end = buf.header()
-    if version <= 5:
+    if version < 5:
         raise UnsupportedFeatureError(
-            f"this tree was written by ROOT 4 or older (TTree version {version}), which this "
+            f"this tree was written by ROOT 3 or older (TTree version {version}), which this "
             f"reader does not go back to; hadd it forward first"
         )
+    modern = version > 5  # ROOT 5 widened the counters; ROOT 4 kept them narrow
     title = buf.named()[1]
     for _ in range(3):
         buf.skip_record()  # line, fill and marker attributes
 
-    entries = buf.i64()
-    buf.i64(), buf.i64(), buf.i64()  # bytes written, three ways
+    entries = buf.i64() if modern else int(buf.f64())
+    for _ in range(3):
+        buf.i64() if modern else buf.f64()  # bytes written, three ways
     if version >= 18:
         buf.i64()
     if version >= 16:
@@ -300,11 +361,13 @@ def read_tree(buf: Buffer, source: Source, name: str, classname: str = "TTree") 
     if version >= 17:
         buf.i32()
     clusters = buf.i32() if version >= 19 else 0
-    buf.i64()  # the entry count it was told to stop at
-    buf.i64(), buf.i64(), buf.i64()  # max entry loop, max virtual size, autosave
+    if modern:
+        buf.i64()  # the entry count it was told to stop at, which ROOT 4 had no field for
+    for _ in range(3):
+        buf.i64() if modern else buf.i32()  # max entry loop, max virtual size, autosave
     if version >= 18:
         buf.i64()
-    buf.i64()  # the estimated number of entries
+    buf.i64() if modern else buf.i32()  # the estimated number of entries
     if version >= 19:
         buf.u8()
         buf.i64s(clusters)  # where each cluster of baskets ends

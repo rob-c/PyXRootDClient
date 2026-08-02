@@ -114,8 +114,35 @@ def objarray_bytes() -> bytes:
     return record(3, struct.pack(">HII", 1, 0, 0) + tstring("") + struct.pack(">ii", 0, 0))
 
 
+def root4_tree_bytes() -> bytes:
+    """A ``TTree`` in the ROOT 4 layout, where every counter is a narrow one."""
+    body = named_bytes("t", "a ROOT 4 tree") + record(1) * 3
+    body += struct.pack(">dddd", 7, 0, 0, 0)  # entries, then bytes written three ways
+    body += struct.pack(">iii", 0, 0, 0)  # timer interval, scan field, update
+    body += struct.pack(">iiii", 0, 0, 0, 0)  # the entry and size limits, and the estimate
+    return record(5, body + objarray_bytes())
+
+
+def root4_branch_bytes(version: int = 8, *, wide: bool = False) -> bytes:
+    """A ``TBranch`` in the ROOT 4 layout, with one basket written out."""
+    body = named_bytes("b", "b/I") + (record(1) if version > 7 else b"")
+    body += struct.pack(">iiii", 1, 4096, 0, 1)  # compression, basket size, offsets, baskets
+    body += struct.pack(">iii", 5, 0, 2)  # next entry, offset in the parent, max baskets
+    if version > 6:
+        body += struct.pack(">i", 0)  # split level
+    body += struct.pack(">ddd", 5, 0, 0)  # entries, then bytes written both ways
+    body += objarray_bytes() * 3
+    tables = b"\x01" + struct.pack(">ii", 40, 0)  # how many bytes each basket is
+    tables += b"\x01" + struct.pack(">ii", 0, 5)  # the entry each of them starts at
+    if wide:
+        tables += b"\x02" + struct.pack(">qq", 128, 0)  # 2 says the seeks took 64 bits
+    else:
+        tables += b"\x01" + struct.pack(">ii", 128, 0)
+    return record(version, body + tables + tstring(""))
+
+
 def oldest_tree_bytes() -> bytes:
-    """A ``TTree`` of the oldest version this reader accepts, with no branches."""
+    """A ``TTree`` of the first version ROOT 5 wrote, with no branches."""
     body = named_bytes("t", "an old tree") + record(1) * 3
     body += struct.pack(">qqqq", 7, 0, 0, 0)  # entries, then bytes written three ways
     body += struct.pack(">iii", 0, 0, 0)  # timer interval, scan field, update
@@ -124,7 +151,7 @@ def oldest_tree_bytes() -> bytes:
 
 
 def oldest_branch_bytes() -> bytes:
-    """A ``TBranch`` of the oldest version this reader accepts."""
+    """A ``TBranch`` of the first version ROOT 5 wrote."""
     body = named_bytes("b", "b/I") + record(1)
     body += struct.pack(">iiii", 1, 4096, 0, 0)  # compression, basket size, offsets, baskets
     body += struct.pack(">q", 0)  # the entry the next basket would start at
@@ -146,6 +173,37 @@ def basket_bytes(payload: bytes, *, nevsize: int, nevbuf: int, last: int) -> byt
     keylen = 18 + 8 + len(tail) + len(fields)
     head = struct.pack(">iHiIhh", keylen + len(payload), 4, len(payload), 0, keylen, 1)
     return head + struct.pack(">ii", 0, 0) + tail + fields + payload
+
+
+#: How long the key in front of a crafted basket is, which its offsets count from.
+BASKET_KEYLEN = 18 + 8 + len(tstring("TBasket") + tstring("b") + tstring(""))
+
+
+def inline_basket_bytes(
+    payload: bytes,
+    *,
+    flag: int,
+    nevbuf: int = 2,
+    version: int = 2,
+    offsets: tuple[int, ...] = (),
+    displaced: bool = False,
+    nevsize: int = 2,
+) -> bytes:
+    """A basket written into its branch, with the bytes of its entries after it."""
+    tail = tstring("TBasket") + tstring("b") + tstring("")
+    last = BASKET_KEYLEN + len(payload)
+    head = struct.pack(">iHiIhh", BASKET_KEYLEN, 4, 0, 0, BASKET_KEYLEN, 1)
+    body = struct.pack(">hii", version, 4096, nevsize)
+    if nevsize < 0:  # a negative size means feature bits follow
+        body += record(1, b"\x00")
+    body += struct.pack(">ii", nevbuf, last) + bytes([flag])
+    if offsets:
+        body += struct.pack(f">i{len(offsets)}i", len(offsets), *offsets)
+    if displaced:
+        body += struct.pack(">ii", 1, 7)
+    if version <= 1:
+        body += struct.pack(">i", last)  # the oldest baskets said how long they were
+    return head + struct.pack(">ii", 0, 0) + tail + body + bytes(BASKET_KEYLEN) + payload
 
 
 def source_over(data: bytes, name: str = "crafted") -> Source:
@@ -728,22 +786,93 @@ def test_a_tree_and_branch_from_2007_are_read_with_the_fields_of_their_day():
     assert branch.basket_seek == []
 
 
+def test_a_tree_written_by_ROOT_4_reads_the_values_it_was_given():
+    """`g4-like.root` is Geant4-shaped output written by ROOT 4 in 2005.
+
+    Its tree was never flushed, so every basket it has is inside the branch
+    record rather than out in the file, and the seek table is all zeroes. The
+    values are the ones go-hep's own test of this file expects: the entry
+    number and up to that many doubles counting on from it.
+    """
+    with opened("g4-like") as handle:
+        tree = handle["mytree"]
+        assert (len(tree), tree.unreadable) == (5, {})
+        assert tree.typenames() == {"i32": "int32", "f64": "float64", "slif64": "float64"}
+        assert tree["i32"].array().tolist() == [1, 2, 3, 4, 5]
+        assert tree["f64"].array().tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+        assert tree["slif64"].array().tolist() == [
+            [],
+            [1.0],
+            [2.0, 3.0],
+            [3.0, 4.0, 5.0],
+            [4.0, 5.0, 6.0, 7.0],
+        ]
+        assert tree["slif64"].array(3, 4).tolist() == [[3.0, 4.0, 5.0]]
+
+
+def test_a_tree_and_branch_from_ROOT_4_are_read_with_the_narrower_counters():
+    tree = read_tree(Buffer(root4_tree_bytes()), source_over(b""), "t")
+    assert (tree.name, tree.title, len(tree)) == ("t", "a ROOT 4 tree", 7)
+    for version in (6, 7, 8, 9):
+        branch = read_branch(Buffer(root4_branch_bytes(version)))
+        assert (branch.name, branch.entries, branch.first_entry) == ("b", 5, 0)
+        assert (branch.basket_bytes, branch.basket_entry, branch.basket_seek) == (
+            [40],
+            [0, 5],
+            [128],
+        )
+    assert read_branch(Buffer(root4_branch_bytes(wide=True))).basket_seek == [128]
+
+
 def test_a_tree_from_before_this_reader_is_refused_by_version():
     with pytest.raises(UnsupportedFeatureError, match="TTree version 4"):
         read_tree(Buffer(record(4)), None, "old")
-    with pytest.raises(UnsupportedFeatureError, match="TTree version 5"):
-        read_tree(Buffer(record(1) + record(5)), None, "old", "TNtuple")
-    with pytest.raises(UnsupportedFeatureError, match="TBranch version 9"):
-        read_branch(Buffer(record(9)))
+    with pytest.raises(UnsupportedFeatureError, match="TTree version 3"):
+        read_tree(Buffer(record(1) + record(3)), None, "old", "TNtuple")
+    with pytest.raises(UnsupportedFeatureError, match="TBranch version 5"):
+        read_branch(Buffer(record(5)))
 
 
 def test_a_basket_that_writes_its_size_negative_carries_feature_bits():
     raw = basket_bytes(b"0123456789", nevsize=2, nevbuf=5, last=0)
-    basket = Basket(source_over(raw), 0, len(raw), False)
+    basket = Basket.keyed(source_over(raw), 0, len(raw), False)
     assert basket.nevsize == 2
     assert basket.nevbuf == 5
     assert basket.data == b"0123456789"
     assert basket.start_of(3, 0) == 6
+
+
+def test_a_basket_written_into_its_branch_holds_its_entries_where_it_stands():
+    """The flag in front of one says which of its parts were written down.
+
+    A tree small enough never to have flushed is the only place these turn
+    up, and then the values are in the branch record itself rather than at a
+    seek point of their own.
+    """
+    places = (BASKET_KEYLEN, BASKET_KEYLEN + 2)
+    plain = Basket.inline(Buffer(inline_basket_bytes(b"0123", flag=11, offsets=places)))
+    assert (plain.data, plain.offsets) == (b"0123", list(places))
+    assert (plain.start_of(1, 0), plain.end_of(1)) == (2, 4)
+
+    high = tuple(0x7F000000 | at for at in places)  # a top byte that is a displacement
+    displaced = Basket.inline(
+        Buffer(inline_basket_bytes(b"0123", flag=51, offsets=high, displaced=True))
+    )
+    assert displaced.offsets == list(high)  # a flag past 40 keeps them as they are
+    assert Basket.inline(Buffer(inline_basket_bytes(b"0123", flag=31, offsets=high))).offsets == [
+        at & 0xFFFFFF for at in high
+    ]
+
+    dropped = Basket.inline(Buffer(inline_basket_bytes(b"0123", flag=91, nevsize=-2)))
+    assert (dropped.offsets, dropped.nevsize, dropped.start_of(1, 0)) == ([], 2, 2)
+    empty = Basket.inline(Buffer(inline_basket_bytes(b"0123", flag=11, nevbuf=0)))
+    assert (empty.offsets, empty.data) == ([], b"0123")
+    oldest = Basket.inline(Buffer(inline_basket_bytes(b"0123", flag=1, offsets=places, version=1)))
+    assert oldest.data == b"0123"
+
+
+def test_a_basket_that_kept_no_bytes_leaves_the_branch_to_read_them():
+    assert Basket.inline(Buffer(inline_basket_bytes(b"", flag=2))) is None
 
 
 # -- jagged ---------------------------------------------------------------

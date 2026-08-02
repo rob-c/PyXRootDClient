@@ -1,6 +1,6 @@
 # ROOT files used by the tests
 
-Twenty-one small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
+Twenty-two small ROOT files, taken unchanged from the [go-hep](https://github.com/go-hep/hep)
 project's `groot/testdata`, and used here to check that `xrd.root` reads what
 ROOT wrote. They are here rather than generated because nothing in this
 library can write a ROOT file: the only honest test of a reader is bytes
@@ -28,6 +28,7 @@ somebody else's writer produced.
 | `tdatime.root` | `TDatime`, in a key and in a branch, which streams itself and no record |
 | `string-example.root` | a `std::string` standing on its own in a key |
 | `std-bitset.root` | `std::bitset<8>`, on its own and in a vector |
+| `g4-like.root` | a tree written by ROOT 4, whose baskets are inside the branch rather than out in the file |
 | `stdvec-bool-fullsplit-6.10.08.root` | `std::vector<bool>`, which is a byte per element and not a bit |
 
 go-hep is BSD-3-Clause; the licence is in `LICENSE.go-hep` next to these
