@@ -8,6 +8,9 @@ two.
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import xrd
 from xrd.config import Config
 from xrd.proto import constants as c
@@ -187,6 +190,73 @@ def test_a_full_pool_refuses_what_it_cannot_hold():
     assert second.closes == 0
     pool.clear()
     assert (first.closes, len(pool)) == (1, 0)
+
+
+def test_a_child_lets_go_of_its_parents_connections_without_closing_them():
+    """``forget`` is for the far side of a fork: drop them, do not end them.
+
+    Closing would write a ``kXR_endsess`` down a socket the parent is still
+    using, which is worse than the sharing it is meant to prevent.
+    """
+    pool = SessionPool()
+    url, config = parse("root://example.org/"), Config()
+    session = FakeSession()
+    pool.release(pooled(session), url, config)
+    pool.forget()
+    assert len(pool) == 0
+    assert session.closes == 0
+    assert pool.acquire(url, config) is None
+
+
+#: A whole program that logs in, forks, and has both sides read: the child
+#: must find an empty pool and dial a connection of its own, and the parent's
+#: must still be there and still work afterwards. Two logins is the proof;
+#: without the fork hook there would be one, shared, and reading it from both
+#: sides is exactly the corruption the hook exists to prevent.
+FORK_PROBE = """
+import os, sys
+import xrd
+from xrd.session import SESSIONS
+
+url = sys.argv[1]
+config = xrd.Config(username="tester", auth_order=("host",), require_tls=False)
+
+
+def stat():
+    with xrd.FileSystem(url, config) as fs:
+        return fs.stat("/data/a.root").size
+
+
+assert stat() == 11 and len(SESSIONS) == 1, "the parent kept its connection"
+
+child = os.fork()
+if child == 0:
+    ok = len(SESSIONS) == 0 and stat() == 11
+    os._exit(0 if ok else 1)
+
+assert os.waitpid(child, 0)[1] == 0, "the child could not read on its own"
+assert len(SESSIONS) == 1, "the parent's connection outlived the child"
+assert stat() == 11, "and still answers, so nobody read over anybody"
+"""
+
+
+def test_a_forked_child_starts_with_an_empty_pool(server):
+    """The fork hook, run for real, in a process of its own.
+
+    The fork is done in a subprocess rather than here because the official
+    XRootD bindings, which :mod:`tests.test_parity` imports where they are
+    installed, deadlock in their own ``atexit`` handler if the process they
+    are loaded into has forked. Nothing to do with this library, and no reason
+    to leave the behaviour untested.
+    """
+    done = subprocess.run(
+        [sys.executable, "-c", FORK_PROBE, str(server.url)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert done.returncode == 0, done.stderr
+    assert logins(server) == 2  # the parent's, and the one the child dialled
 
 
 def test_an_already_closed_connection_is_never_taken_back():

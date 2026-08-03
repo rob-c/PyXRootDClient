@@ -55,6 +55,8 @@ can only honestly be tested against a live KDC.
   and STL containers read in pure Python, member by member or whole, streamed
   into PyTorch or TensorFlow a basket at a time; histograms and graphs that
   draw themselves; new files written, compression and all.
+- **[Machine learning](ml.md)** - a URL in, minibatches of
+  `(inputs, answers)` out, and nothing downloaded in between.
 - **[Authentication](auth.md)** - proxies, tokens, keytabs, and what to do
   when the ladder refuses everything.
 - **[Coming from pyxrootd](migrating.md)** - a translation table.

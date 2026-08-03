@@ -10,6 +10,7 @@ world for the cost of three reads.
 from __future__ import annotations
 
 import datetime
+import os
 import struct
 from typing import IO, TYPE_CHECKING, Any
 
@@ -30,23 +31,53 @@ MAGIC = b"root"
 KEY_WINDOW = 1024
 
 
+class Reopener:
+    """How to get another handle on the same file, in another process.
+
+    A plain function would do but for pickling: a dataset handed to a worker
+    started with ``spawn`` travels as bytes, and a closure does not.
+    """
+
+    __slots__ = ("target", "config")
+
+    def __init__(self, target: Any, config: Config | None) -> None:
+        self.target = target
+        self.config = config
+
+    def __call__(self) -> IO[bytes]:
+        url = parse(self.target)
+        if url.is_local:
+            return open(url.path, "rb")
+        from ..io import open_url
+
+        return open_url(url, "rb", config=self.config)
+
+
 class Source:
     """Random access to the bytes of a file, wherever they are.
 
     Anything with ``seek`` and ``read`` will do, which is what makes a remote
     tree the same code as a local one: the XRootD, HTTP and S3 file objects
     all have both.
+
+    A file opened from a URL knows how to open itself again, which is what
+    makes a tree readable from several processes: see :meth:`_adopt`.
     """
 
-    __slots__ = ("handle", "name", "owned", "info", "_streamers")
+    __slots__ = ("handle", "name", "owned", "info", "_streamers", "_pid", "_reopen", "_inherited")
 
-    def __init__(self, handle: IO[bytes], name: str, owned: bool) -> None:
+    def __init__(
+        self, handle: IO[bytes], name: str, owned: bool, reopen: Reopener | None = None
+    ) -> None:
         self.handle = handle
         self.name = name
         self.owned = owned
         #: Where the file keeps the description of its own classes.
         self.info: tuple[int, int] = (0, 0)
         self._streamers: dict[str, Any] | None = None
+        self._pid = os.getpid()
+        self._reopen = reopen
+        self._inherited: IO[bytes] | None = None
 
     def streamers(self) -> dict[str, Any]:
         """What the file says its classes look like, read once and kept.
@@ -60,7 +91,46 @@ class Source:
             self._streamers = read_streamers(self)
         return self._streamers
 
+    def _adopt(self) -> None:
+        """Open the file again, because this process is not the one that did.
+
+        A PyTorch worker is a fork of the process that opened the file, and
+        two processes seeking and reading one handle read over each other's
+        shoulders: whoever seeks last decides where the other one's ``read``
+        lands. So the first read in a child opens its own handle, and leaves
+        the inherited one alone rather than closing it - the descriptor is
+        the parent's, and closing this copy of a session would write a
+        ``kXR_endsess`` the parent never asked for.
+        """
+        if self._reopen is None:
+            raise UnsupportedFeatureError(
+                f"{self.name} was opened from a file object, and this process inherited it by "
+                f"forking rather than opening it: reads from both would land in the wrong "
+                f"places. Open the file from its URL, or inside the worker, or read with "
+                f"workers=0"
+            )
+        self._inherited = self.handle
+        self.handle = self._reopen()
+        self._pid = os.getpid()
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Everything but the handle, which belongs to the process that opened it."""
+        if self._reopen is None:
+            raise UnsupportedFeatureError(
+                f"{self.name} was opened from a file object, which cannot be sent to another "
+                f"process; open it from its URL to read it in one"
+            )
+        return {"name": self.name, "reopen": self._reopen, "info": self.info}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Arrive in the other process with the file already open."""
+        reopen = state["reopen"]
+        self.__init__(reopen(), state["name"], owned=True, reopen=reopen)  # type: ignore[misc]
+        self.info = state["info"]
+
     def read(self, offset: int, size: int) -> bytes:
+        if self._pid != os.getpid():
+            self._adopt()
         self.handle.seek(offset)
         data = self.handle.read(size)
         if len(data) != size:
@@ -366,15 +436,12 @@ def open_root(target: Any, *, config: Config | None = None) -> ROOTFile:
     if hasattr(target, "read") and hasattr(target, "seek"):
         return ROOTFile(Source(target, getattr(target, "name", "<file>"), owned=False))
 
-    url = parse(target)
-    if url.is_local:
-        handle: IO[bytes] = open(url.path, "rb")
-    else:
-        from ..io import open_url
-
-        handle = open_url(url, "rb", config=config)
+    # The opener is kept, not just called: a worker process reading this tree
+    # needs a handle of its own, and this is how it gets one.
+    reopen = Reopener(target, config)
+    handle = reopen()
     try:
-        return ROOTFile(Source(handle, str(target), owned=True))
+        return ROOTFile(Source(handle, str(target), owned=True, reopen=reopen))
     except BaseException:
         handle.close()  # a file that will not open should not leak the handle
         raise

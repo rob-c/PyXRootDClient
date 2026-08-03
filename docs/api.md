@@ -246,6 +246,16 @@ call's keyword arguments into them.
 
 ::: xrd.root.mnist.convert
 
+## Machine learning
+
+::: xrd.ml.load
+
+::: xrd.ml.Dataset
+
+::: xrd.ml.Split
+
+::: xrd.ml.Column
+
 ### Into a framework
 
 ::: xrd.root.ml.to_tensor

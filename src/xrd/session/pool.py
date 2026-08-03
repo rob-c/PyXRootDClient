@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import atexit
 import hashlib
+import os
 import threading
 import time
 
@@ -157,6 +158,20 @@ class SessionPool:
             _log.debug("keeping the connection to %s for the next caller", session.endpoint)
         return kept
 
+    def forget(self) -> None:
+        """Let go of every idle connection without closing any of them.
+
+        For a forked child, which inherits its parent's sockets and must not
+        use them: two processes taking turns on one XRootD session read each
+        other's replies. Closing them here would be worse than using them -
+        the descriptor is shared, so a ``kXR_endsess`` from the child ends
+        the parent's session too. The child dials its own instead.
+        """
+        # The lock may have been held by a thread that does not exist on this
+        # side of the fork, so it is replaced rather than taken.
+        self._idle = {}
+        self._lock = threading.Lock()
+
     def clear(self) -> None:
         """Close everything idle. Idempotent."""
         with self._lock:
@@ -181,3 +196,8 @@ SESSIONS = SessionPool()
 # Ending them on the way out is the difference between a tidy shutdown and one
 # the server has to time out.
 atexit.register(SESSIONS.clear)
+
+# A child gets none of them: see SessionPool.forget. This is why a DataLoader
+# with workers, a multiprocessing Pool or a forking server can share nothing
+# but the name of a file, and why none of them has to be told to.
+os.register_at_fork(after_in_child=SESSIONS.forget)

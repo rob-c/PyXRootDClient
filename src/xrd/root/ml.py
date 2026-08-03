@@ -279,7 +279,7 @@ def dataset(
         """Entries of one tree, in batches, over whatever it was opened on."""
 
         def __iter__(self) -> Iterator[dict[str, Any]]:
-            start, stop = _share(torch, len(tree))
+            start, stop = _share(torch, 0, len(tree))
             return iter_tensors(
                 tree, names, step=step, entry_start=start, entry_stop=stop, device=device
             )
@@ -290,8 +290,8 @@ def dataset(
     return TreeDataset()
 
 
-def _share(torch: Any, entries: int) -> tuple[int, int]:
-    """Which slice of ``entries`` the calling loader process is to read.
+def _share(torch: Any, start: int, stop: int) -> tuple[int, int]:
+    """Which slice of the entries from ``start`` to ``stop`` this process reads.
 
     All of them outside a worker, and an equal share of them inside one, so
     that several workers read a file between them rather than each reading all
@@ -299,10 +299,10 @@ def _share(torch: Any, entries: int) -> tuple[int, int]:
     """
     worker = torch.utils.data.get_worker_info()
     if worker is None:
-        return 0, entries
-    share = -(-entries // worker.num_workers)
-    start = min(worker.id * share, entries)
-    return start, min(start + share, entries)
+        return start, stop
+    share = -(-(stop - start) // worker.num_workers)
+    first = min(start + worker.id * share, stop)
+    return first, min(first + share, stop)
 
 
 def _cut(
@@ -334,6 +334,7 @@ def mixed(
     batch: int | None = None,
     shuffle: bool = True,
     device: Any = None,
+    spans: Sequence[tuple[int, int]] | None = None,
 ) -> Any:
     """A PyTorch ``IterableDataset`` over several trees at once, rows mixed.
 
@@ -345,6 +346,10 @@ def mixed(
     each tree, shuffles that pool together and cuts ``batch`` rows off it at a
     time, so every minibatch holds every class while the file is still read a
     basket at a time and only a pool of it is ever in memory.
+
+    ``spans`` reads only part of each tree - one ``(first, last)`` pair per
+    tree, as :func:`range` bounds them - which is how a training set and a
+    validation set are cut out of the same file without reading either twice.
 
     ``batch`` left out hands the whole pool over at once. The shuffling is
     PyTorch's own, so :func:`torch.manual_seed` settles what it does; pass
@@ -359,6 +364,12 @@ def mixed(
     trees = list(trees)
     if not trees:
         raise ValueError("mixed() needs a tree to read: it was given none")
+    ranges = [(0, len(tree)) for tree in trees] if spans is None else [tuple(s) for s in spans]
+    if len(ranges) != len(trees):
+        raise ValueError(
+            f"mixed() was given {len(trees)} trees and {len(ranges)} spans; "
+            f"a span says which entries of one tree to read, so there is one apiece"
+        )
 
     class MixedDataset(torch.utils.data.IterableDataset):  # type: ignore[misc, name-defined]
         """Entries of several trees, pooled and shuffled, in batches."""
@@ -368,7 +379,9 @@ def mixed(
                 iter_tensors(
                     tree, names, step=step, entry_start=start, entry_stop=stop, device=device
                 )
-                for tree, (start, stop) in ((t, _share(torch, len(t))) for t in trees)
+                for tree, (start, stop) in (
+                    (tree, _share(torch, *span)) for tree, span in zip(trees, ranges, strict=True)
+                )
             ]
             while left:
                 pool = []
@@ -382,7 +395,7 @@ def mixed(
                     yield from _cut(torch, pool, batch, shuffle, device)
 
         def __len__(self) -> int:
-            left, batches = [len(tree) for tree in trees], 0
+            left, batches = [stop - start for start, stop in ranges], 0
             while any(left):
                 rows = sum(min(step, entries) for entries in left)
                 batches += 1 if batch is None else -(-rows // batch)

@@ -1,11 +1,12 @@
 # Training playbooks
 
-Three programs in `examples/`, each learning something off a `root://` URL and
-none of them holding the file: an MLP that classifies MNIST, an autoencoder
-that squeezes CIFAR-10 photographs through sixty-four numbers, and a small
-convolutional net on Fashion-MNIST. They are short on purpose — sixty lines
-apiece, no framework of ours between PyTorch and the data — and they run on a
-laptop in under a minute each.
+Four programs in `examples/`, each learning something off a `root://` URL and
+none of them holding the file: MNIST twice — once in the short words of
+[`xrd.ml`](ml.md) and once written out longhand — an autoencoder that squeezes
+CIFAR-10 photographs through sixty-four numbers, and a small convolutional net
+on Fashion-MNIST. They are short on purpose — sixty lines apiece, no framework
+of ours between PyTorch and the data — and they run on a laptop in under a
+minute each.
 
 The point they make is the one worth checking before trusting a client with a
 dataset that does not fit anywhere: every minibatch is a read of one basket
@@ -50,6 +51,62 @@ That server authorises everyone and reads its files into memory, which is fine
 for a demonstration on loopback and wrong for anything else; see
 [Testing](testing.md#sharing-a-directory-over-root) before pointing it at a
 network.
+
+## MNIST, in the words a beginner has
+
+`examples/mnist_easy.py` — the same classifier as the next section, written
+against [`xrd.ml`](ml.md). There are no baskets, offsets or dtypes in it: a
+URL goes in and minibatches of `(images, labels)` come out, already scaled and
+already typed for the loss function.
+
+```console
+$ python examples/mnist_easy.py root://127.0.0.1:21094//mnist.root
+root://127.0.0.1:21094//mnist.root: 70,000 rows, 10 classes
+  inputs   image: 784 x uint8, scaled to 0-1
+  answer   label: int32
+  splits   train 60,000 rows, test 10,000 rows
+label 0
+               .+%+.
+              .%%%%%
+             .%%%%%%:
+            :#%%%#:%%=
+           +%%%%%%-*%+
+          .%%%*=%%.:@+
+         .%%%* :=   %%.
+        .+%%#:      %%+
+        *%%:        %%*
+       :%%:         %%*
+       *%*          @%*
+      :%%-          %%+
+      -%%          =%*
+      -%#         =%#:
+      -%+       .+%*
+      -%#      =%%+
+      -%%+..-*#%#+.
+      -%%%%#%%%*=
+       #%%%%%%+
+        =%%%=.
+rows per class: {'0': 5923, '1': 6742, '2': 5958, ...}
+
+epoch 1: 60,000 rows, loss 0.5150
+epoch 2: 60,000 rows, loss 0.2358
+epoch 3: 60,000 rows, loss 0.1782
+epoch 4: 60,000 rows, loss 0.1425
+epoch 5: 60,000 rows, loss 0.1188
+accuracy 0.9646 on 10,000 test rows, none of which were downloaded
+```
+
+The whole of the reading is one line, and the summary above it is printed
+rather than known:
+
+```python
+for images, labels in data.train.batches(256, device=device):
+```
+
+The three programs below do the same work a layer down, with the pooling,
+the scaling and the shapes written out; that layer is where to go when the
+reading itself needs changing, and [Machine learning](ml.md) says what each
+gives you.
 
 ## An MLP on MNIST
 

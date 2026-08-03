@@ -329,6 +329,14 @@ the batching belongs here and not in the loader. Several workers split the
 entry range between them, so each reads a different part of the file rather
 than all of them reading all of it.
 
+A worker is a process of its own, and it opens the file again for itself
+rather than reading down the handle it inherited — two processes seeking one
+descriptor read over each other's shoulders, and two sharing one XRootD
+session read each other's replies. Nothing has to be arranged for that: the
+first read in a child notices whose process it is in, dials its own
+connection and carries on. A tree opened from a file object cannot do this and
+says so, because a handle somebody else opened cannot be reopened by name.
+
 The sets in `xrd.root.datasets` keep one tree per class, which is the wrong
 order to learn in: a loop over those trees in turn shows a model five thousand
 cats and then five thousand dogs. `mixed` reads `step` entries from each tree,

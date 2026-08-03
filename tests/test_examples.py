@@ -18,9 +18,14 @@ REPO = pathlib.Path(__file__).parent.parent
 EXAMPLES = sorted((REPO / "examples").glob("*.py"))
 
 
-def test_the_examples_are_the_three_playbooks_and_they_parse():
+def test_the_examples_are_the_four_playbooks_and_they_parse():
     trees = {path.name: ast.parse(path.read_text()) for path in EXAMPLES}
-    assert sorted(trees) == ["cifar10_autoencoder.py", "fashion_mnist_cnn.py", "mnist_mlp.py"]
+    assert sorted(trees) == [
+        "cifar10_autoencoder.py",
+        "fashion_mnist_cnn.py",
+        "mnist_easy.py",
+        "mnist_mlp.py",
+    ]
     assert all(ast.get_docstring(tree) for tree in trees.values())
 
 

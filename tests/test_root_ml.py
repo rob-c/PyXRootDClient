@@ -254,6 +254,24 @@ def test_mixing_needs_a_tree_to_read(torch):
         mixed([])
 
 
+def test_a_span_reads_part_of_each_tree(torch, classes):
+    """Which is how a validation set is cut out of the same file."""
+    part = mixed(classes, ["index"], step=4, shuffle=False, spans=[(0, 2), (1, 2)])
+    assert [batch["index"].values for batch in part] == [[0, 2, 4]]
+    assert len(part) == 1
+
+
+def test_the_workers_share_a_span_rather_than_the_whole_tree(torch, classes):
+    torch.utils.data.get_worker_info = lambda: types.SimpleNamespace(id=1, num_workers=2)
+    part = mixed(classes, ["index"], step=4, shuffle=False, spans=[(0, 4), (0, 2)])
+    assert [batch["index"].values for batch in part] == [[3, 5, 4]]
+
+
+def test_a_span_for_every_tree_or_none_at_all(torch, classes):
+    with pytest.raises(ValueError, match="2 trees and 1 spans"):
+        mixed(classes, spans=[(0, 1)])
+
+
 class TfTensor:
     """Enough of a TensorFlow tensor to see what was asked for."""
 

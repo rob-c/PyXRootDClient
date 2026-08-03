@@ -13,7 +13,9 @@ import array
 import datetime
 import io
 import math
+import os
 import pathlib
+import pickle
 import struct
 import zlib
 
@@ -492,6 +494,47 @@ def test_a_file_object_is_read_as_it_is_and_left_for_whoever_opened_it():
         assert "written by ROOT 60600" in repr(root)
     assert not handle.closed
     handle.close()
+
+
+def test_a_worker_process_opens_the_file_again_rather_than_sharing_one_handle(monkeypatch):
+    """Two processes on one handle seek over each other; the child reopens.
+
+    Standing in for the fork is a process id that is not the one that opened
+    the file, which is the only thing the reader can tell about a worker.
+    """
+    with open_root(str(DATA / "simple.root")) as root:
+        source = root._source
+        inherited = source.handle
+        monkeypatch.setattr(os, "getpid", lambda: -1)
+        assert root["tree"]["one"].array().tolist() == [1.0, 2.0, 3.0, 4.0]
+        assert source.handle is not inherited
+        assert not inherited.closed  # the parent's descriptor, not this one's
+    inherited.close()
+
+
+def test_a_file_object_cannot_be_read_from_a_process_that_did_not_open_it(monkeypatch):
+    """Reopening needs a URL; a handle someone else opened has none."""
+    with (DATA / "simple.root").open("rb") as handle, open_root(handle) as root:
+        monkeypatch.setattr(os, "getpid", lambda: -1)
+        with pytest.raises(UnsupportedFeatureError, match="opened from a file object"):
+            root["tree"]["one"].array()
+
+
+def test_a_tree_can_be_sent_to_another_process_and_read_there():
+    """Pickling a tree sends the name of the file, not the open file."""
+    with open_root(str(DATA / "simple.root")) as root:
+        sent = pickle.dumps(root["tree"])
+    tree = pickle.loads(sent)
+    try:
+        assert tree["one"].array().tolist() == [1.0, 2.0, 3.0, 4.0]
+    finally:
+        tree._source.close()
+
+
+def test_a_file_object_cannot_be_sent_to_another_process():
+    with (DATA / "simple.root").open("rb") as handle, open_root(handle) as root:
+        with pytest.raises(UnsupportedFeatureError, match="cannot be sent to another process"):
+            pickle.dumps(root["tree"])
 
 
 def test_a_file_object_with_no_name_still_opens():

@@ -42,6 +42,16 @@ checksum, the same directory listing, the same bytes at the same offsets.
 
 Needs the official bindings installed as well; skips otherwise.
 
+One thing to know if both libraries are loaded into the same program. The
+official bindings stop their C++ threads from an `atexit` handler, and once
+they have talked to a server, a `fork()` anywhere in that process leaves the
+handler waiting on threads that the fork left it unable to join: every test
+passes and the interpreter then hangs instead of exiting. Nothing here forks
+on its own, but a PyTorch `DataLoader` with `workers=` does, which is why this
+suite runs its own fork test in a subprocess. A program that needs both can
+keep the bindings in a process of their own; a program that only reads with
+this library is unaffected.
+
 ## Against AWS's own worked examples
 
 The same argument applies to the S3 signature, which is a hash of a string

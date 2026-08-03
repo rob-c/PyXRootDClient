@@ -20,6 +20,9 @@ The five levels of the API, from most to least convenient:
     A single authenticated connection.
 :mod:`xrd.proto`
     The sans-io protocol machinery.
+
+:mod:`xrd.ml` sits beside all of them: a ROOT file of rows on a server,
+handed to PyTorch a minibatch at a time.
 """
 
 from __future__ import annotations
@@ -105,24 +108,27 @@ __version__ = "0.1.0"
 
 
 def __getattr__(name: str) -> object:
-    """Expose ``xrd.aio`` without importing :mod:`asyncio` for everyone else.
+    """Expose ``xrd.aio`` and ``xrd.ml`` without making everyone pay for them.
 
-    The async facade is one attribute access away, but the synchronous path
-    never pays for it: nothing under ``xrd`` imports ``asyncio`` until someone
-    asks for ``xrd.aio``.
+    Both are one attribute access away, and neither costs anything until it is
+    asked for: nothing under ``xrd`` imports :mod:`asyncio` until someone
+    reaches for ``xrd.aio``, or the ROOT reader until someone reaches for
+    ``xrd.ml``.
     """
-    if name == "aio":
+    if name in ("aio", "ml"):
         import importlib
 
         # Not ``from . import aio``: the import system resolves that by asking
         # this very function for the attribute, and the recursion is infinite.
-        return importlib.import_module(f"{__name__}.aio")
+        return importlib.import_module(f"{__name__}.{name}")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "__version__",
-    # the async facade (imported on first use)
+    # the facades that are imported on first use
     "aio",
+    "ml",
     # configuration
     "Config",
     "configure",

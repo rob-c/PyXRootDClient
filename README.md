@@ -165,9 +165,9 @@ than a class, fetched from whoever publishes them and carrying their licence
 in the file, so a training loop can read them straight off a storage element
 without anybody having to leave the tools they already use. Images, audio,
 text, dates, timestamps, spreadsheets and plain blocks of numbers all fit;
-none of the data is redistributed here, only the converter. Three programs in
+none of the data is redistributed here, only the converter. Four programs in
 `examples/` train off a `root://` URL and print what they held while doing it
-— an MLP on MNIST, an autoencoder on CIFAR-10 and a small convolutional net on
+— MNIST twice, an autoencoder on CIFAR-10 and a small convolutional net on
 Fashion-MNIST, none of them holding more than a pool of rows of the file.
 
 ```python
@@ -179,6 +179,25 @@ pt = tree["Muon_pt"].array(0, 10_000)             # array.array, or Jagged rows
 loader = torch.utils.data.DataLoader(
     xrd.root.ml.dataset(tree, ["Muon_pt"], step=8192), batch_size=None, num_workers=4
 )
+```
+
+**Machine learning, the short way.** `xrd.ml` is the same reading with none of
+the arithmetic: a URL in, minibatches of `(inputs, answers)` out. Which trees
+are the training rows, which column is the picture and which the answer, how
+much to hold at once, what to divide the bytes by and which tensor type each
+loss function wants are all read off the file rather than written down, and
+printed if you ask. Nothing is downloaded, and no framework is imported until
+a batch is.
+
+```python
+import xrd.ml
+
+data = xrd.ml.load("root://eos.example.org//store/mnist.root")
+print(data)          # 70,000 rows, 10 classes; inputs image: 784 x uint8; answer label
+print(data.train.preview())                     # the first digit, drawn in characters
+
+for images, labels in data.train.batches(256):  # already float, already scaled
+    loss = criterion(model(images), labels)
 ```
 
 **Async.** `xrd.aio` mirrors the whole surface — same names, same arguments,
