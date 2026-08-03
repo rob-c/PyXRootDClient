@@ -158,6 +158,29 @@ def parse_status(data: bytes) -> StatusInfo:
 # --------------------------------------------------------------------------
 
 
+def _find_sec_reqs(trailer: bytes) -> bytes | None:
+    """Locate the ``ServerResponseReqs_Protocol`` record inside a ``kXR_protocol``
+    body's post-``flags`` trailer, returning the bytes from its ``'S'`` tag on.
+
+    The tag is ``'S'`` (XProtocol.hh).  Two on-wire shapes carry it:
+
+    * the spec shape, where the record is the whole trailer (``'S'`` at offset 0);
+    * a vendor shape (e.g. nginx-xrootd/brix) that prefixes the record with a
+      4-byte security-methods header ``[rsvd, required, method_count, rsvd]``
+      followed by ``method_count`` 8-byte method entries, then the ``'S'`` record.
+
+    Anything else returns ``None`` so the caller can fall back to "no security
+    requirements" instead of failing the handshake, which is what XrdCl does.
+    """
+    if len(trailer) >= 6 and trailer[0:1] == b"S":
+        return trailer
+    if len(trailer) >= 4:
+        off = 4 + trailer[2] * 8
+        if len(trailer) >= off + 6 and trailer[off : off + 1] == b"S":
+            return trailer[off:]
+    return None
+
+
 def parse_protocol(data: bytes) -> ProtocolInfo:
     """``kXR_protocol`` - version, flags and the optional security requirements."""
     r = Reader(data, "kXR_protocol")
@@ -167,21 +190,17 @@ def parse_protocol(data: bytes) -> ProtocolInfo:
     secver = 0
     secopt = 0
     overrides: dict[int, int] = {}
-    if r.remaining >= 6:
-        tag = r.u8()
-        if tag != ord("S"):
-            raise ProtocolError(f"kXR_protocol security block has tag {tag!r}, expected 'S'")
-        r.skip(1)
-        secver = r.u8()
-        secopt = r.u8()
-        seclvl = r.u8()
-        for _ in range(r.u8()):
-            if r.remaining < 2:
+    reqs = _find_sec_reqs(r.rest())
+    if reqs is not None:
+        # ServerResponseReqs_Protocol: 'S' rsvd secver secopt seclvl secvsz secvec[]
+        secver, secopt, seclvl, secvsz = reqs[2], reqs[3], reqs[4], reqs[5]
+        pos = 6
+        for _ in range(secvsz):
+            if pos + 2 > len(reqs):
                 break
-            # Read into locals: a subscript assignment evaluates its
-            # right-hand side first, which would swap opcode and level.
-            opcode = r.u8() + c.kXR_1stRequest
-            overrides[opcode] = r.u8()
+            # reqs[pos] is the request index; reqs[pos + 1] its signing level.
+            overrides[reqs[pos] + c.kXR_1stRequest] = reqs[pos + 1]
+            pos += 2
     return ProtocolInfo(
         version=version,
         flags=flags,

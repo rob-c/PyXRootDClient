@@ -113,10 +113,28 @@ def test_parse_protocol_with_a_security_block_and_overrides():
     assert info.security_overrides == {c.kXR_write: 3}
 
 
-def test_a_mislabelled_security_block_is_a_protocol_error():
+def test_a_mislabelled_security_block_is_tolerated():
+    # A trailer that is neither the spec 'S' record nor a vendor security-methods
+    # advert (nginx-xrootd/brix) is ignored rather than failing the handshake -
+    # this is what a real XrdCl client does, and it keeps bring-up working against
+    # servers that append data we do not recognise.
     body = struct.pack(">iI", 1, 0) + bytes([ord("X"), 0, 0, 0, 0, 0])
-    with pytest.raises(ProtocolError, match="expected 'S'"):
-        rp.parse_protocol(body)
+    info = rp.parse_protocol(body)
+    assert info.version == 1
+    assert info.security_level == c.kXR_secNone
+    assert info.security_overrides == {}
+
+
+def test_a_vendor_prefixed_security_block_is_parsed():
+    # nginx-xrootd/brix answers kXR_secreqs with a 4-byte security-methods header
+    # [rsvd, required, method_count, rsvd] then method_count 8-byte entries, then
+    # the ServerResponseReqs_Protocol 'S' record.  With no methods (auth none) the
+    # 'S' record sits at trailer offset 4 and still carries the security level.
+    trailer = bytes([0, 0, 0, 0]) + bytes([ord("S"), 0, 0, 0, c.kXR_secStandard, 0])
+    body = struct.pack(">iI", 0x520, 1) + trailer
+    info = rp.parse_protocol(body)
+    assert info.version == 0x520
+    assert info.security_level == c.kXR_secStandard
 
 
 def test_parse_login_splits_the_session_id_from_the_security_trailer():
