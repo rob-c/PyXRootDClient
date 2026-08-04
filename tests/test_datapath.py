@@ -214,6 +214,25 @@ def test_losing_a_data_path_costs_only_the_requests_on_it():
     assert isinstance(next(iter(machine_.events())), m.Completed)
 
 
+def test_forgetting_a_path_frees_what_was_waiting_on_it():
+    # A caller that gives up on a path and closes its socket says so here. The
+    # requests that went down it can never be answered now, so they are not
+    # left in flight - and their stream ids come back, which a session doing
+    # this once per file would otherwise run out of.
+    machine_ = ready_machine()
+    kept = machine_.submit(r.Ping())
+    lost = machine_.submit(r.Read(b"fh01", 0, 4, 1))
+    also = machine_.submit(r.Write(b"fh01", 0, b"bulk", 1))
+    machine_.forget_path(1)
+    assert machine_.in_flight == 1, "only the request on the control link is left"
+    assert machine_.path_data_to_send(1) == b"", "bytes queued for a dead path went out"
+    assert not list(machine_.events()), "forgetting a path is not news to anyone"
+    reused = {machine_.submit(r.Ping()), machine_.submit(r.Ping())}
+    assert reused == {lost, also}, "the ids were not put back"
+    machine_.receive_data(ok(kept))
+    assert isinstance(next(iter(machine_.events())), m.Completed)
+
+
 def test_a_path_that_dies_with_nothing_on_it_is_only_reported():
     machine_ = ready_machine()
     machine_.receive_data(b"", pathid=2)

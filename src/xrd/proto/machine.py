@@ -437,14 +437,27 @@ class SessionMachine:
         self._pending.clear()
         self._events.append(Disconnected("connection closed by peer"))
 
+    def forget_path(self, pathid: int) -> None:
+        """Drop a data path and every stream that was waiting on it.
+
+        A socket that has been closed cannot answer what went down it, so the
+        requests still expecting an answer there are abandoned rather than
+        left in flight forever - and their stream ids go back for re-use, as
+        they do after a redirect. Anything queued for the path is dropped with
+        it: it was never sent, and the path it was addressed to is gone.
+        """
+        for sid, pending in list(self._pending.items()):
+            if pending.pathid == pathid:
+                self.release(sid)
+        self._framers.pop(pathid, None)
+        self._out_path.pop(pathid, None)
+
     def _on_path_eof(self, pathid: int) -> None:
         reason = f"data path {pathid} closed by peer"
         for sid, pending in list(self._pending.items()):
             if pending.pathid == pathid:
-                del self._pending[sid]
                 self._events.append(Failed(sid, pending.request, XrdConnectionError(reason)))
-        self._framers.pop(pathid, None)
-        self._out_path.pop(pathid, None)
+        self.forget_path(pathid)
         self._events.append(PathLost(pathid, reason))
 
     def _parse(self, framer: _Framer) -> None:

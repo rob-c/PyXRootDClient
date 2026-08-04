@@ -39,6 +39,12 @@ is written to it, while the requests themselves stay on the connection that
 opened the file. Each login gets its own session id, so binds land where they
 were aimed.
 
+That is what a stock daemon does. A gateway may instead key a sub-stream on the
+connection a request *arrived* on and answer the whole thing there, which is
+what `xrd` tries first — set `srv.serves_arrivals = True` for a server of that
+kind. Leave it off for the standard split; a client that mixes the two would
+have both ends reading the same socket.
+
 ### Making it behave badly
 
 | Attribute | Effect |
@@ -47,6 +53,7 @@ were aimed.
 | `srv.waits[opcode] = 3` | send three `kXR_wait` replies first |
 | `srv.chunk_reads = 4096` | split reads into `kXR_oksofar` pieces |
 | `srv.auth_rounds = 2` | demand two rounds of `kXR_authmore` |
+| `srv.serves_arrivals = True` | answer a request that arrived on a data path |
 | `srv.sec = "&P=gsi,v:10400&P=unix"` | what the login advertises |
 | `srv.disconnect()` | drop live connections, keep listening |
 | `srv.space = "oss.cgroup=..."` | what `kXR_Qspace` answers |

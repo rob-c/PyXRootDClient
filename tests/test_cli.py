@@ -586,7 +586,10 @@ def test_tail_follow_prints_what_is_appended(server, capsys):
     out = io.BytesIO()
     server.add_file("/data/grow.txt", b"first\nsecond\n")
     with filesystem:
-        fs_cli._follow(out, filesystem, path, 6, 0.01, deadline=_soon())
+        # Long enough to come round again after printing: the print itself is a
+        # whole open-and-read, and a follow that stopped there would never have
+        # been asked the only question that matters - "anything more?"
+        fs_cli._follow(out, filesystem, path, 6, 0.01, deadline=_soon(2.0))
     assert out.getvalue() == b"second\n"
 
 

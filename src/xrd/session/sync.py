@@ -66,6 +66,9 @@ class Session:
         self._inbox: dict[int, list[m.Event]] = {}
         self._notices: list[rp.AttnInfo] = []
         self._paths: dict[int, Transport] = {}
+        #: Whether this server answers a request that *arrived* on a data
+        #: path. ``None`` until one has been tried - see :attr:`arrives_on_path`.
+        self._arrives_on_path: bool | None = None
 
     # ------------------------------------------------------------------
     # Construction
@@ -161,6 +164,17 @@ class Session:
     def has_data_path(self) -> bool:
         return bool(self._paths)
 
+    @property
+    def arrives_on_path(self) -> bool | None:
+        """Whether this server serves a request that arrived on a data path.
+
+        ``None`` until one has been tried, then what happened. A server that
+        does not is asked once per connection rather than once per file: the
+        answer is a property of the server, and finding it out costs a whole
+        :attr:`~xrd.Config.data_stream_timeout`.
+        """
+        return self._arrives_on_path
+
     def notices(self) -> list[rp.AttnInfo]:
         """Drain any unsolicited ``kXR_attn`` messages the server sent."""
         out, self._notices = self._notices, []
@@ -229,6 +243,7 @@ class Session:
         transport = self._paths.pop(pathid, None)
         if transport is not None:
             transport.close()
+        self._m.forget_path(pathid)
 
     # ------------------------------------------------------------------
     # Requests
@@ -252,9 +267,10 @@ class Session:
         ``arrive_on_path`` moves the whole request onto its bound data socket
         and waits for the answer there, for a server that routes a sub-stream
         by arrival connection rather than by the request's path id. It is
-        honoured only while that path is actually bound; a redirect or a
-        reconnect that dropped it silently falls back to the control link, so
-        the caller never has to unwind its own routing on recovery.
+        honoured only while that path is actually bound and while this server
+        has not already declined one; a redirect or a reconnect that dropped
+        the path silently falls back to the control link, so the caller never
+        has to unwind its own routing on recovery.
         """
         with self._lock:
             if self.closed:
@@ -263,13 +279,33 @@ class Session:
                 raise ValueError(
                     f"data path {request.pathid} is not bound to {self.endpoint}"
                 )
-            on_path = arrive_on_path and bool(request.pathid) and request.pathid in self._paths
+            on_path = (
+                arrive_on_path
+                and self._arrives_on_path is not False
+                and bool(request.pathid)
+                and request.pathid in self._paths
+            )
             sid = self._m.submit(request, path=path, arrive_on_path=on_path)
             if on_path:
                 answers_on = request.pathid
             else:
                 answers_on = request.pathid if request.reply_on_path else 0
-            return self._await(sid, on_chunk, answers_on)
+            if not on_path:
+                return self._await(sid, on_chunk, answers_on)
+            try:
+                result = self._await(sid, on_chunk, answers_on)
+            except Exception:
+                # This server does not answer where it was asked. Remember it
+                # for the whole connection - the next file would otherwise pay
+                # the same timeout to learn the same thing - and let the socket
+                # go, because the answer to the request just abandoned may
+                # still arrive on it and would be read as the answer to
+                # whatever is asked next.
+                self._arrives_on_path = False
+                self._close_path(request.pathid)
+                raise
+            self._arrives_on_path = True
+            return result
 
     def _await(
         self, sid: int, on_chunk: Callable[[bytes], None] | None, pathid: int = 0

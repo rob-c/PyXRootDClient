@@ -54,13 +54,18 @@ sequential pump, and is what a copy between two local disks wants.
 so a plain read or write already travels beside the control traffic instead of
 behind it; it is on by default (one extra link). The official client counts the
 control link in its total, so `XRD_SUBSTREAMSPERCHANNEL=1` means "control only"
-and turns the extras off — our field is the extras. It is best-effort: the whole
-request goes down the bound link and, if the server will not serve it there,
-the identical read or write re-runs on the control link at the same offset, so
-the transfer stays byte-exact on any server. `data_stream_timeout` bounds how
-long that bound attempt waits before falling back — kept short because a server
-that serves the op answers at once, so a server that does not is found out
-quickly (once per file) rather than blocking the whole `request_timeout`.
+and turns the extras off — our field is the extras. It is best-effort, in two
+steps. The whole request goes down the bound link first, for a server that
+serves what arrives there; a server that does not gets the standard split
+instead — the request on the control link, the bytes on the bound one — which
+is what XProtocol describes, so the transfer stays multi-stream on a stock
+daemon. Only a server that declines both drops back to the control link, where
+the identical read or write re-runs at the same offset, byte-exact anywhere.
+`data_stream_timeout` bounds how long that first attempt waits — kept short
+because a server that serves the op answers at once. Which of the two a server
+wants is a property of the server, so it is asked **once per connection**: the
+first file pays the timeout, and every later file on the same connection goes
+straight to the split that works.
 `max_read_size` is the ceiling on a read that never said how much it wanted -
 `read()` with no argument, `read_bytes()`, `read_text()` - so that a file
 bigger than memory raises [`TooLargeError`](errors.md#too-much-at-once)

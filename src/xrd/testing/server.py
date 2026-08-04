@@ -46,10 +46,13 @@ from ..url import XRootDURL, parse
 __all__ = ["FakeServer", "frame", "error", "from_directory", "main"]
 
 #: Requests whose body is payload rather than a path, so nothing about them
-#: belongs in :attr:`FakeServer.arguments`.
+#: belongs in :attr:`FakeServer.arguments`. The read side is here for the same
+#: reason as the write side: a read's body is its path id and its read list,
+#: never a name, and decoding one as text invents an argument nobody sent.
 _DATA_REQUESTS = frozenset(
     {
         c.kXR_write, c.kXR_writev, c.kXR_clone, c.kXR_pgwrite,
+        c.kXR_read, c.kXR_readv, c.kXR_pgread,
         c.kXR_auth, c.kXR_login, c.kXR_sigver,
     }
 )
@@ -194,6 +197,14 @@ class FakeServer:
         #: raw frames, so it can answer with anything at all - including
         #: something no real server would send.
         self.handlers: dict[int, Handler] = {}
+        #: Serve a request that *arrived* on a bound data path, rather than
+        #: only the payload and reply of one asked for on the control link.
+        #: A gateway that keys its sub-streams on the connection a request came
+        #: in on behaves this way; a stock daemon does not, which is why the
+        #: default is off. Turn it on only for a client that then routes by
+        #: arrival throughout: the standard split would have this connection's
+        #: own thread and its owner's both reading the same socket.
+        self.serves_arrivals = False
 
         self._live: set[object] = set()
         self._live_lock = threading.Lock()
@@ -386,7 +397,7 @@ class _Connection:
                 self.route = _reply_path(opcode, params, body)
                 for chunk in self._dispatch(sid, opcode, params, body):
                     self._send(chunk)
-                if self.bound_to is not None:
+                if self.bound_to is not None and not self.s.serves_arrivals:
                     # A bound connection is the other end's to read and write:
                     # its own thread must never take a byte off it again.
                     with self.s._live_lock:
@@ -535,6 +546,9 @@ def _h_bind(conn: _Connection, sid: int, params: bytes, body: bytes) -> Iterator
     owner.next_pathid += 1
     owner.paths[pathid] = conn
     conn.bound_to = owner
+    # The same dict, not a copy: a file opened on the control link after this
+    # bind is still the file a request arriving here names.
+    conn.handles = owner.handles
     yield _frame(sid, c.kXR_ok, bytes([pathid]))
 
 

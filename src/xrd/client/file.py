@@ -136,17 +136,18 @@ class File:
         return self._pathid
 
     def _bind_data_streams(self) -> None:
-        """Bind the automatic bulk-transfer data streams at open.
+        """Top the automatic bulk-transfer data streams up to the configured
+        number, which at open is all of them.
 
         Best-effort: a server that refuses ``kXR_bind`` (or speaks HTTP, which
         has none) simply leaves the transfer on the control link. The manual
         :meth:`bind_data_path` is untouched - these are a separate, automatic
         set that :meth:`read` and :meth:`write` spread their chunks over.
         """
-        for _ in range(self.config.data_streams):
+        for _ in range(self.config.data_streams - len(self._data_paths)):
             try:
                 pathid = self._router.bind_data_path()
-            except Exception:  # noqa: BLE001 - binding is strictly optional
+            except Exception:  # binding is strictly optional
                 break
             if not pathid:
                 break
@@ -167,26 +168,46 @@ class File:
         one and the server serves it there, otherwise on the control link.
 
         ``build(handle, pathid)`` makes the request for a given handle and path
-        id. A bound attempt that the server declines - a reset, a timeout, a
-        refusal - latches multi-stream off for this file and the identical op is
-        re-run on the control link (pathid 0), an idempotent read or write at
-        the same offset, so the transfer stays byte-exact on any server. A
-        checkpoint journals only what it was handed, so a checkpointed write
-        stays on the control link where :meth:`_submit` can route it.
+        id. There are three ways to run it, and each falls back to the next.
+        A server that answers what arrives on the data socket is asked there;
+        one that does not gets the standard split instead - the request on the
+        control link, the bytes on the bound socket - which is what XProtocol
+        describes and what the first attempt cost a
+        :attr:`~xrd.Config.data_stream_timeout` to rule out, once per
+        connection rather than once per file. A server that declines that too
+        latches multi-stream off for this file and the identical op is re-run
+        on the control link (pathid 0), an idempotent read or write at the same
+        offset, so the transfer stays byte-exact on any server. A checkpoint
+        journals only what it was handed, so a checkpointed write stays on the
+        control link where :meth:`_submit` can route it.
         """
         pathid = self._next_path()
         if not pathid or self._checkpoint:
             return self._execute(lambda handle: build(handle, self._pathid))
         # One attempt, straight at the session so a server that will not serve
-        # the bound op is not chased through the router's reconnect loop. Any
-        # failure - a reset, a refusal, a timeout, or a path a recovery dropped
-        # - latches multi-stream off for this file and the identical op re-runs
-        # on the control link, an idempotent read or write at the same offset.
+        # the bound op is not chased through the router's reconnect loop.
+        if self._router.session.arrives_on_path is not False:
+            try:
+                return self._router.session.execute(
+                    build(self.handle, pathid), path=self.url.path, arrive_on_path=True
+                )
+            except (XRootDError, ValueError) as exc:
+                _log.debug("data path %d does not serve what arrives on it: %s", pathid, exc)
+                # The session let that socket go with the request on it. Take
+                # a fresh one and use it the way the specification says.
+                self._data_paths.remove(pathid)
+                self._bind_data_streams()
+                pathid = self._next_path()
+                if not pathid:
+                    return self._execute(lambda handle: build(handle, 0))
         try:
-            return self._router.session.execute(
-                build(self.handle, pathid), path=self.url.path, arrive_on_path=True
-            )
+            return self._execute(lambda handle: build(handle, pathid))
         except (XRootDError, ValueError) as exc:
+            if self._handle is None:
+                # Recovery tried and failed, and closed the file on its way
+                # out. There is no handle left to re-run anything against, so
+                # the caller gets what actually went wrong.
+                raise
             self._multistream = False
             _log.debug("data path %d fell back to the control link: %s", pathid, exc)
             return self._execute(lambda handle: build(handle, 0))
@@ -497,7 +518,7 @@ class File:
             if self._checkpoint:
                 self._submit(r.Write(self.handle, at, body, self._pathid))
             else:
-                self._bulk(lambda handle, pid: r.Write(handle, at, body, pid))
+                self._bulk(_write_for(at, body))
             written += len(piece)
         self._invalidate(offset + written)
         return written
@@ -734,6 +755,16 @@ def _readv_for(batch: Sequence[ReadRange], file: File) -> Callable[[bytes], Requ
     return lambda handle: r.ReadV(
         [(handle, rng.offset, rng.length) for rng in batch], file.data_path
     )
+
+
+def _write_for(at: int, body: bytes) -> Callable[[bytes, int], Request]:
+    """Bind one chunk to a builder that still takes the handle and the path.
+
+    Same reason as :func:`_readv_for`, and one more: :meth:`File._bulk` may run
+    the builder again on another path while the loop that made it has moved on
+    to the next chunk, so the chunk it was made for is captured here.
+    """
+    return lambda handle, pid: r.Write(handle, at, body, pid)
 
 
 def _packed_length(size: int, offset: int) -> int:

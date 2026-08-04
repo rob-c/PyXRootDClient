@@ -55,7 +55,10 @@ def patient() -> Config:
 
 
 def test_a_healthy_proxy_is_invisible(broken, patient):
-    with FileSystem(broken.url, patient) as fs:
+    # Counting connections means counting one: a data sub-stream is a second
+    # connection through the proxy, and this test is about the proxy, not
+    # about how many links a file spreads itself over.
+    with FileSystem(broken.url, patient.evolve(data_streams=0)) as fs:
         assert fs.read_bytes("/data/a.root") == b"hello world"
         assert fs.read_bytes("/data/big.root") == PAYLOAD
     assert broken.connections == 1
@@ -325,9 +328,14 @@ def test_an_unverified_paged_read_hands_back_what_arrived(patient):
 
 
 def test_a_flipped_byte_at_a_chosen_offset_reaches_the_caller(patient):
-    """``corrupt`` counts bytes from the server, so arm it once setup is done."""
+    """``corrupt`` counts bytes from the server, so arm it once setup is done.
+
+    Single-stream, because the offset it is armed at is an offset into what
+    this proxy carries: a data sub-stream would carry the read's bytes on a
+    connection of its own and the count would land somewhere else.
+    """
     with FakeServer(files={"/f.root": b"A" * 64}) as origin, FaultProxy(origin) as proxy:
-        with File(proxy.url.with_path("/f.root"), patient) as handle:
+        with File(proxy.url.with_path("/f.root"), patient.evolve(data_streams=0)) as handle:
             proxy.corrupt(proxy.bytes_from_server + 8, 0x20)  # the first byte of the data
             data = handle.read(64, 0)
     assert data == b"a" + b"A" * 63

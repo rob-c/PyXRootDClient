@@ -70,6 +70,20 @@ def _no_dotfile(tmp_path_factory, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _a_short_data_stream_probe(monkeypatch):
+    """Do not spend the suite's time learning what the fake server is.
+
+    A file asks its server once per connection whether it serves a request
+    that arrived on a data path, and :class:`~xrd.testing.FakeServer` is the
+    standard push-only kind that never will - so every connection would sit
+    out a whole ``data_stream_timeout`` to be told what this suite already
+    knows. A quarter of a second is still an age on loopback, and a test
+    about the timeout itself sets its own.
+    """
+    monkeypatch.setenv("XRD_SUBSTREAMTIMEOUT", "0.25")
+
+
+@pytest.fixture(autouse=True)
 def _no_pooled_connections():
     """Never let one test's connection be handed to the next.
 
