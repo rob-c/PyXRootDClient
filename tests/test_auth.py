@@ -556,7 +556,8 @@ def test_no_credential_reaches_a_traceback():
         try:
             call()
         except Exception as exc:
-            text = "".join(traceback.format_exception(exc))
+            # the three-argument form: 3.10 added the shorter one
+            text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             assert secret not in text, text
         else:
             raise AssertionError("expected the credential to be refused")

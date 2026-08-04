@@ -19,6 +19,7 @@ import time
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
+from .._compat import zip_strict
 from ..doctor import diagnose
 from ..errors import XRootDError
 from ..types import DirEntry, StatInfo
@@ -119,7 +120,7 @@ def _stat_cmd(args: argparse.Namespace, endpoints: Endpoints) -> int:
     if args.json:
         print(dumps(found))
         return OK
-    for url, info in zip(args.url, found, strict=True):
+    for url, info in zip_strict(args.url, found):
         print(url)
         print("\n".join(_stat_lines(info)))
     return OK

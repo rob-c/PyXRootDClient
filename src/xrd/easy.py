@@ -21,6 +21,7 @@ a longer timeout or a particular credential.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Union
 
 from .config import Config
 from .path import XRootDPath
@@ -47,7 +48,7 @@ __all__ = [
 
 #: What every verb here will take for a place: the URL as text, as a parsed
 #: URL, or as a path object somebody already has.
-Location = str | XRootDURL | XRootDPath
+Location = Union[str, XRootDURL, XRootDPath]
 
 
 def ls(url: Location, *, config: Config | None = None) -> list[XRootDPath]:
@@ -197,7 +198,7 @@ def stage(
     and :meth:`~xrd.FileSystem.query_prepare` reports on the request as a
     whole.
     """
-    wanted = [urls] if isinstance(urls, str | XRootDURL | XRootDPath) else list(urls)
+    wanted = [urls] if isinstance(urls, (str, XRootDURL, XRootDPath)) else list(urls)
     if not wanted:
         raise ValueError("stage() needs a file to stage: it was given none")
     paths = [XRootDPath(url, config) for url in wanted]

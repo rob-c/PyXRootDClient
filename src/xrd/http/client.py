@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import http.client
 import os
-import socket
 import ssl
 import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from .._compat import SLOTS, TIMEOUTS
 from .._log import get_logger
 from ..config import Config
 from ..errors import (
@@ -85,7 +85,7 @@ _ERRORS: dict[int, int] = {
 MAX_BODY = 1 << 26
 
 
-@dataclass(slots=True)
+@dataclass(**SLOTS)
 class Response:
     """A finished HTTP response: status line, headers, and the whole body."""
 
@@ -140,7 +140,7 @@ def _context(config: Config) -> ssl.SSLContext:
     return tls_context(config)
 
 
-@dataclass(slots=True)
+@dataclass(**SLOTS)
 class HTTPClient:
     """Connections to one or more HTTP endpoints, reused between requests.
 
@@ -403,6 +403,6 @@ def status_code(status: int, errors: dict[int, int] | None = None) -> int:
 
 def _wrap(exc: Exception, method: str, url: XRootDURL) -> Exception:
     """Present a transport failure as this package's error, not the stdlib's."""
-    if isinstance(exc, socket.timeout | TimeoutError):
+    if isinstance(exc, TIMEOUTS):
         return XRDTimeoutError(f"{method} {url} timed out")
     return XRDConnectionError(f"{method} {url} failed: {exc}")

@@ -658,6 +658,32 @@ def test_a_dataset_with_no_reader_of_its_own_still_describes_itself():
     assert "licence: CC0" in plain.about("all")
 
 
+def test_a_description_missing_something_it_is_read_by_says_which():
+    """The fields a reader cannot do without are still not optional.
+
+    They carry a default so that a subclass may declare them at all - a field
+    without one may not follow a field with one, and every one of these
+    follows the base class's ``splits``. Leaving one out is refused when the
+    description is built, which is where the language used to refuse it, and
+    the message names the fields rather than the class alone.
+    """
+    common = {
+        "label": "Half", "title": "half a description", "licence": "CC0",
+        "source": "https://example.invalid/half", "classes": ("one",),
+    }
+    with pytest.raises(TypeError, match=r"CIFAR needs archive, files, meta"):
+        CIFAR(name="half", **common)
+    with pytest.raises(TypeError, match=r"Audio needs folder, labels"):
+        Audio(name="half", archive="https://example.invalid/a.zip", **common)
+    with pytest.raises(TypeError, match=r"Table needs fields"):
+        Table(name="half", url="https://example.invalid/t.csv", **common)
+    with pytest.raises(TypeError, match=r"Matrix needs files, width"):
+        Matrix(name="half", url="https://example.invalid/m.gz", **common)
+    # and an empty one is a value, not an omission: a spec read out of an
+    # archive already in hand has no URL to be served from.
+    assert Table(name="half", url="", fields=(("a", "f"),), **common).url == ""
+
+
 def test_describe_lists_every_dataset_with_its_licence():
     listing = describe()
     for spec in DATASETS.values():

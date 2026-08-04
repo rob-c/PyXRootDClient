@@ -36,6 +36,7 @@ import os
 import struct
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..crypto.aes import cbc_encrypt
@@ -120,7 +121,7 @@ _BPUB = b"---BPUB---"
 _EPUB = b"---EPUB--"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Bucket:
     """One type-length-value element of a GSI message."""
 
@@ -188,7 +189,7 @@ def find_bucket(data: bytes, kind: int) -> bytes | None:
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class PeerPublic:
     """The server's DH blob: PEM parameters, the group, and its public value."""
 

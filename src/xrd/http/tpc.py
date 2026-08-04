@@ -25,6 +25,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..copy.engine import CopyResult
@@ -60,7 +61,7 @@ class _Lines(Protocol):
     def readline(self, limit: int = ..., /) -> bytes: ...
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Marker:
     """One performance marker: how far one stripe of the transfer has got.
 

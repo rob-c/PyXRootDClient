@@ -24,7 +24,7 @@ import urllib.parse
 from collections.abc import Callable
 from email.utils import formatdate
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import cast
+from typing import Optional, cast
 
 from ..crypto import checksum_bytes
 from ..url import XRootDURL, parse
@@ -37,7 +37,7 @@ Reply = tuple[int, bytes, dict[str, str]]
 #: What :attr:`FakeDAVServer.handlers` holds. It is handed ``(method, path,
 #: headers)`` and either answers the request itself or returns ``None`` to let
 #: the real implementation have it.
-Handler = Callable[[str, str, dict[str, str]], Reply | None]
+Handler = Callable[[str, str, dict[str, str]], Optional[Reply]]
 
 _DIGESTS = ("adler32", "md5", "sha256", "crc32c", "crc64")
 

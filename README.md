@@ -28,9 +28,11 @@ $ pip install pyxrootdclient[fsspec]         # pandas / dask / pyarrow URLs
 $ pip install pyxrootdclient[krb5]           # the Kerberos mechanism
 ```
 
-Requires Python 3.10+. Almost nothing needs an extra: `http://`, `https://`
-and WebDAV are `http.client`, S3 is that plus `hmac`, and GSI/X.509 proxies
-are pure Python down to the AES and RSA. Kerberos is the one exception — see below.
+Requires Python 3.9+, which is what RHEL 9 and AlmaLinux 9 ship, so the
+system interpreter on a grid login node is enough. Almost nothing needs an
+extra: `http://`, `https://` and WebDAV are `http.client`, S3 is that plus
+`hmac`, and GSI/X.509 proxies are pure Python down to the AES and RSA.
+Kerberos is the one exception — see below.
 
 ## What it does
 

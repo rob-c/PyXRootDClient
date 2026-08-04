@@ -12,6 +12,8 @@ import posixpath
 import urllib.parse
 from dataclasses import dataclass, field, replace
 
+from ._compat import SLOTS
+
 __all__ = ["XRootDURL", "parse", "DEFAULT_PORT", "ROOT_SCHEMES", "HTTP_SCHEMES", "S3_SCHEMES"]
 
 DEFAULT_PORT = 1094
@@ -23,7 +25,7 @@ S3_SCHEMES = frozenset({"s3"})
 _TLS_SCHEMES = frozenset({"roots", "xroots", "https", "davs", "s3"})
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class XRootDURL:
     """A parsed storage URL.
 

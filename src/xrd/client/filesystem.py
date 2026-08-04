@@ -21,6 +21,7 @@ import urllib.parse
 from collections.abc import Iterator, Sequence
 from typing import IO, Any
 
+from .._compat import zip_strict
 from .._log import get_logger
 from ..config import Config
 from ..errors import (
@@ -279,7 +280,7 @@ class FileSystem:
             raise ProtocolError(
                 f"statx returned {len(flags)} flags for {len(targets)} paths"
             )
-        return [StatInfo(flags=f, path=p) for f, p in zip(flags, targets, strict=True)]
+        return [StatInfo(flags=f, path=p) for f, p in zip_strict(flags, targets)]
 
     def exists(self, path: str) -> bool:
         """``True`` if ``path`` resolves. Never raises for a missing file."""
@@ -613,7 +614,7 @@ class FileSystem:
         res = self._router.execute(r.Query(c.kXR_Qconfig, "\n".join(wanted)))
         body = res.data.split(b"\x00", 1)[0].decode("utf-8", "replace")
         values = body.split("\n")
-        return {name: value for name, value in zip(wanted, values, strict=False) if value}
+        return {name: value for name, value in zip(wanted, values) if value}
 
     def extensions(self) -> frozenset[str]:
         """Which vendor opcodes the server admits to implementing.

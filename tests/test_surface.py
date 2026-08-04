@@ -531,7 +531,7 @@ def _imports(source: pathlib.Path) -> list[tuple[str, bool]]:
     tree = ast.parse(source.read_text(encoding="utf-8"))
     guarded: set[ast.AST] = set()
     for node in ast.walk(tree):
-        shelter = isinstance(node, ast.Try | ast.FunctionDef | ast.AsyncFunctionDef)
+        shelter = isinstance(node, (ast.Try, ast.FunctionDef, ast.AsyncFunctionDef))
         for child in ast.iter_child_nodes(node):
             if shelter or node in guarded:
                 guarded.add(child)
@@ -547,6 +547,16 @@ def _imports(source: pathlib.Path) -> list[tuple[str, bool]]:
     return found
 
 
+#: Both purity checks below read the interpreter's own list of standard
+#: library module names, which is 3.10 and later. The package's floor is 3.9,
+#: where the list simply does not exist; every other version still runs them.
+needs_stdlib_names = pytest.mark.skipif(
+    not hasattr(sys, "stdlib_module_names"),
+    reason="sys.stdlib_module_names arrived in 3.10",
+)
+
+
+@needs_stdlib_names
 def test_the_package_needs_nothing_but_the_standard_library():
     """Pure Python: an interpreter and this package are the whole install list.
 
@@ -565,6 +575,7 @@ def test_the_package_needs_nothing_but_the_standard_library():
     assert not offenders
 
 
+@needs_stdlib_names
 def test_importing_the_package_pulls_in_no_third_party_module():
     """The receipt for the test above, from an interpreter of its own."""
     script = (

@@ -31,6 +31,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..errors import CredentialError
@@ -53,7 +54,7 @@ CCACHE_VERSION_4 = 0x0504
 CCACHE_VERSION_3 = 0x0503
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Principal:
     """A Kerberos principal: components and a realm."""
 
@@ -68,7 +69,7 @@ class Principal:
         return bool(self.components)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Ticket:
     """One credential-cache entry."""
 

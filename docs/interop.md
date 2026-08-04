@@ -151,6 +151,40 @@ two are asked for explicitly - `File.pgread` and `File.pgwrite` - and a server
 that does not implement them says so rather than being guessed at; ordinary
 `read`/`write` work everywhere and are what everything else uses.
 
+## Python versions
+
+3.9 and newer, and the floor is 3.9 for one reason: it is what RHEL 9 and
+AlmaLinux 9 ship, which is what a grid login node hands you when you type
+`python3`. There is no `pip install` a user without root can be told to do
+first, so the library runs on the interpreter that is already there.
+
+Nothing about newer syntax is banned in principle; what is banned is being
+unable to notice. A `match` statement, `zip(..., strict=True)` or
+`@dataclass(slots=True)` all read perfectly well on 3.13 and stop dead on
+3.9, and a suite that only ever runs on 3.13 will never say so. So
+`tests/test_compat.py` parses every shipped module with the 3.9 grammar,
+reads every module for the handful of spellings that parse anywhere but only
+*run* on 3.10 or later, and - when a `python3.9` is on `PATH` - imports the
+whole package into it. CI runs the full suite on 3.9 through 3.13.
+
+The two or three things the floor lacks live in `xrd._compat`, and nothing
+else in the package names a version:
+
+| Wanted | On 3.9 |
+| --- | --- |
+| `zip(a, b, strict=True)` | `zip_strict(a, b)` - the same check, in Python |
+| `@dataclass(slots=True)` | `@dataclass(**SLOTS)` - slotted where slots exist |
+| iterating a `Flag` | `flag_members(flag)` - the bits, in declaration order |
+| `socket.timeout is TimeoutError` | `except TIMEOUTS` - both names |
+
+Type annotations are not on that list: every module imports `annotations`
+from `__future__`, so `str | None` in a signature is a string until something
+asks, and `xrd.easy.Location` is spelled `Union[...]` only because a type
+alias assigned at the top of a module is evaluated where an annotation is not.
+Dataclass fields that a reader cannot do without carry `datasets.REQUIRED`
+instead of `kw_only=True`, and the description refuses to be built without
+them - by name, which is more than the language said.
+
 ## Coming from `pyxrootd`
 
 See [Coming from pyxrootd](migrating.md) for the call-by-call mapping.

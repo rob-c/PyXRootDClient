@@ -10,6 +10,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from ..errors import ProtocolError
 from . import constants as c
 from .buffer import Writer
@@ -93,7 +94,7 @@ def encode(req: Request, streamid: int) -> bytes:
     return _HDR.pack(streamid & 0xFFFF, req.opcode, params, dlen) + body + req.trailer()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ResponseHeader:
     """The 8-byte ``ServerResponseHdr``."""
 

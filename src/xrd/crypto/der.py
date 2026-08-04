@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .._compat import SLOTS
+
 __all__ = [
     "DERError",
     "Element",
@@ -54,7 +56,7 @@ class DERError(ValueError):
     """The bytes given are not the DER structure they claim to be."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Element:
     """One tag-length-value triple."""
 

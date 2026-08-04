@@ -24,6 +24,7 @@ except ImportError as exc:  # pragma: no cover - exercised by the extra, not by 
         "fsspec is not installed; pip install 'pyxrootdclient[fsspec]'"
     ) from exc
 
+from ._compat import zip_strict
 from .client import FileSystem
 from .config import Config
 from .types import StatInfo
@@ -242,7 +243,7 @@ class XRootDFileSystem(AbstractFileSystem):
         from .types import ReadRange
 
         wanted: dict[str, list[tuple[int, int, int]]] = {}
-        for index, (path, start, end) in enumerate(zip(paths, starts, ends, strict=True)):
+        for index, (path, start, end) in enumerate(zip_strict(paths, starts, ends)):
             wanted.setdefault(path, []).append((index, start, end))
         out: list[bytes] = [b""] * len(paths)
         for path, items in wanted.items():
@@ -251,7 +252,7 @@ class XRootDFileSystem(AbstractFileSystem):
                 file = getattr(handle, "file", None)
                 if file is not None and hasattr(file, "readv"):
                     ranges = [ReadRange(offset=s, length=e - s) for _i, s, e in items]
-                    for (index, _s, _e), chunk in zip(items, file.readv(ranges), strict=True):
+                    for (index, _s, _e), chunk in zip_strict(items, file.readv(ranges)):
                         out[index] = bytes(chunk)
                 else:  # pragma: no cover - HTTP has no vector read
                     for index, start, end in items:

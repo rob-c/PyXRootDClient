@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from itertools import chain
 
+from .._compat import zip_strict
+
 __all__ = ["AES", "cbc_encrypt", "cbc_decrypt", "pkcs7_pad", "pkcs7_unpad", "BLOCK_SIZE"]
 
 BLOCK_SIZE = 16
@@ -94,7 +96,7 @@ class AES:
                 temp[0] ^= RCON[index // nk - 1]
             elif nk > 6 and index % nk == 4:
                 temp = [SBOX[b] for b in temp]
-            words.append([a ^ b for a, b in zip(words[index - nk], temp, strict=True)])
+            words.append([a ^ b for a, b in zip_strict(words[index - nk], temp)])
         return [
             list(chain.from_iterable(words[r * 4 : r * 4 + 4])) for r in range(self._rounds + 1)
         ]
@@ -205,9 +207,7 @@ def cbc_encrypt(
     previous = iv
     out = bytearray()
     for start in range(0, len(plain), BLOCK_SIZE):
-        block = bytes(
-            a ^ b for a, b in zip(plain[start : start + BLOCK_SIZE], previous, strict=True)
-        )
+        block = bytes(a ^ b for a, b in zip_strict(plain[start : start + BLOCK_SIZE], previous))
         previous = cipher.encrypt_block(block)
         out += previous
     return bytes(out)
@@ -226,6 +226,6 @@ def cbc_decrypt(
     out = bytearray()
     for start in range(0, len(data), BLOCK_SIZE):
         block = data[start : start + BLOCK_SIZE]
-        out += bytes(a ^ b for a, b in zip(cipher.decrypt_block(block), previous, strict=True))
+        out += bytes(a ^ b for a, b in zip_strict(cipher.decrypt_block(block), previous))
         previous = block
     return pkcs7_unpad(bytes(out)) if pad else bytes(out)

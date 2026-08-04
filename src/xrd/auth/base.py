@@ -12,6 +12,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from ..config import Config
 from .prompt import Ask
 
@@ -20,7 +21,7 @@ __all__ = ["Credential", "Offer", "parse_security_trailer"]
 _OFFER_RE = re.compile(r"&P=([^&]+)")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Offer:
     """One ``&P=name,params`` clause of a ``kXR_login`` security trailer."""
 

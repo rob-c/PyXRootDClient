@@ -15,6 +15,7 @@ import time
 import zlib
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..crypto.blowfish import Blowfish
@@ -36,7 +37,7 @@ TYPE_NAME = 0x01
 NONCE_LEN = 32
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class SSSKey:
     """One keytab entry."""
 

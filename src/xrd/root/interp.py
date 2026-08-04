@@ -18,6 +18,7 @@ import struct
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from .._compat import zip_strict
 from .buffer import Buffer, as_datetime, to_native
 from .cxx import SEQUENCES, Mapping, Pair, Prim, Seq, Str, parse, py_name
 from .errors import FormatError, UnsupportedFeatureError
@@ -333,7 +334,7 @@ def _sequence(item: Any) -> Callable[[Buffer], Any]:
                     f"from where it said it would, so what was read out of it "
                     f"cannot be trusted"
                 )
-            return list(zip(firsts, seconds, strict=True))
+            return list(zip_strict(firsts, seconds))
         if version & MEMBER_WISE:
             raise UnsupportedFeatureError(
                 "this container was written field by field, which happens for a "
@@ -357,7 +358,7 @@ def _mapping(node: Mapping) -> Callable[[Buffer], Any]:
         count = buf.u32()
         keys = _block(node.key, buf, count)
         values = _block(node.value, buf, count)
-        return dict(zip(keys, values, strict=True))
+        return dict(zip_strict(keys, values))
 
     return read
 
@@ -381,12 +382,12 @@ def _unusable(node: Any) -> str:
     if isinstance(node, Pair):
         return "a pair standing on its own, which no file this reader has met writes"
     if isinstance(node, Mapping):
-        if not isinstance(node.key, Prim | Str):
+        if not isinstance(node.key, (Prim, Str)):
             return "a map keyed by a container, which is not a thing a dict can be keyed by"
         return _nested(node.value)
     if isinstance(node, Seq) and isinstance(node.item, Pair):
         pair = node.item
-        if not isinstance(pair.first, Prim | Str) or not isinstance(pair.second, Prim | Str):
+        if not isinstance(pair.first, (Prim, Str)) or not isinstance(pair.second, (Prim, Str)):
             return "a pair holding a container, which no file this reader has met writes"
         return ""
     return _nested(node)

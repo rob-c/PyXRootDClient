@@ -43,8 +43,9 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from math import nan
-from typing import Any
+from typing import Any, ClassVar
 
+from .._compat import SLOTS, zip_strict
 from ..url import parse
 from .writer import WritableFile, create
 
@@ -56,6 +57,7 @@ __all__ = [
     "IDX_TYPES",
     "IMAGE_BASKET",
     "MISSING",
+    "REQUIRED",
     "TABLE_BASKET",
     "Audio",
     "Dataset",
@@ -359,7 +361,13 @@ def _tidy(text: str) -> tuple[str, ...]:
     )
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+#: The default of a field that has to be given anyway - see
+#: :attr:`Dataset.NEEDS`. It is not a value any of them could hold, so a
+#: description that still has one has left that field out.
+REQUIRED: Any = None
+
+
+@dataclass(frozen=True, **SLOTS)
 class Dataset:
     """Where a dataset comes from, what it holds, and what may be done with it.
 
@@ -386,6 +394,19 @@ class Dataset:
     #: How big a basket to fill before writing one out.
     basket_size: int = TABLE_BASKET
 
+    #: Which of a subclass's own fields it cannot do without. They carry
+    #: :data:`REQUIRED` rather than no default at all, because a field without
+    #: one may not follow a field with one and every subclass field follows
+    #: :attr:`splits`; so what the language would have refused at the call is
+    #: refused here instead, by name, the moment one is built.
+    NEEDS: ClassVar[tuple[str, ...]] = ()
+
+    def __post_init__(self) -> None:
+        """Refuse a description that has left out something it is read by."""
+        missing = [name for name in self.NEEDS if getattr(self, name) is REQUIRED]
+        if missing:
+            raise TypeError(f"{type(self).__name__} needs {', '.join(missing)}")
+
     def about(self, split: str) -> str:
         """What goes in the file's ``about`` key, so it can say what it is."""
         where = f"\nsplit: {split}" if len(self.splits) > 1 else ""
@@ -408,7 +429,7 @@ class Dataset:
         return "one tree per class"
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, **SLOTS)
 class Images(Dataset):
     """An image set in IDX format: MNIST, and the two sets built to replace it."""
 
@@ -463,7 +484,7 @@ class Images(Dataset):
             yield label, {"image": view[at : at + width], "label": label, "index": index}
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, **SLOTS)
 class CIFAR(Dataset):
     """One of the two tiny-image archives, in its binary rather than pickled form.
 
@@ -473,15 +494,17 @@ class CIFAR(Dataset):
     """
 
     #: The one archive holding every split.
-    archive: str
+    archive: str = REQUIRED
     #: Which members of it each split is.
-    files: Mapping[str, tuple[str, ...]]
+    files: Mapping[str, tuple[str, ...]] = REQUIRED
     #: The member naming the classes, one per line, in label order.
-    meta: str
+    meta: str = REQUIRED
     #: The member naming the coarse classes, when there are two labels a row.
     coarse: str = ""
     #: How wide and tall one picture is.
     side: int = 32
+
+    NEEDS: ClassVar[tuple[str, ...]] = ("archive", "files", "meta")
 
     def urls(self, split: str) -> dict[str, str]:
         """The single archive, whichever split was asked for."""
@@ -558,7 +581,7 @@ def _extract(tar: tarfile.TarFile, held: Mapping[str, Any], member: str) -> byte
         return handle.read()
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, **SLOTS)
 class Audio(Dataset):
     """Recordings in an archive of WAV files, one clip an entry.
 
@@ -570,12 +593,12 @@ class Audio(Dataset):
     """
 
     #: The archive holding the recordings.
-    archive: str
+    archive: str = REQUIRED
     #: The folder inside it they are in.
-    folder: str
+    folder: str = REQUIRED
     #: What the first part of a file name means, as an index into
     #: :attr:`~Dataset.classes`.
-    labels: Mapping[str, int]
+    labels: Mapping[str, int] = REQUIRED
     #: Who is speaking, in code order, when the file names say. A speaker
     #: nobody wrote down is refused rather than numbered on the spot.
     speakers: tuple[str, ...] = ()
@@ -583,6 +606,8 @@ class Audio(Dataset):
     rate: int = 8000
     #: How long the column is. A clip is padded to it, never cut down to it.
     samples: int = 20000
+
+    NEEDS: ClassVar[tuple[str, ...]] = ("archive", "folder", "labels")
 
     def urls(self, split: str) -> dict[str, str]:
         """The single archive, whichever split was asked for."""
@@ -668,12 +693,12 @@ class Audio(Dataset):
         return struct.unpack(f"<{count}h", frames) + (0,) * (self.samples - count), count
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, **SLOTS)
 class Table(Dataset):
     """A delimited table: one row an example, one field a feature or its label."""
 
     #: Where it is served from.
-    url: str
+    url: str = REQUIRED
     #: Which member of the archive it is, when it arrives in one.
     member: str = ""
     #: Which member of the outer archive holds the inner one, when it arrives
@@ -712,13 +737,15 @@ class Table(Dataset):
     #: or the name of an entry in :attr:`codes`. A set with no ``"label"`` and no
     #: :attr:`classes` is a regression set: it has a ``"target"`` to predict
     #: instead of a class to sort into, and its rows go to one tree.
-    fields: tuple[tuple[str, str], ...]
+    fields: tuple[tuple[str, str], ...] = REQUIRED
     #: What each label in the file means, as an index into :attr:`classes`.
     labels: Mapping[str, int] = field(default_factory=dict)
     #: How the categorical fields are numbered, either as a mapping or as the
     #: categories in code order - a string of them where each is one letter.
     #: A category nobody wrote down is refused rather than guessed at.
     codes: Mapping[str, Mapping[str, int] | Sequence[str]] = field(default_factory=dict)
+
+    NEEDS: ClassVar[tuple[str, ...]] = ("url", "fields")
 
     def urls(self, split: str) -> dict[str, str]:
         """The one file it comes in."""
@@ -834,7 +861,7 @@ class Table(Dataset):
                 )
             which = -1 if self.classes else 0
             row: dict[str, Any] = {}
-            for cell, (name, role) in zip(cells, self.fields, strict=True):
+            for cell, (name, role) in zip_strict(cells, self.fields):
                 if role == "text":
                     row[name] = self._text(cell, name, index)
                     row[f"{name}_length"] = len(cell.encode())
@@ -853,7 +880,7 @@ class Table(Dataset):
             yield which, row
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
+@dataclass(frozen=True, **SLOTS)
 class Matrix(Dataset):
     """A file that is one long row of numbers an example, and nothing else.
 
@@ -870,11 +897,11 @@ class Matrix(Dataset):
     """
 
     #: Where it is served from.
-    url: str
+    url: str = REQUIRED
     #: The archive inside the archive, when it arrives wrapped twice.
     inner: str = ""
     #: Which member of it each split's numbers are.
-    files: Mapping[str, str]
+    files: Mapping[str, str] = REQUIRED
     #: Which member each split's labels are, when they are kept apart.
     label_files: Mapping[str, str] = field(default_factory=dict)
     #: What each label in such a file means, as an index into
@@ -883,7 +910,7 @@ class Matrix(Dataset):
     #: Any other column kept in a file of its own, as name to member a split.
     beside: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     #: How many numbers a row holds, checked against every one of them.
-    width: int
+    width: int = REQUIRED
     #: What the column of them is called.
     column: str = "features"
     #: What one of them is stored as.
@@ -894,6 +921,8 @@ class Matrix(Dataset):
     #: Whether the first line counts the rows of each class in turn, which is
     #: how a file with no labels in it at all still says what its rows are.
     counts: bool = False
+
+    NEEDS: ClassVar[tuple[str, ...]] = ("url", "files", "width")
 
     def urls(self, split: str) -> dict[str, str]:
         """The one archive everything comes in."""
@@ -927,7 +956,7 @@ class Matrix(Dataset):
                 f"{len(self.classes)}"
             )
         ends, total = [], 0
-        for count, cls in zip(counted, self.classes, strict=True):
+        for count, cls in zip_strict(counted, self.classes):
             total += _number(count, int, cls, 0, self.label)
             ends.append(total)
         return ends

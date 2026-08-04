@@ -11,10 +11,10 @@ under :attr:`Histogram.members`, so nothing is hidden by being tidied away.
 from __future__ import annotations
 
 import array
-import itertools
 import math
 from typing import Any
 
+from .._compat import zip_strict
 from .draw import axes, bar, missing_picture, shade
 from .errors import FormatError
 
@@ -248,7 +248,7 @@ class Histogram:
         edges = [float(edge) for edge in edges]
         if len(edges) < 2:
             raise ValueError("a histogram needs at least two edges to have a bin")
-        if any(second <= first for first, second in itertools.pairwise(edges)):
+        if any(second <= first for first, second in zip(edges, edges[1:])):
             raise ValueError("edges must increase: each bin has to be wider than nothing")
         nbins = len(edges) - 1
         values = _flowed(values, nbins, "values")
@@ -276,8 +276,8 @@ class Histogram:
                 if weights is not None
                 else math.fsum(inner)
             ),
-            "fTsumwx": math.fsum(v * c for v, c in zip(inner, centers, strict=True)),
-            "fTsumwx2": math.fsum(v * c * c for v, c in zip(inner, centers, strict=True)),
+            "fTsumwx": math.fsum(v * c for v, c in zip_strict(inner, centers)),
+            "fTsumwx2": math.fsum(v * c * c for v, c in zip_strict(inner, centers)),
             "fMaximum": -1111.0, "fMinimum": -1111.0, "fNormFactor": 0.0,
             "fContour": array.array("d"),
             "fSumw2": array.array(
@@ -305,7 +305,7 @@ class Histogram:
         if len(self.axes) == 1:
             ax.stairs(self.values(), self.edges(), **options)
         else:
-            columns = [list(column) for column in zip(*self.values(), strict=True)]
+            columns = [list(column) for column in zip_strict(*self.values())]
             ax.pcolormesh(self.edges(0), self.edges(1), columns, **options)
         if self.title:
             ax.set_title(self.title)

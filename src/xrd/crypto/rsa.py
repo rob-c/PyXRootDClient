@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from .der import (
     TAG_BIT_STRING,
     TAG_OCTET_STRING,
@@ -77,7 +78,7 @@ def pem_blocks(data: bytes | str) -> list[tuple[str, bytes]]:
     return out
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class RSAPublicKey:
     """An RSA public key: modulus and public exponent."""
 
@@ -101,7 +102,7 @@ class RSAPublicKey:
         return f"RSAPublicKey(bits={self.n.bit_length()}, e={self.e})"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class RSAPrivateKey:
     """An RSA private key. ``p``/``q`` enable the CRT path when present."""
 

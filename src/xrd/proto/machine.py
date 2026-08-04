@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..crypto.sigver import Signer
@@ -99,21 +100,21 @@ class Event:
     __slots__ = ()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Negotiated(Event):
     """``kXR_protocol`` answered; capabilities are known."""
 
     info: ProtocolInfo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class NeedTLS(Event):
     """The driver must upgrade the socket, then call :meth:`tls_established`."""
 
     reason: str = ""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Ready(Event):
     """Login and authentication are complete; requests may be submitted."""
 
@@ -121,7 +122,7 @@ class Ready(Event):
     mechanism: str = ""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Completed(Event):
     """A request finished successfully."""
 
@@ -131,7 +132,7 @@ class Completed(Event):
     status: rp.StatusInfo | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Chunk(Event):
     """A partial response body; more will follow on the same stream."""
 
@@ -140,7 +141,7 @@ class Chunk(Event):
     data: bytes
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Redirected(Event):
     """The server handed this request off elsewhere."""
 
@@ -149,7 +150,7 @@ class Redirected(Event):
     target: rp.RedirectInfo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Waiting(Event):
     """The server asked for a retry after a delay.
 
@@ -165,14 +166,14 @@ class Waiting(Event):
     resend: bool = True
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Attention(Event):
     """An unsolicited ``kXR_attn`` that was not an embedded response."""
 
     info: rp.AttnInfo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Failed(Event):
     """A request, or the session bring-up, failed."""
 
@@ -181,7 +182,7 @@ class Failed(Event):
     error: XRootDError
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class PathLost(Event):
     """A bound data connection went away.
 
@@ -193,7 +194,7 @@ class PathLost(Event):
     reason: str = ""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Disconnected(Event):
     """The peer closed, or the machine was closed locally."""
 
@@ -205,7 +206,7 @@ class Disconnected(Event):
 # --------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
+@dataclass(**SLOTS)
 class _Pending:
     request: Request
     frame: bytes
@@ -216,7 +217,7 @@ class _Pending:
     path_bytes: bytes = b""
 
 
-@dataclass(slots=True)
+@dataclass(**SLOTS)
 class _Framer:
     """One link's inbound cursor.
 

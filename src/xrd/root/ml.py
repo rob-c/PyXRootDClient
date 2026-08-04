@@ -23,6 +23,7 @@ import sys
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
+from .._compat import zip_strict
 from .errors import UnsupportedFeatureError
 from .interp import Numeric
 from .tree import DEFAULT_STEP, Jagged
@@ -380,7 +381,7 @@ def mixed(
                     tree, names, step=step, entry_start=start, entry_stop=stop, device=device
                 )
                 for tree, (start, stop) in (
-                    (tree, _share(torch, *span)) for tree, span in zip(trees, ranges, strict=True)
+                    (tree, _share(torch, *span)) for tree, span in zip_strict(trees, ranges)
                 )
             ]
             while left:

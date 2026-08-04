@@ -24,6 +24,8 @@ import re
 from enum import IntEnum, IntFlag
 from typing import TYPE_CHECKING, Any, cast
 
+from ._compat import flag_members, zip_strict
+
 __all__ = [
     "OpenFlags",
     "Access",
@@ -90,7 +92,8 @@ class _Words:
         flag = cast(Any, self)
         if flag._name_ is not None:
             return str(flag._name_).lower()
-        return "|".join(str(part._name_).lower() for part in flag) or str(int(flag))
+        parts = flag_members(flag)
+        return "|".join(str(part._name_).lower() for part in parts) or str(int(flag))
 
 
 def _no_such(enum: Any, word: str) -> str:
@@ -157,7 +160,7 @@ class Access(_Words, IntFlag):
             text = value.strip()
             if len(text) == 9 and set(text) <= set("rwx-"):
                 bits = 0
-                for character, bit in zip(text, _RWX, strict=True):
+                for character, bit in zip_strict(text, _RWX):
                     bits |= bit if character != "-" else 0
                 return cls(bits)
             if text.isdigit():

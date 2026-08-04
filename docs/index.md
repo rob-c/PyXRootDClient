@@ -38,10 +38,12 @@ $ pip install pyxrootdclient[fsspec]         # pandas / dask / pyarrow URLs
 $ pip install pyxrootdclient[krb5]           # the Kerberos mechanism
 ```
 
-Python 3.10 or newer. Almost nothing needs an extra: `http://`, `https://` and
-WebDAV are `http.client`, and GSI / X.509 proxies are pure Python down to the
-AES and the RSA. Kerberos is the single exception, because a Kerberos token
-can only honestly be tested against a live KDC.
+Python 3.9 or newer - the version RHEL 9 and AlmaLinux 9 ship, so a grid
+login node needs nothing installed but this. Almost nothing needs an extra:
+`http://`, `https://` and WebDAV are `http.client`, and GSI / X.509 proxies
+are pure Python down to the AES and the RSA. Kerberos is the single
+exception, because a Kerberos token can only honestly be tested against a
+live KDC.
 
 ## Where to go next
 

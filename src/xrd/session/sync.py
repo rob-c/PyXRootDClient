@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..errors import ConnectionError as XrdConnectionError
@@ -40,7 +41,7 @@ class RedirectRequired(XRootDError):
         super().__init__(f"redirected to {target.url}")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Result:
     """A completed request."""
 

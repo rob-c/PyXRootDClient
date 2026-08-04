@@ -11,6 +11,7 @@ from __future__ import annotations
 import array
 from typing import Any
 
+from .._compat import zip_strict
 from .draw import axes
 from .errors import FormatError, UnsupportedFeatureError
 from .hist import FILL, LINE, MARKER
@@ -86,7 +87,7 @@ class Graph:
         return (self.x[index], self.y[index])
 
     def __iter__(self) -> Any:
-        return iter(zip(self.x, self.y, strict=True))
+        return iter(zip_strict(self.x, self.y))
 
     def points(self) -> list[tuple[float, float]]:
         """Every point as a pair, which is what a graph is a picture of."""
@@ -130,7 +131,7 @@ class Graph:
         if low is None or high is None:
             bars = self._bars("Y", ("fEYlow", "fEYhigh"))
             return () if bars is None else (bars,)
-        return tuple(self._pair(a, b) for a, b in zip(low, high, strict=True))
+        return tuple(self._pair(a, b) for a, b in zip_strict(low, high))
 
     @property
     def yerr(self) -> tuple[array.array[float], array.array[float]] | None:

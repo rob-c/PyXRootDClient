@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import IO, Any, Literal, cast
 
+from .._compat import SLOTS
 from .._log import get_logger
 from ..config import Config
 from ..crypto import new as new_checksum
@@ -43,7 +44,7 @@ _log = get_logger(__name__)
 Endpoint = "str | os.PathLike[str] | XRootDURL | IO[bytes]"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class CopyResult:
     """What one completed transfer did."""
 
@@ -155,7 +156,7 @@ def _resumer(url: XRootDURL, config: Config, stack: ExitStack, offset: int) -> I
     raise UnsupportedError(kXR_Unsupported, f"cannot resume a copy into {url.scheme}://")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class _Ends:
     """The two files a transfer that cannot digest its stream must compare."""
 
@@ -163,14 +164,14 @@ class _Ends:
     target: XRootDURL
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class _Resume(_Ends):
     """A transfer that picks up where an interrupted one stopped."""
 
     offset: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class _Spread(_Ends):
     """A transfer moved as several spans at once, one connection each."""
 

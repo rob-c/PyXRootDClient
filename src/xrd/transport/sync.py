@@ -5,6 +5,7 @@ from __future__ import annotations
 import socket
 import ssl
 
+from .._compat import TIMEOUTS
 from .._log import get_logger
 from ..config import Config
 from ..errors import ConnectionError as XrdConnectionError
@@ -32,7 +33,7 @@ class SocketTransport(Transport):
         config = config or Config()
         try:
             sock = socket.create_connection((host, port), timeout=config.connect_timeout)
-        except TimeoutError as exc:
+        except TIMEOUTS as exc:
             raise XrdTimeoutError(f"connecting to {host}:{port} timed out") from exc
         except OSError as exc:
             raise XrdConnectionError(f"cannot connect to {host}:{port}: {exc}") from exc
@@ -50,7 +51,7 @@ class SocketTransport(Transport):
             return
         try:
             self._sock.sendall(data)
-        except TimeoutError as exc:
+        except TIMEOUTS as exc:
             raise XrdTimeoutError(f"send to {self.host}:{self.port} timed out") from exc
         except OSError as exc:
             raise XrdConnectionError(f"send to {self.host}:{self.port} failed: {exc}") from exc
@@ -58,7 +59,7 @@ class SocketTransport(Transport):
     def receive(self, size: int = 65536) -> bytes:
         try:
             return self._sock.recv(size)
-        except TimeoutError as exc:
+        except TIMEOUTS as exc:
             raise XrdTimeoutError(f"read from {self.host}:{self.port} timed out") from exc
         except OSError as exc:
             raise XrdConnectionError(f"read from {self.host}:{self.port} failed: {exc}") from exc

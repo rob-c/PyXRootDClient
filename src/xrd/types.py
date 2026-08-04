@@ -10,6 +10,7 @@ import datetime
 import stat as _stat
 from dataclasses import dataclass, field
 
+from ._compat import SLOTS
 from .flags import StatInfoFlags
 
 __all__ = [
@@ -45,7 +46,7 @@ def human_bytes(size: float) -> str:
     raise AssertionError("unreachable")  # pragma: no cover
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class StatInfo:
     """Result of a ``stat``. ``st_*`` names match ``os.stat_result``.
 
@@ -118,7 +119,7 @@ class StatInfo:
         return bool(self.flags & StatInfoFlags.IS_WRITABLE)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class DirEntry:
     """One entry of a directory listing."""
 
@@ -147,7 +148,7 @@ class DirEntry:
         return self.path
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class VFSInfo:
     """Result of a ``statvfs`` (``kXR_stat`` with ``kXR_vfs``)."""
 
@@ -163,7 +164,7 @@ class VFSInfo:
         return self.free_rw
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class SpaceInfo:
     """Result of ``kXR_query`` with ``kXR_Qspace``.
 
@@ -191,7 +192,7 @@ class SpaceInfo:
         return f"{self.name or 'default'}: {self.free} of {self.total} bytes free"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class PrepareStatus:
     """What a staging query (``kXR_query`` with ``kXR_QPrep``) says of one file.
 
@@ -226,7 +227,7 @@ class PrepareStatus:
         return f"{self.path}: {where}{f' ({self.error})' if self.error else ''}"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class LocationInfo:
     """One entry of a ``locate`` result."""
 
@@ -271,7 +272,7 @@ class LocationInfo:
         return self.address
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ProtocolInfo:
     """Result of ``kXR_protocol``."""
 
@@ -339,7 +340,7 @@ class ProtocolInfo:
         return bool(self.flags & 0x01000000)  # kXR_tlsData
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ChecksumInfo:
     """A server-computed checksum."""
 
@@ -350,7 +351,7 @@ class ChecksumInfo:
         return f"{self.algorithm}:{self.value}"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class CheckpointInfo:
     """How much room the open checkpoint has left, in bytes."""
 
@@ -366,7 +367,7 @@ class CheckpointInfo:
         return f"{self.used}/{self.capacity} bytes used"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ReadRange:
     """One element of a vector read."""
 
@@ -374,7 +375,7 @@ class ReadRange:
     length: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class WriteChunk:
     """One element of a vector write."""
 
@@ -382,7 +383,7 @@ class WriteChunk:
     data: bytes
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class CloneRange:
     """One range of a server-side copy.
 
@@ -400,7 +401,7 @@ class CloneRange:
         return self.offset if self.target_offset is None else self.target_offset
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class PageResult:
     """Result of a ``pgread``: the data plus any pages that failed CRC."""
 

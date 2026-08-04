@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
+from .._compat import SLOTS
 from ..errors import ProtocolError
 from ..flags import StatInfoFlags
 from ..types import (
@@ -42,7 +43,7 @@ __all__ = [
 # --------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ErrorInfo:
     """Body of a ``kXR_error`` response."""
 
@@ -55,7 +56,7 @@ def parse_error(data: bytes) -> ErrorInfo:
     return ErrorInfo(r.i32(), r.cstring())
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class RedirectInfo:
     """Body of a ``kXR_redirect`` response."""
 
@@ -79,7 +80,7 @@ def parse_redirect(data: bytes) -> RedirectInfo:
     return RedirectInfo(host, port, token if sep else "")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class WaitInfo:
     """Body of a ``kXR_wait`` or ``kXR_waitresp`` response."""
 
@@ -97,7 +98,7 @@ def parse_waitresp(data: bytes) -> WaitInfo:
     return WaitInfo(r.i32())
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class AttnInfo:
     """Body of an unsolicited ``kXR_attn`` response."""
 
@@ -114,7 +115,7 @@ def parse_attn(data: bytes) -> AttnInfo:
     return AttnInfo(r.i32(), r.rest())
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class StatusInfo:
     """Body of a ``kXR_status`` response.
 
@@ -211,7 +212,7 @@ def parse_protocol(data: bytes) -> ProtocolInfo:
     )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class LoginInfo:
     """``kXR_login`` - the session id plus the server's security continuation."""
 
@@ -343,7 +344,7 @@ def parse_dirlist(data: bytes, path: str = "", with_stat: bool = True) -> list[D
         return [DirEntry(name=_checked(n, path), parent=path) for n in lines]
 
     entries: list[DirEntry] = []
-    for name, statline in zip(lines[::2], lines[1::2], strict=False):
+    for name, statline in zip(lines[::2], lines[1::2]):
         if name == ".":
             continue
         _checked(name, path)
@@ -494,7 +495,7 @@ def parse_readlink(data: bytes) -> str:
 # --------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ReadVSegment:
     """One element of a ``kXR_readv`` response."""
 
@@ -522,7 +523,7 @@ def parse_readv(data: bytes) -> list[ReadVSegment]:
 # --------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class FattrItem:
     """One attribute in a ``kXR_fattr`` response."""
 
@@ -531,7 +532,7 @@ class FattrItem:
     value: bytes | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class FattrResult:
     """``kXR_fattr`` response body."""
 

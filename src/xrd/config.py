@@ -29,6 +29,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field, fields, replace
 from typing import TYPE_CHECKING
 
+from ._compat import SLOTS
 from .errors import TooLargeError
 
 if TYPE_CHECKING:
@@ -153,7 +154,7 @@ def _default_user() -> str:
         return "nobody"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Config:
     """Immutable client settings. Use :meth:`evolve` to derive a variant."""
 

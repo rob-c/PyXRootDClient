@@ -24,6 +24,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from .._compat import SLOTS
+
 __all__ = [
     "Credentials",
     "sign",
@@ -49,7 +51,7 @@ DEFAULT_REGION = "us-east-1"
 DEFAULT_CREDENTIALS_FILE = "~/.aws/credentials"
 
 
-@dataclass(frozen=True, slots=True, repr=False)
+@dataclass(frozen=True, repr=False, **SLOTS)
 class Credentials:
     """An access key and the secret that signs with it.
 

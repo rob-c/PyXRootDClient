@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
+from .._compat import SLOTS
 from .der import (
     TAG_BIT_STRING,
     TAG_GENERALIZED_TIME,
@@ -60,7 +61,7 @@ PROXY_CERT_INFO_OID = "1.3.6.1.5.5.7.1.14"
 LEGACY_PROXY_OID = "1.3.6.1.4.1.3536.1.222"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Name:
     """A distinguished name: ordered ``(type, value)`` pairs."""
 
@@ -120,7 +121,7 @@ def _decode_time(element: Element) -> float:
     return float(__import__("calendar").timegm(parsed))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class Certificate:
     """One X.509 certificate, decoded far enough to be useful."""
 
@@ -232,7 +233,7 @@ def default_proxy_path(config: object = None) -> str:
     return f"/tmp/x509up_u{os.geteuid()}"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **SLOTS)
 class ProxyCredential:
     """A loaded GSI proxy: the chain as PEM, its key, and what it says."""
 

@@ -31,6 +31,7 @@ import threading
 import time
 from collections.abc import Callable
 
+from .._compat import TIMEOUTS
 from ..url import XRootDURL, parse
 
 __all__ = ["FaultProxy"]
@@ -323,7 +324,7 @@ def _read(sock: socket.socket, size: int = 65536) -> bytes | None:
     """A chunk, ``b""`` at end of stream, or ``None`` if nothing was ready."""
     try:
         return sock.recv(size)
-    except TimeoutError:
+    except TIMEOUTS:
         return None
     except OSError:
         return b""

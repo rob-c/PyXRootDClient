@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import cast
 from urllib.parse import parse_qs
 
+from .._compat import zip_strict
 from ..errors import kXR_ArgInvalid, kXR_FileNotOpen, kXR_NoSpace, kXR_Unsupported
 from ..proto import constants as c
 from ..proto.buffer import Reader, Writer
@@ -900,7 +901,7 @@ def _h_setattr(conn: _Connection, sid: int, params: bytes, body: bytes) -> Itera
     if flags & c.kXR_sa_times:
         was = conn.s.times.get(path, (0, 1700000000 * 10**9))
         kept = []
-        for (s, ns), before in zip(((at_s, at_ns), (mt_s, mt_ns)), was, strict=True):
+        for (s, ns), before in zip_strict(((at_s, at_ns), (mt_s, mt_ns)), was):
             if ns == c.UTIME_OMIT:
                 kept.append(before)
             elif ns == c.UTIME_NOW:
