@@ -214,6 +214,12 @@ class Session:
             except BaseException:
                 transport.close()
                 raise
+            # A data path carries only bulk transfer, and a caller routing a
+            # bound op over it wants to know quickly if the server will not
+            # serve it there (so it can fall back to the control link) rather
+            # than block for the whole request_timeout. Bound its reads to the
+            # short data_stream_timeout; the control link keeps the long one.
+            transport.settimeout(self.config.data_stream_timeout)
             self._paths[pathid] = transport
             _log.debug("bound data path %d to %s", pathid, self.endpoint)
             return pathid
@@ -233,6 +239,7 @@ class Session:
         *,
         path: str = "",
         on_chunk: Callable[[bytes], None] | None = None,
+        arrive_on_path: bool = False,
     ) -> Result:
         """Send ``request`` and block until it completes.
 
@@ -240,6 +247,13 @@ class Session:
         final piece, so concatenating them gives exactly
         :attr:`Result.data` - a caller can stream straight to a file. The
         full body is accumulated for the return value either way.
+
+        ``arrive_on_path`` moves the whole request onto its bound data socket
+        and waits for the answer there, for a server that routes a sub-stream
+        by arrival connection rather than by the request's path id. It is
+        honoured only while that path is actually bound; a redirect or a
+        reconnect that dropped it silently falls back to the control link, so
+        the caller never has to unwind its own routing on recovery.
         """
         with self._lock:
             if self.closed:
@@ -248,8 +262,12 @@ class Session:
                 raise ValueError(
                     f"data path {request.pathid} is not bound to {self.endpoint}"
                 )
-            sid = self._m.submit(request, path=path)
-            answers_on = request.pathid if request.reply_on_path else 0
+            on_path = arrive_on_path and bool(request.pathid) and request.pathid in self._paths
+            sid = self._m.submit(request, path=path, arrive_on_path=on_path)
+            if on_path:
+                answers_on = request.pathid
+            else:
+                answers_on = request.pathid if request.reply_on_path else 0
             return self._await(sid, on_chunk, answers_on)
 
     def _await(

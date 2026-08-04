@@ -179,6 +179,25 @@ class Config:
     parallel_chunks: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELCHUNKS", 4))
     parallel_files: int = field(default_factory=lambda: _env_int("XRD_CPPARALLELFILES", 1))
     in_flight: int = field(default_factory=lambda: _env_int("XRD_CPINFLIGHT", 2))
+    #: Extra ``kXR_bind`` data sub-streams a file binds at open, so its bulk
+    #: reads and writes travel beside the control traffic rather than behind
+    #: it. The official client counts the control link in its total, so its
+    #: ``XRD_SUBSTREAMSPERCHANNEL`` of 1 means "control only"; ours is the
+    #: extras, and the default of one extra makes a plain open multi-stream.
+    #: ``0`` restores the single-connection behaviour. Binding is best-effort
+    #: and each bulk op falls back to the control link, so a server that does
+    #: not serve sub-streams still transfers correctly.
+    data_streams: int = field(
+        default_factory=lambda: max(0, _env_int("XRD_SUBSTREAMSPERCHANNEL", 2) - 1)
+    )
+    #: How long a bound bulk op waits on a data sub-stream before giving up and
+    #: falling back to the control link. Kept short - a server that serves the
+    #: op there answers at once, so this is really "how long to find out a
+    #: server will not", paid once per file. The control link keeps the long
+    #: :attr:`request_timeout`.
+    data_stream_timeout: float = field(
+        default_factory=lambda: _env_float("XRD_SUBSTREAMTIMEOUT", 2.0)
+    )
     #: Ceiling on a read that did not say how much it wanted, so that
     #: ``read()`` on a dataset nobody looked at first fails with an
     #: explanation instead of filling the machine's memory. ``0`` lifts it.

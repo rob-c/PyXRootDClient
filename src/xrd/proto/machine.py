@@ -307,16 +307,19 @@ class SessionMachine:
     def has_data_to_send(self) -> bool:
         return bool(self._out)
 
-    def submit(self, request: Request, *, path: str = "") -> int:
+    def submit(
+        self, request: Request, *, path: str = "", arrive_on_path: bool = False
+    ) -> int:
         """Queue ``request`` on a fresh stream and return its streamid.
 
         ``path`` is carried only so that a failure can name the file it was
-        about; it never reaches the wire.
+        about; it never reaches the wire. ``arrive_on_path`` routes the whole
+        frame down the request's bound data socket (see :meth:`_send`).
         """
         if self.state is not State.READY:
             raise ProtocolError(f"cannot submit in state {self.state.name}")
         sid = self._acquire_sid()
-        self._send(request, sid, path=path)
+        self._send(request, sid, path=path, arrive_on_path=arrive_on_path)
         return sid
 
     def resume(self, streamid: int) -> None:
@@ -360,7 +363,9 @@ class SessionMachine:
             raise ProtocolError("stream id space exhausted")
         return sid
 
-    def _send(self, request: Request, sid: int, *, path: str = "") -> None:
+    def _send(
+        self, request: Request, sid: int, *, path: str = "", arrive_on_path: bool = False
+    ) -> None:
         frame = encode(request, sid)
         if self.signer is not None:
             signed = self.signer.sign(frame)
@@ -368,6 +373,20 @@ class SessionMachine:
                 seqno, mac = signed
                 frame = encode(r.Sigver(request.opcode, seqno, mac), sid) + frame
         data = request.path_data()
+        # Arrival routing (BriX and any server that keys a sub-stream on which
+        # connection a request *arrived* on): the whole frame goes down the
+        # bound data socket rather than the control link, and the answer comes
+        # back on the same socket. The standard split - header on the control
+        # link, payload on the data socket - is what runs otherwise.
+        if arrive_on_path and request.pathid:
+            self._pending[sid] = _Pending(
+                request, frame, path=path, pathid=request.pathid, path_bytes=data
+            )
+            buf = self._out_path.setdefault(request.pathid, bytearray())
+            buf.extend(frame)
+            if data:
+                buf.extend(data)
+            return
         self._pending[sid] = _Pending(
             request, frame, path=path, pathid=request.pathid, path_bytes=data
         )

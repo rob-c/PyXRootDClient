@@ -21,6 +21,7 @@ from ..errors import (
     ServerError,
     TransientError,
     UnsupportedError,
+    XRootDError,
     kXR_InvalidRequest,
     kXR_Unsupported,
 )
@@ -82,6 +83,13 @@ class File:
         self._mode = 0
         self._checkpoint = False
         self._pathid = 0
+        #: Data sub-streams bound automatically at open for bulk transfer, and
+        #: a cursor that spreads chunks over them. ``_multistream`` latches off
+        #: for the file the first time a server declines a bound bulk op, so the
+        #: rest of the transfer runs on the control link without retrying it.
+        self._data_paths: list[int] = []
+        self._rr = 0
+        self._multistream = True
         #: How many times this handle has been re-opened after losing its
         #: server. Zero on a healthy connection; useful in a log line when a
         #: long read survived a restart nobody noticed.
@@ -127,6 +135,62 @@ class File:
             self._pathid = self._router.bind_data_path()
         return self._pathid
 
+    def _bind_data_streams(self) -> None:
+        """Bind the automatic bulk-transfer data streams at open.
+
+        Best-effort: a server that refuses ``kXR_bind`` (or speaks HTTP, which
+        has none) simply leaves the transfer on the control link. The manual
+        :meth:`bind_data_path` is untouched - these are a separate, automatic
+        set that :meth:`read` and :meth:`write` spread their chunks over.
+        """
+        for _ in range(self.config.data_streams):
+            try:
+                pathid = self._router.bind_data_path()
+            except Exception:  # noqa: BLE001 - binding is strictly optional
+                break
+            if not pathid:
+                break
+            self._data_paths.append(pathid)
+
+    def _next_path(self) -> int:
+        """The next automatic data path to carry a bulk chunk, round-robin, or
+        0 when there are none or the file has fallen back to the control link.
+        """
+        if not self._multistream or not self._data_paths:
+            return 0
+        pathid = self._data_paths[self._rr % len(self._data_paths)]
+        self._rr += 1
+        return pathid
+
+    def _bulk(self, build: Callable[[bytes, int], Request]) -> Result:
+        """Run one bulk read/write, over an automatic data path when there is
+        one and the server serves it there, otherwise on the control link.
+
+        ``build(handle, pathid)`` makes the request for a given handle and path
+        id. A bound attempt that the server declines - a reset, a timeout, a
+        refusal - latches multi-stream off for this file and the identical op is
+        re-run on the control link (pathid 0), an idempotent read or write at
+        the same offset, so the transfer stays byte-exact on any server. A
+        checkpoint journals only what it was handed, so a checkpointed write
+        stays on the control link where :meth:`_submit` can route it.
+        """
+        pathid = self._next_path()
+        if not pathid or self._checkpoint:
+            return self._execute(lambda handle: build(handle, self._pathid))
+        # One attempt, straight at the session so a server that will not serve
+        # the bound op is not chased through the router's reconnect loop. Any
+        # failure - a reset, a refusal, a timeout, or a path a recovery dropped
+        # - latches multi-stream off for this file and the identical op re-runs
+        # on the control link, an idempotent read or write at the same offset.
+        try:
+            return self._router.session.execute(
+                build(self.handle, pathid), path=self.url.path, arrive_on_path=True
+            )
+        except (XRootDError, ValueError) as exc:
+            self._multistream = False
+            _log.debug("data path %d fell back to the control link: %s", pathid, exc)
+            return self._execute(lambda handle: build(handle, 0))
+
     def open(
         self,
         flags: OpenFlags | int | str = OpenFlags.READ,
@@ -149,6 +213,7 @@ class File:
         self._flags, self._mode = open_flags(flags), permissions(mode)
         try:
             self._do_open()
+            self._bind_data_streams()
         except BaseException:
             # An open that fails leaves nothing to close, so nobody closes it,
             # so a caller that catches FileExistsError in a loop would hold a
@@ -224,6 +289,11 @@ class File:
         """
         stale, self._handle, self._stat = self._router, None, None
         self._pathid = 0
+        # The data paths belonged to the connection that just died; drop them
+        # and let the fresh open bind its own.
+        self._data_paths = []
+        self._rr = 0
+        self._multistream = True
         if self._owns_router:
             # Discarded, not pooled: this connection has just failed under a
             # live handle, and the next caller deserves better than that.
@@ -231,7 +301,9 @@ class File:
         self._router = Router(self.url, self.config)
         self._owns_router = True
         self.recoveries += 1
-        return self._do_open()
+        handle = self._do_open()
+        self._bind_data_streams()
+        return handle
 
     def close(self) -> None:
         """``kXR_close``, then release the connection. Idempotent.
@@ -330,7 +402,7 @@ class File:
         return b"".join(parts)
 
     def _read_one(self, offset: int, length: int) -> bytes:
-        data = self._execute(lambda handle: r.Read(handle, offset, length, self._pathid)).data
+        data = self._bulk(lambda handle, pid: r.Read(handle, offset, length, pid)).data
         if len(data) > length:
             raise ProtocolError(
                 f"the server answered a {length} byte read at offset {offset} with "
@@ -420,7 +492,12 @@ class File:
         written = 0
         while written < len(view):
             piece = view[written : written + limit]
-            self._submit(r.Write(self.handle, offset + written, piece.tobytes(), self._pathid))
+            at = offset + written
+            body = piece.tobytes()
+            if self._checkpoint:
+                self._submit(r.Write(self.handle, at, body, self._pathid))
+            else:
+                self._bulk(lambda handle, pid: r.Write(handle, at, body, pid))
             written += len(piece)
         self._invalidate(offset + written)
         return written

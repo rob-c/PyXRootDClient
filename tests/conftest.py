@@ -89,8 +89,16 @@ def _no_pooled_connections():
 
 @pytest.fixture
 def config() -> Config:
-    """A config that never reaches the network or the local filesystem."""
-    return Config(username="tester", auth_order=("host",), require_tls=False)
+    """A config that never reaches the network or the local filesystem.
+
+    Automatic data sub-streams are off here so the suite exercises the plain
+    control-link and the manual :meth:`~xrd.File.bind_data_path` API directly;
+    the on-by-default behaviour has its own coverage in
+    ``test_data_streams_default.py``.
+    """
+    return Config(
+        username="tester", auth_order=("host",), require_tls=False, data_streams=0
+    )
 
 
 @pytest.fixture

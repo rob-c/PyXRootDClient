@@ -38,6 +38,8 @@ production. `evolve` returns a new one.
 | `parallel_chunks` | `4` | `XRD_CPPARALLELCHUNKS` |
 | `parallel_files` | `1` | `XRD_CPPARALLELFILES` |
 | `in_flight` | `2` | `XRD_CPINFLIGHT` |
+| `data_streams` | `1` | `XRD_SUBSTREAMSPERCHANNEL` |
+| `data_stream_timeout` | 2 s | `XRD_SUBSTREAMTIMEOUT` |
 | `max_read_size` | 1 GiB | `XRD_MAXREADSIZE` |
 
 `parallel_chunks` is how many connections one large copy is spread over, a
@@ -48,6 +50,17 @@ and defaults to one because each of them is already spread over
 `parallel_chunks`. `in_flight` is how many chunks a transfer reads ahead of
 the write it is waiting on, so that the two ends overlap; `1` is the strictly
 sequential pump, and is what a copy between two local disks wants.
+`data_streams` is how many extra `kXR_bind` sub-streams a file binds at open,
+so a plain read or write already travels beside the control traffic instead of
+behind it; it is on by default (one extra link). The official client counts the
+control link in its total, so `XRD_SUBSTREAMSPERCHANNEL=1` means "control only"
+and turns the extras off — our field is the extras. It is best-effort: the whole
+request goes down the bound link and, if the server will not serve it there,
+the identical read or write re-runs on the control link at the same offset, so
+the transfer stays byte-exact on any server. `data_stream_timeout` bounds how
+long that bound attempt waits before falling back — kept short because a server
+that serves the op answers at once, so a server that does not is found out
+quickly (once per file) rather than blocking the whole `request_timeout`.
 `max_read_size` is the ceiling on a read that never said how much it wanted -
 `read()` with no argument, `read_bytes()`, `read_text()` - so that a file
 bigger than memory raises [`TooLargeError`](errors.md#too-much-at-once)
